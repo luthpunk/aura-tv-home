@@ -51,11 +51,50 @@ Tema gelap dengan aksen kontras neon cyber minimalis dan teks putih bersih yang 
 
 ## 📥 Cara Pemasangan di Android TV / STB
 
-1. Unduh file instalasi terbaru:  
-   👉 **[Unduh aura-tv-home.apk](https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk)**
-2. Salin file `.apk` ke Flashdisk / kirim langsung lewat aplikasi **Aura TV Tools** melalui fitur *Sideload Install 1-Klik*.
-3. Buka file `.apk` di Android TV / STB Anda untuk menginstal.
-4. Tekan tombol **Home** pada remote TV, lalu pilih **Aura TV Home** dan pilih **"Selalu" (Always)**.
+Unduh file APK rilis terbaru:  
+👉 **[Unduh aura-tv-home.apk](https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk)**
+
+### Metode 1: Lewat Aplikasi Aura TV Tools (Rekomendasi Paling Mudah)
+1. Buka aplikasi **Aura TV Tools** di HP Android Anda.
+2. Sambungkan ke IP STB Anda (di port `5555`).
+3. Masuk ke tab **Aplikasi** > tekan **📂 Pilih & Install APK dari HP** dan pilih file `aura-tv-home.apk`.
+4. Tekan tombol **Home** pada remote TV, lalu pilih **Aura TV Home** dan klik **"Selalu" (Always)**.
+
+---
+
+### Metode 2: Lewat ADB (PC / Laptop / Termux / Terminal)
+
+Jika tombol Home di remote STB Anda dikunci oleh launcher bawaan pabrik (seperti launcher IndiHome, Android TV Core, atau Google TV Launcher), Anda bisa menjadikannya default permanen lewat ADB:
+
+1. **Instal APK ke STB:**
+   ```bash
+   adb connect <IP_STB>:5555
+   adb install -r aura-tv-home.apk
+   ```
+
+2. **Jadikan Default Langsung Lewat Perintah:**
+   ```bash
+   # Buka Aura TV Home langsung ke layar
+   adb shell cmd package set-home-activity com.gathin.tvhome/.MainActivity
+   ```
+
+3. **(Opsional) Nonaktifkan Launcher Bawaan STB jika Masih Muncul:**
+   Jika tombol Home masih kembali ke launcher pabrik, nonaktifkan launcher bawaannya (bisa diaktifkan kembali kapan saja):
+
+   - **Android TV / Google TV Standar:**
+     ```bash
+     adb shell pm disable-user --user 0 com.google.android.tvlauncher
+     # Atau untuk Google TV UI baru:
+     adb shell pm disable-user --user 0 com.google.android.apps.tv.launcherx
+     ```
+   - **STB Operator (ZTE / Fiberhome / IndiHome):**
+     ```bash
+     adb shell pm disable-user --user 0 com.zte.iptvclient.android.launcher
+     # Atau:
+     adb shell pm disable-user --user 0 com.fiberhome.myindihome
+     ```
+
+   *(Untuk mengaktifkannya kembali jika sewaktu-waktu dibutuhkan, cukup ganti kata `disable-user --user 0` menjadi `enable`).*
 
 ---
 
