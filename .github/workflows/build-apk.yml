@@ -1,0 +1,95 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+    paths: ["launcher/**", ".github/workflows/build-apk.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platforms;android-34 build-tools;34.0.0
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Restore signing keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.p12"
+            echo "SIGNING_KEYSTORE=$RUNNER_TEMP/release.p12" >> "$GITHUB_ENV"
+          else
+            echo "::warning::SIGNING_KEYSTORE_B64 not set; using a throwaway debug key (updates will not install over each other)"
+          fi
+
+      - name: Build release APK
+        working-directory: launcher
+        env:
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+          SIGNING_ALIAS: ${{ secrets.SIGNING_ALIAS }}
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/aura-tv-home.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aura-tv-home-apk
+          path: aura-tv-home.apk
+
+      - name: Publish GitHub release & update OTA metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VCODE=$(grep -E "versionCode\s+[0-9]+" launcher/app/build.gradle | awk '{print $2}')
+          VNAME=$(grep -E "versionName\s+" launcher/app/build.gradle | sed -E "s/.*versionName\s+['\"]([^'\"]+)['\"].*/\1/")
+          COMMIT_MSG=$(git log -1 --pretty=%s)
+          DATE_STR=$(date -u +%Y-%m-%d)
+
+          tag="build-${GITHUB_RUN_NUMBER}"
+          for i in 1 2 3; do
+            gh release delete "$tag" --cleanup-tag -y 2>/dev/null || true
+            if gh release create "$tag" aura-tv-home.apk \
+              --title "Aura TV Home ${tag} (v${VNAME})" \
+              --notes "Built from ${GITHUB_SHA::7}. Unduh aura-tv-home.apk untuk Android TV / STB." \
+              --latest; then
+              break
+            fi
+            sleep 4
+          done
+
+          mkdir -p release
+          cat > release/version.json <<EOF
+          {
+            "versionCode": ${VCODE:-31},
+            "versionName": "${VNAME:-3.4.0-id}",
+            "apkUrl": "https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/aura-tv-home.apk",
+            "changelog": "${COMMIT_MSG}",
+            "releaseDate": "${DATE_STR}"
+          }
+          EOF
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add release/version.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(release): update OTA version.json to v${VNAME} (${VCODE})"
+            for i in 1 2 3; do
+              git pull --rebase origin main && git push origin main && break || sleep 4
+            done
+          fi

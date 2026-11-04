@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Aura TV Home</string>
+    <string name="inputs">Input</string>
+    <string name="wifi">Wi-Fi</string>
+    <string name="settings">Pengaturan</string>
+    <string name="choose_input">Input</string>
+    <string name="connected">Terhubung</string>
+    <string name="standby">Siaga</string>
+    <string name="not_connected">Tidak ada perangkat</string>
+    <string name="live_tv">Siaran TV</string>
+    <string name="no_inputs">Input tidak ditemukan</string>
+    <string name="ethernet">Ethernet</string>
+    <string name="offline">Luring</string>
+    <string name="not_available">Tidak tersedia di TV ini</string>
+    <string name="cant_open">Tidak dapat membuka %1$s</string>
+    <string name="date_format">d MMM yyyy</string>
+    <string name="dream_name">Screensaver Jam Meja</string>
+    <string name="vpn">VPN</string>
+    <string name="vpn_off">VPN mati</string>
+    <string name="home_settings">Beranda utama</string>
+    <string name="home_settings_help">Pilih layar utama di pengaturan sistem, lalu tekan tombol Home.</string>
+    <string name="input_key_service_description">Membuka menu pilihan input saat tombol Input di remote ditekan.</string>
+    <string name="home_key_name">Tombol Home</string>
+    <string name="home_key_description">Membuat tombol Home di remote membuka launcher ini.</string>
+    <string name="card_prompt_title">Kartu baru dari %1$s</string>
+    <string name="card_prompt_body">%1$s dapat menampilkan kartu di layar utama. Menyembunyikannya akan membiarkan ikon aplikasi seperti biasa.</string>
+    <string name="card_prompt_names">Nama kartu: \'%1$s\'. Aplikasi: \'%2$s\'.</string>
+    <string name="card_prompt_resigned">%1$s diperbarui dengan kunci tanda tangan berbeda, sehingga pilihan sebelumnya tidak berlaku lagi. Silakan pilih kembali.</string>
+    <string name="card_prompt_relabelled">%1$s mengubah nama kartunya sejak pilihan terakhir Anda. Silakan pilih kembali.</string>
+    <string name="card_prompt_hint">Anda dapat mengubahnya nanti: tahan OK pada Pengaturan.</string>
+    <string name="card_prompt_identity">%1$s, kunci %2$s</string>
+    <string name="card_keep_hidden">Tetap sembunyikan</string>
+    <string name="card_show">Tampilkan kartu</string>
+    <string name="card_not_saved">Gagal menyimpan pilihan</string>
+    <string name="module_cards">Kartu modul</string>
+    <string name="no_module_cards">Tidak ada kartu modul terpasang</string>
+    <string name="card_app_name">Aplikasi: %1$s</string>
+    <string name="card_state_shown">Ditampilkan</string>
+    <string name="card_state_over_limit">Ditampilkan, melebihi batas 8</string>
+    <string name="card_state_hidden">Disembunyikan</string>
+    <string name="card_state_new">Baru</string>
+    <string name="card_state_new_key">Kunci baru</string>
+    <string name="card_state_new_label">Nama baru</string>
+    <string name="tile_move">Pindahkan</string>
+    <string name="tile_app_info">Info aplikasi</string>
+</resources>
