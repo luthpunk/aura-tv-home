@@ -1,0 +1,7 @@
+{
+  "versionCode": 31,
+  "versionName": "3.4.0-id",
+  "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
+  "changelog": "feat: initial commit for Aura TV Home with 3 themes, 3h weather forecast, Indonesian README, and OTA config",
+  "releaseDate": "2026-11-04"
+}
