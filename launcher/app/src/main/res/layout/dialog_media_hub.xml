@@ -9,6 +9,8 @@
     android:paddingEnd="24dp"
     android:paddingTop="20dp"
     android:paddingBottom="20dp"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     android:elevation="20dp">
 
     <!-- Top Header: Icon + Title + Source/Status Badge -->
@@ -135,6 +137,8 @@
         android:layout_marginTop="16dp"
         android:layout_gravity="center_horizontal"
         android:gravity="center_vertical"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         android:orientation="horizontal">
 
         <ImageView
@@ -188,6 +192,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="18dp"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         android:orientation="horizontal"
         android:gravity="center">
 

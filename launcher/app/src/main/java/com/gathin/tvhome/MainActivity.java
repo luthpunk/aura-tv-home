@@ -3957,6 +3957,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (anchor == null) return;
 
         final View panel = getLayoutInflater().inflate(R.layout.dialog_media_hub, root, false);
+        if (panel instanceof ViewGroup) {
+            ((ViewGroup) panel).setClipChildren(false);
+            ((ViewGroup) panel).setClipToPadding(false);
+        }
         activeNowPlayingPanel = panel;
         openMenu = panel;
         menuAnchor = anchor;
@@ -4120,7 +4124,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (leftMargin + width > maxRight) {
             leftMargin = Math.max((int)(32 * density), maxRight - width);
         }
-        int gap = (int) (8 * density);
+        int gap = (int) (10 * density);
         int topMargin = pillAt[1] - rootAt[1] + anchor.getHeight() + gap;
 
         lp.leftMargin = leftMargin;
@@ -4131,13 +4135,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         root.addView(panel, lp);
 
-        // Entrance animation matching top menus (smooth slide-down from the pill + fade-in)
+        // Entrance animation matching top menus (fade-in in place, exact 10dp gap preserved)
         panel.setAlpha(0f);
-        panel.setTranslationY(-12 * density);
         panel.animate()
                 .alpha(1f)
-                .translationY(0f)
-                .setDuration(220)
+                .setDuration(200)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f))
                 .start();
 
@@ -4195,14 +4197,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         View.OnFocusChangeListener btnFocus = (v, hasFocus) -> {
             if (hasFocus) SoundEffects.playNav();
-            float scale = (hasFocus && !isNeu) ? 1.08f : 1.0f;
-            v.animate()
-                    .scaleX(scale)
-                    .scaleY(scale)
-                    .setDuration(120)
-                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
-                    .withLayer()
-                    .start();
         };
 
         View.OnKeyListener menuKey = (v, keyCode, event) -> {

@@ -1,7 +1,7 @@
 {
-  "versionCode": 35,
-  "versionName": "3.4.4-id",
+  "versionCode": 36,
+  "versionName": "3.4.5-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "feat(now-playing): single focus pill with wave equalizer, theme sync, and in-window dropdown media hub",
+  "changelog": "fix: align now playing popup vertical gap exactly to 10dp matching top menu submenus, remove button scaling in glass and dark so corners remain unclipped, and add clipChildren/clipToPadding false",
   "releaseDate": "2026-11-05"
 }
