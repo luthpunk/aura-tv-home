@@ -196,10 +196,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private View cardTrackInfo;
     private TextView cardSubtitle;
     private TextView cardTitle;
-    private ImageView btnInlinePrev;
     private ImageView btnInlinePlayPause;
     private ImageView btnInlineNext;
-    private ImageView btnInlineClose;
     private boolean nowPlayingDisabledByUser = false;
     private String lastPlayedTrackKey = "";
     private NowPlayingManager.Listener nowPlayingListener;
@@ -526,10 +524,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             cardTrackInfo = findViewById(R.id.cardTrackInfo);
             cardSubtitle = findViewById(R.id.cardSubtitle);
             cardTitle = findViewById(R.id.cardTitle);
-            btnInlinePrev = findViewById(R.id.btnInlinePrev);
             btnInlinePlayPause = findViewById(R.id.btnInlinePlayPause);
             btnInlineNext = findViewById(R.id.btnInlineNext);
-            btnInlineClose = findViewById(R.id.btnInlineClose);
 
             View.OnClickListener openDialogClick = v -> {
                 SoundEffects.playSelect();
@@ -557,19 +553,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     handler.postDelayed(() -> NowPlayingManager.updateCurrentMedia(MainActivity.this), 300);
                 });
             }
-            if (btnInlinePrev != null) {
-                btnInlinePrev.setOnClickListener(v -> {
-                    SoundEffects.playSelect();
-                    NowPlayingManager.skipToPrevious();
-                    handler.postDelayed(() -> NowPlayingManager.updateCurrentMedia(MainActivity.this), 300);
-                });
-            }
-            if (btnInlineClose != null) {
-                btnInlineClose.setOnClickListener(v -> {
-                    SoundEffects.playSelect();
-                    disableNowPlaying();
-                });
-            }
 
             View.OnFocusChangeListener inlineFocus = (v, hasFocus) -> {
                 if (hasFocus) {
@@ -580,10 +563,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             };
             if (cardAlbumArt != null) cardAlbumArt.setOnFocusChangeListener(inlineFocus);
             if (cardTrackInfo != null) cardTrackInfo.setOnFocusChangeListener(inlineFocus);
-            if (btnInlinePrev != null) btnInlinePrev.setOnFocusChangeListener(inlineFocus);
             if (btnInlinePlayPause != null) btnInlinePlayPause.setOnFocusChangeListener(inlineFocus);
             if (btnInlineNext != null) btnInlineNext.setOnFocusChangeListener(inlineFocus);
-            if (btnInlineClose != null) btnInlineClose.setOnFocusChangeListener(inlineFocus);
 
             View.OnKeyListener inlineKey = (v, keyCode, event) -> {
                 if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
@@ -604,10 +585,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             };
             if (cardAlbumArt != null) cardAlbumArt.setOnKeyListener(inlineKey);
             if (cardTrackInfo != null) cardTrackInfo.setOnKeyListener(inlineKey);
-            if (btnInlinePrev != null) btnInlinePrev.setOnKeyListener(inlineKey);
             if (btnInlinePlayPause != null) btnInlinePlayPause.setOnKeyListener(inlineKey);
             if (btnInlineNext != null) btnInlineNext.setOnKeyListener(inlineKey);
-            if (btnInlineClose != null) btnInlineClose.setOnKeyListener(inlineKey);
         }
         NowPlayingManager.init(this);
         nowPlayingListener = this::updateNowPlayingUi;
