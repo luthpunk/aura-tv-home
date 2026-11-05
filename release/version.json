@@ -2,6 +2,6 @@
   "versionCode": 35,
   "versionName": "3.4.4-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "feat: Now Playing single glanceable pill with EqualizerWaveView, rounded squircle album art, theme matching focus highlight, and in-window dropdown media hub positioned right without overlapping weather widget",
+  "changelog": "feat(now-playing): single focus pill with wave equalizer, theme sync, and in-window dropdown media hub",
   "releaseDate": "2026-11-05"
 }
