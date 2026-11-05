@@ -2,6 +2,6 @@
   "versionCode": 39,
   "versionName": "3.4.8-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "fix: fix now playing pill to a stable constant medium width (168dp) with plenty of clearance from weather widget, and retain frosted glass exclusively on glass theme",
+  "changelog": "fix(now-playing): set fixed 168dp pill width for stability and weather clearance",
   "releaseDate": "2026-11-05"
 }
