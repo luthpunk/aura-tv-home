@@ -2,6 +2,6 @@
   "versionCode": 36,
   "versionName": "3.4.5-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "fix: align now playing popup vertical gap exactly to 10dp matching top menu submenus, remove button scaling in glass and dark so corners remain unclipped, and add clipChildren/clipToPadding false",
+  "changelog": "fix(now-playing): match submenu vertical gap to 10dp and remove button scaling in glass and dark to prevent clipped corners",
   "releaseDate": "2026-11-05"
 }
