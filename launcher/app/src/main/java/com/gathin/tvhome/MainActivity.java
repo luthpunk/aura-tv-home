@@ -1667,6 +1667,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Clock & Date Block
         android.widget.TextClock clock = findViewById(R.id.clock);
         if (clock != null) {
+            clock.setFormat12Hour("HH:mm");
+            clock.setFormat24Hour("HH:mm");
             clock.setTextColor(isNeu ? 0xFF2B3036 : 0xFFFFFFFF);
             if (isNeu) clock.setShadowLayer(0, 0, 0, 0);
             else clock.setShadowLayer(4f, 0, 1f, 0x80000000);
@@ -2804,12 +2806,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             open(systemIntent(Settings.ACTION_WIFI_SETTINGS));
         });
 
-        // Row 3: Tutup
-        addInputRow(rows, close, R.drawable.ic_close, "Tutup", -1, () -> {
-            SoundEffects.playSelect();
-            closeMenu(true);
-        });
-
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         width = Math.max(width, panel.getMeasuredWidth());
 
@@ -2875,14 +2871,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             smartBoostTv();
         });
 
-        addSeparator(rows);
-
-        // Row 8: Tutup
-        addInputRow(rows, close, R.drawable.ic_close, "Tutup", -1, () -> {
-            SoundEffects.playSelect();
-            closeMenu(true);
-        });
-
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         int width = Math.max((int) (230 * density), panel.getMeasuredWidth());
 
@@ -2924,12 +2912,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             SoundEffects.playSelect();
             NowPlayingManager.openNotificationAccessSettings(this);
             Toast.makeText(this, "Aktifkan 'Aura TV Media Listener' untuk menampilkan info lagu", Toast.LENGTH_LONG).show();
-        });
-
-        // Row 5: Tutup
-        addInputRow(rows, close, R.drawable.ic_close, "Tutup", -1, () -> {
-            SoundEffects.playSelect();
-            closeMenu(true);
         });
 
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
@@ -5296,12 +5278,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             SoundEffects.playSelect();
             closeMenu(false);
             showAzanSettingsDialog();
-        });
-
-        // Tutup
-        addInputRow(rows, close, R.drawable.ic_close, "Tutup", -1, () -> {
-            SoundEffects.playSelect();
-            closeMenu(true);
         });
 
         int width = (int) (270 * density);

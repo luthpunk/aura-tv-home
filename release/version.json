@@ -1,7 +1,7 @@
 {
-  "versionCode": 36,
-  "versionName": "3.4.5-id",
+  "versionCode": 37,
+  "versionName": "3.4.6-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "fix(now-playing): match submenu vertical gap to 10dp and remove button scaling in glass and dark to prevent clipped corners",
+  "changelog": "feat: enforce 24-hour Indonesian clock format (HH:mm) on home screen & screensaver, and remove Tutup (X) button from all top menus (Wi-Fi, CandyBox, Settings, Prayer Times)",
   "releaseDate": "2026-11-05"
 }
