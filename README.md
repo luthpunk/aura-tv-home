@@ -37,6 +37,11 @@ Tema gelap dengan aksen kontras neon cyber minimalis dan teks putih bersih yang 
 ## ✨ Fitur Utama
 
 - **🚀 Ringan & Cepat:** Dioptimalkan khusus untuk chipset prosesor STB/Android TV (Amlogic, Allwinner, Rockchip) agar perpindahan aplikasi dan respon remote terasa instan tanpa jeda (*zero stutter*).
+- **🎵 Dynamic Now Playing Pill (Pemutar Musik Kapsul):**
+  - Kapsul status dinamis setinggi 42dp yang sejajar dengan bilah menu atas (hanya muncul saat musik diputar).
+  - Menampilkan cover album asli, judul lagu berjalan (*marquee*), nama artis, serta tombol kontrol instan `[ ⏯ Play/Pause ]` dan `[ ⏭ Next ]`.
+  - Mendukung berbagai pemutar musik & media (Spotify TV, YouTube TV, SmartTube, Apple Music, VLC, pemutar lagu lokal USB, dll).
+  - Tampilan beradaptasi 100% mengikuti tema aktif (*Frosted Glass*, *Neumorphism*, dan *Dark Glow*).
 - **🌤️ Widget Cuaca Kompak & Presisi:**
   - Menampilkan lokasi, suhu besar, ikon vektor cuaca, dan kondisi cuaca saat ini (*flush left*).
   - **Slot Ramalan 3 Jam ke Depan:** Memantau ramalan cuaca pada rentang waktu `+3 jam`, `+6 jam`, dan `+9 jam` secara akurat dari Open-Meteo.
@@ -95,6 +100,18 @@ Jika tombol Home di remote STB Anda dikunci oleh launcher bawaan pabrik (seperti
      ```
 
    *(Untuk mengaktifkannya kembali jika sewaktu-waktu dibutuhkan, cukup ganti kata `disable-user --user 0` menjadi `enable`).*
+
+4. **⚡ Aktifkan Izin Pemutar Musik (Now Playing) via ADB:**
+   Pada sistem Android TV / Google TV, Google menyembunyikan menu pengaturan izin notifikasi dari antarmuka TV Leanback. Agar launcher dapat membaca judul lagu, nama artis, dan cover album secara otomatis, jalankan perintah ini sekali setelah pemasangan (sangat disarankan dieksekusi langsung oleh **Agen AI** atau melalui terminal ADB):
+
+   ```bash
+   # Aktifkan izin listener musik ke sistem Android TV
+   adb shell cmd notification allow_listener com.gathin.tvhome/com.gathin.tvhome.MediaNotificationListener
+
+   # (Opsional) Berikan izin pengelolaan setelan aman agar tersinkronisasi
+   adb shell pm grant com.gathin.tvhome android.permission.WRITE_SECURE_SETTINGS
+   ```
+   > 💡 **Untuk Agen AI / Skrip Otomatisasi:** Cukup jalankan perintah di atas tepat setelah perintah `adb install -r aura-tv-home.apk` agar fitur Now Playing langsung aktif dan siap digunakan seketika tanpa perlu konfigurasi manual.
 
 ---
 
