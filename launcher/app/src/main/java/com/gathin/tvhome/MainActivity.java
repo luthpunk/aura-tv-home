@@ -196,8 +196,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private View cardTrackInfo;
     private TextView cardSubtitle;
     private TextView cardTitle;
-    private ImageView btnInlinePlayPause;
-    private ImageView btnInlineNext;
+    private ImageView cardWaveIcon;
     private boolean nowPlayingDisabledByUser = false;
     private String lastPlayedTrackKey = "";
     private NowPlayingManager.Listener nowPlayingListener;
@@ -478,21 +477,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     focusTile(lastFocused % COLUMNS);
                     return true;
                 }
-                if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT || keyCode == KeyEvent.KEYCODE_DPAD_UP) {
                     if (nowPlayingCard != null && nowPlayingCard.getVisibility() == View.VISIBLE) {
-                        if (cardTrackInfo != null) cardTrackInfo.requestFocus();
-                        else nowPlayingCard.requestFocus();
+                        nowPlayingCard.requestFocus();
                         return true;
                     }
-                    View target = (btnInputs != null && btnInputs.getVisibility() == View.VISIBLE) ? btnInputs
-                            : (btnWifi != null && btnWifi.getVisibility() == View.VISIBLE) ? btnWifi
-                            : findViewById(R.id.btnSettings);
-                    if (target != null) {
-                        target.requestFocus();
-                        return true;
-                    }
-                }
-                if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
                     View target = (btnInputs != null && btnInputs.getVisibility() == View.VISIBLE) ? btnInputs
                             : (btnWifi != null && btnWifi.getVisibility() == View.VISIBLE) ? btnWifi
                             : findViewById(R.id.btnSettings);
@@ -517,17 +506,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         updateWeatherAqi();
         WeatherAirQuality.syncIfDue(this, this::updateWeatherAqi);
 
-        // Now Playing Widget Card (matching bravia-glass-tv UI)
+        // Dynamic Now Playing Pill (Apple TV Style: Single Focus Glanceable Pill)
         nowPlayingCard = findViewById(R.id.nowPlayingCard);
         if (nowPlayingCard != null) {
             cardAlbumArt = findViewById(R.id.cardAlbumArt);
             cardTrackInfo = findViewById(R.id.cardTrackInfo);
             cardSubtitle = findViewById(R.id.cardSubtitle);
             cardTitle = findViewById(R.id.cardTitle);
-            btnInlinePlayPause = findViewById(R.id.btnInlinePlayPause);
-            btnInlineNext = findViewById(R.id.btnInlineNext);
+            cardWaveIcon = findViewById(R.id.cardWaveIcon);
 
-            View.OnClickListener openDialogClick = v -> {
+            nowPlayingCard.setOnClickListener(v -> {
                 SoundEffects.playSelect();
                 if (!NowPlayingManager.isNotificationAccessGranted(this)) {
                     NowPlayingManager.openNotificationAccessSettings(this);
@@ -535,58 +523,43 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 } else {
                     showNowPlayingDialog();
                 }
-            };
-            if (cardAlbumArt != null) cardAlbumArt.setOnClickListener(openDialogClick);
-            if (cardTrackInfo != null) cardTrackInfo.setOnClickListener(openDialogClick);
+            });
 
-            if (btnInlinePlayPause != null) {
-                btnInlinePlayPause.setOnClickListener(v -> {
-                    SoundEffects.playSelect();
-                    NowPlayingManager.togglePlayPause();
-                    handler.postDelayed(() -> NowPlayingManager.updateCurrentMedia(MainActivity.this), 250);
-                });
-            }
-            if (btnInlineNext != null) {
-                btnInlineNext.setOnClickListener(v -> {
-                    SoundEffects.playSelect();
-                    NowPlayingManager.skipToNext();
-                    handler.postDelayed(() -> NowPlayingManager.updateCurrentMedia(MainActivity.this), 300);
-                });
-            }
-
-            View.OnFocusChangeListener inlineFocus = (v, hasFocus) -> {
+            nowPlayingCard.setOnFocusChangeListener((v, hasFocus) -> {
                 if (hasFocus) {
                     SoundEffects.playNav();
                     hideShelf();
                     if (glider != null) glider.hide();
                 }
-            };
-            if (cardAlbumArt != null) cardAlbumArt.setOnFocusChangeListener(inlineFocus);
-            if (cardTrackInfo != null) cardTrackInfo.setOnFocusChangeListener(inlineFocus);
-            if (btnInlinePlayPause != null) btnInlinePlayPause.setOnFocusChangeListener(inlineFocus);
-            if (btnInlineNext != null) btnInlineNext.setOnFocusChangeListener(inlineFocus);
+                boolean isNeu = ThemeManager.isNeumorphism(MainActivity.this);
+                float scale = (hasFocus && !isNeu) ? 1.04f : 1.0f;
+                v.animate().scaleX(scale).scaleY(scale).setDuration(120).start();
+            });
 
-            View.OnKeyListener inlineKey = (v, keyCode, event) -> {
+            nowPlayingCard.setOnKeyListener((v, keyCode, event) -> {
                 if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
-                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN || keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                    if (weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE) {
+                        weatherAirQualityView.requestFocus();
+                        return true;
+                    }
                     focusTile(lastFocused % COLUMNS);
                     return true;
                 }
                 if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
                     return true;
                 }
-                if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && v == cardAlbumArt) {
-                    if (weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE) {
-                        weatherAirQualityView.requestFocus();
+                if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    View target = (btnInputs != null && btnInputs.getVisibility() == View.VISIBLE) ? btnInputs
+                            : (btnWifi != null && btnWifi.getVisibility() == View.VISIBLE) ? btnWifi
+                            : findViewById(R.id.btnSettings);
+                    if (target != null) {
+                        target.requestFocus();
                         return true;
                     }
                 }
                 return false;
-            };
-            if (cardAlbumArt != null) cardAlbumArt.setOnKeyListener(inlineKey);
-            if (cardTrackInfo != null) cardTrackInfo.setOnKeyListener(inlineKey);
-            if (btnInlinePlayPause != null) btnInlinePlayPause.setOnKeyListener(inlineKey);
-            if (btnInlineNext != null) btnInlineNext.setOnKeyListener(inlineKey);
+            });
         }
         NowPlayingManager.init(this);
         nowPlayingListener = this::updateNowPlayingUi;
@@ -811,6 +784,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
             if (keyCode == KeyEvent.KEYCODE_DPAD_UP) return true;
             if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                if (v.getId() == R.id.btnWifi || v.getId() == R.id.btnInputs) {
+                    if (weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE) {
+                        weatherAirQualityView.requestFocus();
+                        return true;
+                    }
+                }
                 // Back to the dock tile Up came from, not wherever the focus finder lands.
                 focusTile(lastFocused % COLUMNS);
                 return true;
@@ -856,10 +835,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 }
                 if (v.getId() == R.id.btnInputs || (v.getId() == R.id.btnWifi && (btnInputs == null || btnInputs.getVisibility() != View.VISIBLE))) {
                     if (nowPlayingCard != null && nowPlayingCard.getVisibility() == View.VISIBLE) {
-                        if (btnInlineNext != null) btnInlineNext.requestFocus();
-                        else if (btnInlinePlayPause != null) btnInlinePlayPause.requestFocus();
-                        else if (cardTrackInfo != null) cardTrackInfo.requestFocus();
-                        else if (cardAlbumArt != null) cardAlbumArt.requestFocus();
+                        nowPlayingCard.requestFocus();
                         return true;
                     }
                     if (weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE) {
@@ -1883,11 +1859,20 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (heroWhere != null) heroWhere.setVisibility(View.GONE);
         if (heroDesc != null) heroDesc.setVisibility(View.GONE);
 
-        // Dynamic Now Playing Pill Theme Styling
+        // Dynamic Now Playing Pill Theme Styling (Apple TV Style: Single Focus Glanceable Pill)
         if (nowPlayingCard != null) {
             float pillRadius = 21f * density;
             if (isNeu) {
-                nowPlayingCard.setBackground(new NeumorphicDrawable(pillRadius, density, NeumorphicDrawable.MODE_EXTRUDED, true));
+                StateListDrawable cardSld = new StateListDrawable();
+                cardSld.addState(new int[]{android.R.attr.state_focused},
+                        new NeumorphicDrawable(pillRadius, density, NeumorphicDrawable.MODE_RECESSED, false));
+                cardSld.addState(new int[]{},
+                        new NeumorphicDrawable(pillRadius, density, NeumorphicDrawable.MODE_EXTRUDED, true));
+                nowPlayingCard.setBackground(cardSld);
+
+                if (cardTrackInfo != null) cardTrackInfo.setBackground(null);
+                if (cardAlbumArt != null) cardAlbumArt.setBackground(null);
+
                 if (cardTitle != null) {
                     cardTitle.setTextColor(0xFF222934);
                     cardTitle.setShadowLayer(0, 0, 0, 0);
@@ -1896,26 +1881,25 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     cardSubtitle.setTextColor(0xFF5A626E);
                     cardSubtitle.setShadowLayer(0, 0, 0, 0);
                 }
-                for (ImageView btn : new ImageView[]{btnInlinePlayPause, btnInlineNext}) {
-                    if (btn == null) continue;
-                    btn.setImageTintList(android.content.res.ColorStateList.valueOf(0xFF333A44));
-                    StateListDrawable sld = new StateListDrawable();
-                    GradientDrawable foc = new GradientDrawable();
-                    foc.setShape(GradientDrawable.OVAL);
-                    foc.setColor(0xFFCFD6E2);
-                    GradientDrawable norm = new GradientDrawable();
-                    norm.setShape(GradientDrawable.OVAL);
-                    norm.setColor(0xFFDEE3EB);
-                    sld.addState(new int[]{android.R.attr.state_focused}, foc);
-                    sld.addState(new int[]{}, norm);
-                    btn.setBackground(sld);
-                }
             } else if (isDark) {
-                GradientDrawable npBg = new GradientDrawable();
-                npBg.setColor(0xF20A0A10);
-                npBg.setCornerRadius(pillRadius);
-                npBg.setStroke(Math.max(1, Math.round(1.2f * density)), 0xFF00F0FF);
-                nowPlayingCard.setBackground(npBg);
+                StateListDrawable cardSld = new StateListDrawable();
+                GradientDrawable foc = new GradientDrawable();
+                foc.setColor(0xF2101726);
+                foc.setCornerRadius(pillRadius);
+                foc.setStroke(Math.max(1, Math.round(1.5f * density)), 0xFF00F0FF);
+
+                GradientDrawable norm = new GradientDrawable();
+                norm.setColor(0xF20A0A10);
+                norm.setCornerRadius(pillRadius);
+                norm.setStroke(Math.max(1, Math.round(1.1f * density)), 0x4D00F0FF);
+
+                cardSld.addState(new int[]{android.R.attr.state_focused}, foc);
+                cardSld.addState(new int[]{}, norm);
+                nowPlayingCard.setBackground(cardSld);
+
+                if (cardTrackInfo != null) cardTrackInfo.setBackground(null);
+                if (cardAlbumArt != null) cardAlbumArt.setBackground(null);
+
                 if (cardTitle != null) {
                     cardTitle.setTextColor(0xFFFFFFFF);
                     cardTitle.setShadowLayer(3f, 0, 1f, 0x80000000);
@@ -1924,24 +1908,21 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     cardSubtitle.setTextColor(0xFF00F0FF);
                     cardSubtitle.setShadowLayer(2f, 0, 1f, 0x80000000);
                 }
-                for (ImageView btn : new ImageView[]{btnInlinePlayPause, btnInlineNext}) {
-                    if (btn == null) continue;
-                    btn.setImageTintList(android.content.res.ColorStateList.valueOf(0xFF00F0FF));
-                    StateListDrawable sld = new StateListDrawable();
-                    GradientDrawable foc = new GradientDrawable();
-                    foc.setShape(GradientDrawable.OVAL);
-                    foc.setColor(0xFF00F0FF);
-                    GradientDrawable norm = new GradientDrawable();
-                    norm.setShape(GradientDrawable.OVAL);
-                    norm.setColor(0xFF141824);
-                    norm.setStroke(Math.max(1, Math.round(1f * density)), 0x4D00F0FF);
-                    sld.addState(new int[]{android.R.attr.state_focused}, foc);
-                    sld.addState(new int[]{}, norm);
-                    btn.setBackground(sld);
-                }
             } else {
-                nowPlayingCard.setBackground(new GlassDrawable(nowPlayingCard, pillRadius, density, glider, 0.45f, true));
+                StateListDrawable cardSld = new StateListDrawable();
+                GradientDrawable foc = new GradientDrawable();
+                foc.setColor(0x80252B38);
+                foc.setCornerRadius(pillRadius);
+                foc.setStroke(Math.max(1, Math.round(1.5f * density)), 0xFFFFFFFF);
+
+                cardSld.addState(new int[]{android.R.attr.state_focused}, foc);
+                cardSld.addState(new int[]{}, new GlassDrawable(nowPlayingCard, pillRadius, density, glider, 0.45f, true));
+                nowPlayingCard.setBackground(cardSld);
                 Backdrop.watch(nowPlayingCard);
+
+                if (cardTrackInfo != null) cardTrackInfo.setBackground(null);
+                if (cardAlbumArt != null) cardAlbumArt.setBackground(null);
+
                 if (cardTitle != null) {
                     cardTitle.setTextColor(0xFFFFFFFF);
                     cardTitle.setShadowLayer(3f, 0, 1f, 0x80000000);
@@ -1949,22 +1930,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 if (cardSubtitle != null) {
                     cardSubtitle.setTextColor(0xB3FFFFFF);
                     cardSubtitle.setShadowLayer(2f, 0, 1f, 0x80000000);
-                }
-                for (ImageView btn : new ImageView[]{btnInlinePlayPause, btnInlineNext}) {
-                    if (btn == null) continue;
-                    btn.setImageTintList(android.content.res.ColorStateList.valueOf(0xFFFFFFFF));
-                    StateListDrawable sld = new StateListDrawable();
-                    GradientDrawable foc = new GradientDrawable();
-                    foc.setShape(GradientDrawable.OVAL);
-                    foc.setColor(0x77FFFFFF);
-                    foc.setStroke(Math.max(1, Math.round(1f * density)), 0xFFFFFFFF);
-                    GradientDrawable norm = new GradientDrawable();
-                    norm.setShape(GradientDrawable.OVAL);
-                    norm.setColor(0x26FFFFFF);
-                    norm.setStroke(Math.max(1, Math.round(1f * density)), 0x33FFFFFF);
-                    sld.addState(new int[]{android.R.attr.state_focused}, foc);
-                    sld.addState(new int[]{}, norm);
-                    btn.setBackground(sld);
                 }
             }
         }
@@ -3893,8 +3858,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
         }
 
-        if (btnInlinePlayPause != null) {
-            btnInlinePlayPause.setImageResource(info.isPlaying ? R.drawable.ic_pause : R.drawable.ic_play);
+        if (cardWaveIcon != null) {
+            cardWaveIcon.setImageResource(info.isPlaying ? R.drawable.ic_volume_up : R.drawable.ic_pause);
+            if (info.packageName.contains("spotify")) {
+                cardWaveIcon.setColorFilter(0xFF1DB954);
+            } else if (info.packageName.contains("youtube")) {
+                cardWaveIcon.setColorFilter(0xFFFF3344);
+            } else {
+                cardWaveIcon.setColorFilter(0xFF00F0FF);
+            }
         }
 
         if (nowPlayingCard.getVisibility() != View.VISIBLE) {
@@ -3911,15 +3883,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     .setInterpolator(new android.view.animation.DecelerateInterpolator())
                     .withLayer()
                     .start();
-            if (weatherAirQualityView != null) {
-                weatherAirQualityView.setNextFocusDownId(R.id.cardTrackInfo);
-            }
         }
     }
 
     private void disableNowPlaying() {
         nowPlayingDisabledByUser = true;
         NowPlayingManager.pausePlayback();
+        NowPlayingManager.clearMedia();
         hideNowPlayingCard();
     }
 
@@ -3962,17 +3932,159 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         Window w = dialog.getWindow();
         if (w != null) {
             w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            w.setLayout((int) (480 * density), ViewGroup.LayoutParams.WRAP_CONTENT);
+            w.setLayout((int) (460 * density), ViewGroup.LayoutParams.WRAP_CONTENT);
             w.setDimAmount(0.65f);
             w.setFlags(android.view.WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
                     android.view.WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED);
         }
 
+        ImageView headerIcon = panel.findViewById(R.id.headerIcon);
+        TextView headerTitle = panel.findViewById(R.id.headerTitle);
+        TextView badgeSource = panel.findViewById(R.id.badgeSource);
+        TextView txtTrackTitle = panel.findViewById(R.id.txtTrackTitle);
+        TextView txtTrackArtist = panel.findViewById(R.id.txtTrackArtist);
+        TextView txtPlaybackStatus = panel.findViewById(R.id.txtPlaybackStatus);
         ImageView btnPopupPrev = panel.findViewById(R.id.btnPopupPrev);
         ImageView btnPlayPause = panel.findViewById(R.id.btnPlayPause);
         ImageView btnPopupNext = panel.findViewById(R.id.btnPopupNext);
         TextView btnOpenApp = panel.findViewById(R.id.btnOpenApp);
         TextView btnCloseDialog = panel.findViewById(R.id.btnCloseDialog);
+
+        boolean isNeu = ThemeManager.isNeumorphism(this);
+        boolean isDark = ThemeManager.isDarkGlow(this);
+
+        // Apply theme styles to dialog panel and controls
+        if (isNeu) {
+            panel.setBackground(new NeumorphicDrawable(22 * density, density, NeumorphicDrawable.MODE_EXTRUDED, false));
+            if (headerTitle != null) {
+                headerTitle.setTextColor(0xFF1F2429);
+                headerTitle.setShadowLayer(0, 0, 0, 0);
+            }
+            if (txtTrackTitle != null) {
+                txtTrackTitle.setTextColor(0xFF1F2429);
+                txtTrackTitle.setShadowLayer(0, 0, 0, 0);
+            }
+            if (txtTrackArtist != null) {
+                txtTrackArtist.setTextColor(0xFF5A626E);
+                txtTrackArtist.setShadowLayer(0, 0, 0, 0);
+            }
+            if (badgeSource != null) {
+                badgeSource.setBackground(new NeumorphicDrawable(13 * density, density, NeumorphicDrawable.MODE_RECESSED, false));
+            }
+
+            for (ImageView btn : new ImageView[]{btnPopupPrev, btnPlayPause, btnPopupNext}) {
+                if (btn == null) continue;
+                float r = (btn == btnPlayPause) ? 26 * density : 20 * density;
+                StateListDrawable sld = new StateListDrawable();
+                sld.addState(new int[]{android.R.attr.state_focused},
+                        new NeumorphicDrawable(r, density, NeumorphicDrawable.MODE_RECESSED, false));
+                sld.addState(new int[]{},
+                        new NeumorphicDrawable(r, density, NeumorphicDrawable.MODE_EXTRUDED, false));
+                btn.setBackground(sld);
+                btn.setImageTintList(android.content.res.ColorStateList.valueOf(0xFF1F2429));
+            }
+
+            for (TextView btn : new TextView[]{btnOpenApp, btnCloseDialog}) {
+                if (btn == null) continue;
+                StateListDrawable sld = new StateListDrawable();
+                sld.addState(new int[]{android.R.attr.state_focused},
+                        new NeumorphicDrawable(12 * density, density, NeumorphicDrawable.MODE_RECESSED, false));
+                sld.addState(new int[]{},
+                        new NeumorphicDrawable(12 * density, density, NeumorphicDrawable.MODE_EXTRUDED, false));
+                btn.setBackground(sld);
+                btn.setTextColor(0xFF1F2429);
+            }
+        } else if (isDark) {
+            GradientDrawable panelBg = new GradientDrawable();
+            panelBg.setColor(0xF80B0F19);
+            panelBg.setCornerRadius(22 * density);
+            panelBg.setStroke(Math.max(1, Math.round(1.2f * density)), 0x4D00F0FF);
+            panel.setBackground(panelBg);
+
+            if (headerTitle != null) {
+                headerTitle.setTextColor(0xFFFFFFFF);
+                headerTitle.setShadowLayer(3f, 0, 1f, 0x80000000);
+            }
+            if (txtTrackTitle != null) {
+                txtTrackTitle.setTextColor(0xFFFFFFFF);
+                txtTrackTitle.setShadowLayer(3f, 0, 1f, 0x80000000);
+            }
+            if (txtTrackArtist != null) {
+                txtTrackArtist.setTextColor(0xFF9EAFC2);
+                txtTrackArtist.setShadowLayer(2f, 0, 1f, 0x80000000);
+            }
+            if (badgeSource != null) {
+                GradientDrawable bbg = new GradientDrawable();
+                bbg.setColor(0xFF121826);
+                bbg.setCornerRadius(13 * density);
+                bbg.setStroke(Math.max(1, Math.round(1f * density)), 0x3300F0FF);
+                badgeSource.setBackground(bbg);
+            }
+
+            for (ImageView btn : new ImageView[]{btnPopupPrev, btnPlayPause, btnPopupNext}) {
+                if (btn == null) continue;
+                btn.setImageTintList(android.content.res.ColorStateList.valueOf(0xFF00F0FF));
+                StateListDrawable sld = new StateListDrawable();
+                GradientDrawable foc = new GradientDrawable();
+                foc.setShape(GradientDrawable.OVAL);
+                foc.setColor(0x2B00F0FF);
+                foc.setStroke(Math.max(1, Math.round(1.5f * density)), 0xFF00F0FF);
+
+                GradientDrawable norm = new GradientDrawable();
+                norm.setShape(GradientDrawable.OVAL);
+                norm.setColor(0xFF141824);
+                norm.setStroke(Math.max(1, Math.round(1f * density)), 0x3300F0FF);
+
+                sld.addState(new int[]{android.R.attr.state_focused}, foc);
+                sld.addState(new int[]{}, norm);
+                btn.setBackground(sld);
+            }
+
+            if (btnOpenApp != null) {
+                StateListDrawable sld = new StateListDrawable();
+                GradientDrawable foc = new GradientDrawable();
+                foc.setColor(0x3300F0FF);
+                foc.setCornerRadius(12 * density);
+                foc.setStroke(Math.max(1, Math.round(1.5f * density)), 0xFF00F0FF);
+
+                GradientDrawable norm = new GradientDrawable();
+                norm.setColor(0xFF141D2C);
+                norm.setCornerRadius(12 * density);
+                norm.setStroke(Math.max(1, Math.round(1f * density)), 0x4D00F0FF);
+
+                sld.addState(new int[]{android.R.attr.state_focused}, foc);
+                sld.addState(new int[]{}, norm);
+                btnOpenApp.setBackground(sld);
+                btnOpenApp.setTextColor(0xFF00F0FF);
+            }
+
+            if (btnCloseDialog != null) {
+                StateListDrawable sld = new StateListDrawable();
+                GradientDrawable foc = new GradientDrawable();
+                foc.setColor(0x26FFFFFF);
+                foc.setCornerRadius(12 * density);
+                foc.setStroke(Math.max(1, Math.round(1.5f * density)), 0x88FFFFFF);
+
+                GradientDrawable norm = new GradientDrawable();
+                norm.setColor(0xFF141824);
+                norm.setCornerRadius(12 * density);
+                norm.setStroke(Math.max(1, Math.round(1f * density)), 0x26FFFFFF);
+
+                sld.addState(new int[]{android.R.attr.state_focused}, foc);
+                sld.addState(new int[]{}, norm);
+                btnCloseDialog.setBackground(sld);
+                btnCloseDialog.setTextColor(0xB3FFFFFF);
+            }
+        } else {
+            // Frosted Glass
+            GradientDrawable panelBg = new GradientDrawable(
+                    GradientDrawable.Orientation.TOP_BOTTOM,
+                    new int[]{0xEE222836, 0xEE161B26}
+            );
+            panelBg.setCornerRadius(22 * density);
+            panelBg.setStroke(Math.max(1, Math.round(1.2f * density)), 0x4DFFFFFF);
+            panel.setBackground(panelBg);
+        }
 
         updatePopupMediaInfo(panel, dialog);
 
@@ -4027,7 +4139,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         View.OnFocusChangeListener btnFocus = (v, hasFocus) -> {
             if (hasFocus) SoundEffects.playNav();
-            float scale = hasFocus ? 1.08f : 1.0f;
+            float scale = (hasFocus && !isNeu) ? 1.08f : 1.0f;
             v.animate()
                     .scaleX(scale)
                     .scaleY(scale)
@@ -4052,7 +4164,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void updatePopupMediaInfo(View panel, Dialog dialog) {
         if (panel == null || (dialog != null && !dialog.isShowing())) return;
         NowPlayingManager.MediaInfo info = NowPlayingManager.getCurrentInfo();
-        boolean hasMedia = info != null && info.hasMusic();
+        boolean hasMedia = info != null && info.hasMusic() && NowPlayingManager.isPackageInstalled(this, info.packageName);
 
         ImageView headerIcon = panel.findViewById(R.id.headerIcon);
         TextView badgeSource = panel.findViewById(R.id.badgeSource);
@@ -4093,13 +4205,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
 
             if (badgeSource != null) {
-                badgeSource.setText(info.appName.isEmpty() ? "SPOTIFY" : info.appName.toUpperCase(Locale.ROOT));
+                badgeSource.setText(info.appName.isEmpty() ? "NOW PLAYING" : info.appName.toUpperCase(Locale.ROOT));
                 if (info.packageName.contains("spotify")) {
                     badgeSource.setTextColor(Color.parseColor("#1DB954"));
                     if (headerIcon != null) headerIcon.setColorFilter(Color.parseColor("#1DB954"));
+                } else if (info.packageName.contains("youtube")) {
+                    badgeSource.setTextColor(Color.parseColor("#FF3344"));
+                    if (headerIcon != null) headerIcon.setColorFilter(Color.parseColor("#FF3344"));
                 } else {
-                    badgeSource.setTextColor(Color.parseColor("#FF0033"));
-                    if (headerIcon != null) headerIcon.setColorFilter(Color.parseColor("#FF0033"));
+                    badgeSource.setTextColor(Color.parseColor("#00F0FF"));
+                    if (headerIcon != null) headerIcon.setColorFilter(Color.parseColor("#00F0FF"));
                 }
             }
 
@@ -4108,18 +4223,28 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
 
             if (btnOpenApp != null) {
+                btnOpenApp.setVisibility(View.VISIBLE);
                 btnOpenApp.setText("Buka " + (info.appName.isEmpty() ? "Aplikasi" : info.appName));
             }
         } else {
             if (txtTrackTitle != null) txtTrackTitle.setText("Tidak Ada Lagu Diputar");
-            if (txtTrackArtist != null) txtTrackArtist.setText("Buka Spotify atau YouTube Music untuk mulai mendengarkan");
+            if (txtTrackArtist != null) txtTrackArtist.setText("Buka YouTube atau Spotify untuk mulai mendengarkan");
             if (txtPlaybackStatus != null) {
                 txtPlaybackStatus.setText("⏸ Tidak Ada Pemutaran");
                 txtPlaybackStatus.setTextColor(Color.parseColor("#80FFFFFF"));
             }
+            if (badgeSource != null) {
+                badgeSource.setText("NOW PLAYING");
+                badgeSource.setTextColor(Color.parseColor("#80FFFFFF"));
+                if (headerIcon != null) headerIcon.setColorFilter(Color.parseColor("#80FFFFFF"));
+            }
             if (btnPlayPause != null) {
                 btnPlayPause.setImageResource(R.drawable.ic_play);
             }
+            if (btnOpenApp != null) {
+                btnOpenApp.setVisibility(View.GONE);
+            }
+        }
         }
     }
 

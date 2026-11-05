@@ -38,13 +38,34 @@ public final class NowPlayingManager {
 
     public static boolean isAllowedMusicApp(String pkg) {
         if (pkg == null || pkg.trim().isEmpty()) return false;
-        if (pkg.equals("com.gathin.tvhome")
-                || pkg.equals("android")
-                || pkg.equals("com.android.systemui")
-                || pkg.equals("com.google.android.katniss")) {
+        String p = pkg.toLowerCase(java.util.Locale.ROOT).trim();
+        if (p.equals("com.gathin.tvhome")
+                || p.equals("com.gathin.auratvtools")
+                || p.equals("android")
+                || p.startsWith("com.android.systemui")
+                || p.startsWith("com.google.android.katniss")
+                || p.startsWith("com.google.android.gms")
+                || p.startsWith("com.google.android.gsf")
+                || p.startsWith("com.android.vending")
+                || p.startsWith("com.google.android.apps.messaging")
+                || p.startsWith("com.google.android.dialer")
+                || p.startsWith("com.google.android.inputmethod")
+                || p.startsWith("com.android.providers.")
+                || p.startsWith("com.android.settings")
+                || p.startsWith("com.android.chrome")) {
             return false;
         }
         return true;
+    }
+
+    public static boolean isPackageInstalled(Context context, String pkg) {
+        if (context == null || pkg == null || pkg.trim().isEmpty()) return false;
+        try {
+            context.getPackageManager().getPackageInfo(pkg.trim(), 0);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public static boolean isNotificationAccessGranted(Context context) {
@@ -100,10 +121,13 @@ public final class NowPlayingManager {
         }
 
         public boolean hasMusic() {
-            if (packageName.isEmpty() && isPlaying) {
-                return true; // Fallback: active audio playing on device
+            if (packageName.isEmpty()) {
+                return false;
             }
             if (!isAllowedMusicApp(packageName)) {
+                return false;
+            }
+            if (appContext != null && !isPackageInstalled(appContext, packageName)) {
                 return false;
             }
             return isPlaying || (!title.isEmpty());
@@ -137,6 +161,8 @@ public final class NowPlayingManager {
 
     private static final List<Listener> listeners = new CopyOnWriteArrayList<>();
     private static MediaInfo currentInfo = new MediaInfo(false, "", "", "", "", null, null);
+    private static MediaInfo lastValidMediaInfo = null;
+    private static long lastValidMediaTimestamp = 0;
     private static final Handler mainHandler = new Handler(Looper.getMainLooper());
     private static MediaSessionManager.OnActiveSessionsChangedListener sessionsListener;
     private static Context appContext;
@@ -175,6 +201,17 @@ public final class NowPlayingManager {
 
     public static MediaInfo getCurrentInfo() {
         return currentInfo;
+    }
+
+    public static void clearMedia() {
+        lastValidMediaInfo = null;
+        lastValidMediaTimestamp = 0;
+        currentInfo = new MediaInfo(false, "", "", "", "", null, null);
+        mainHandler.post(() -> {
+            for (Listener l : listeners) {
+                l.onMediaChanged(currentInfo);
+            }
+        });
     }
 
     public static void notifySessionsChanged(Context context) {
@@ -335,7 +372,7 @@ public final class NowPlayingManager {
                 }
             }
 
-            // Fallback: check notification extras ONLY for Spotify and YouTube Music
+            // Fallback: check notification extras ONLY for genuine media notifications (Spotify, YouTube, etc.)
             if (MediaNotificationListener.isConnected()) {
                 try {
                     StatusBarNotification[] sbns = MediaNotificationListener.getInstance().getActiveNotifications();
@@ -344,48 +381,54 @@ public final class NowPlayingManager {
                             if (sbn == null || sbn.getNotification() == null) continue;
                             String sbnPkg = sbn.getPackageName();
                             if (!isAllowedMusicApp(sbnPkg)) continue;
+                            if (!isPackageInstalled(context, sbnPkg)) continue;
 
-                            Bundle extras = sbn.getNotification().extras;
-                            if (extras != null) {
-                                CharSequence nTitle = extras.getCharSequence(Notification.EXTRA_TITLE);
-                                CharSequence nText = extras.getCharSequence(Notification.EXTRA_TEXT);
-                                if (nTitle != null && nTitle.length() > 0) {
-                                    if (title.isEmpty()) {
-                                        if (!"Spotify".equalsIgnoreCase(nTitle.toString()) && !"YouTube".equalsIgnoreCase(nTitle.toString())) {
-                                            title = nTitle.toString();
-                                            if (nText != null && !"Spotify".equalsIgnoreCase(nText.toString())) {
-                                                artist = nText.toString();
-                                            }
-                                        } else if (nText != null && !"Spotify".equalsIgnoreCase(nText.toString())) {
-                                            title = nText.toString();
+                            Notification n = sbn.getNotification();
+                            Bundle extras = n.extras;
+                            if (extras == null) continue;
+
+                            // STRICT VALIDATION: must have media session token or CATEGORY_TRANSPORT
+                            boolean hasMediaToken = extras.get(Notification.EXTRA_MEDIA_SESSION) instanceof MediaSession.Token;
+                            boolean isTransport = Notification.CATEGORY_TRANSPORT.equals(n.category);
+                            if (!hasMediaToken && !isTransport) {
+                                continue; // Reject Windows login / Google account security notifications!
+                            }
+
+                            CharSequence nTitle = extras.getCharSequence(Notification.EXTRA_TITLE);
+                            CharSequence nText = extras.getCharSequence(Notification.EXTRA_TEXT);
+                            if (nTitle != null && nTitle.length() > 0) {
+                                if (title.isEmpty()) {
+                                    if (!"Spotify".equalsIgnoreCase(nTitle.toString()) && !"YouTube".equalsIgnoreCase(nTitle.toString())) {
+                                        title = nTitle.toString();
+                                        if (nText != null && !"Spotify".equalsIgnoreCase(nText.toString()) && !"YouTube".equalsIgnoreCase(nText.toString())) {
+                                            artist = nText.toString();
                                         }
-                                        if (pkg.isEmpty()) pkg = sbnPkg;
+                                    } else if (nText != null && !"Spotify".equalsIgnoreCase(nText.toString()) && !"YouTube".equalsIgnoreCase(nText.toString())) {
+                                        title = nText.toString();
                                     }
-                                    if (albumArt == null) {
-                                        Object iconObj = extras.get(Notification.EXTRA_LARGE_ICON);
-                                        if (iconObj instanceof Bitmap) {
-                                            albumArt = (Bitmap) iconObj;
-                                        } else if (iconObj instanceof Icon) {
-                                            try {
-                                                Drawable d = ((Icon) iconObj).loadDrawable(context);
-                                                if (d instanceof BitmapDrawable) {
-                                                    albumArt = ((BitmapDrawable) d).getBitmap();
-                                                }
-                                            } catch (Exception ignored) {}
-                                        }
-                                    }
-                                    if (activeController == null) {
-                                        Object tokenObj = extras.get(Notification.EXTRA_MEDIA_SESSION);
-                                        if (tokenObj instanceof MediaSession.Token) {
-                                            try {
-                                                activeController = new MediaController(context, (MediaSession.Token) tokenObj);
-                                                PlaybackState ps = activeController.getPlaybackState();
-                                                isPlaying = ps != null && ps.getState() == PlaybackState.STATE_PLAYING;
-                                            } catch (Exception ignored) {}
-                                        }
-                                    }
-                                    break;
+                                    if (pkg.isEmpty()) pkg = sbnPkg;
                                 }
+                                if (albumArt == null) {
+                                    Object iconObj = extras.get(Notification.EXTRA_LARGE_ICON);
+                                    if (iconObj instanceof Bitmap) {
+                                        albumArt = (Bitmap) iconObj;
+                                    } else if (iconObj instanceof Icon) {
+                                        try {
+                                            Drawable d = ((Icon) iconObj).loadDrawable(context);
+                                            if (d instanceof BitmapDrawable) {
+                                                albumArt = ((BitmapDrawable) d).getBitmap();
+                                            }
+                                        } catch (Exception ignored) {}
+                                    }
+                                }
+                                if (activeController == null && hasMediaToken) {
+                                    try {
+                                        activeController = new MediaController(context, (MediaSession.Token) extras.get(Notification.EXTRA_MEDIA_SESSION));
+                                        PlaybackState ps = activeController.getPlaybackState();
+                                        isPlaying = ps != null && ps.getState() == PlaybackState.STATE_PLAYING;
+                                    } catch (Exception ignored) {}
+                                }
+                                break;
                             }
                         }
                     }
@@ -396,8 +439,28 @@ public final class NowPlayingManager {
                 pkg = activeController.getPackageName();
             }
 
-            // Check if music is active or if audio is actively playing on the device
-            if (activeController == null && title.isEmpty()) {
+            if (!pkg.isEmpty() && !title.isEmpty() && isAllowedMusicApp(pkg) && isPackageInstalled(context, pkg)) {
+                String appName = getAppName(context, pkg);
+                currentInfo = new MediaInfo(isPlaying, title, artist, pkg, appName, activeController, albumArt);
+                // Remember this valid playback session for retention when YouTube non-premium pauses upon exiting!
+                lastValidMediaInfo = currentInfo;
+                lastValidMediaTimestamp = System.currentTimeMillis();
+            } else if (lastValidMediaInfo != null
+                    && !lastValidMediaInfo.title.isEmpty()
+                    && isAllowedMusicApp(lastValidMediaInfo.packageName)
+                    && isPackageInstalled(context, lastValidMediaInfo.packageName)
+                    && (System.currentTimeMillis() - lastValidMediaTimestamp < 20 * 60 * 1000)) {
+                // Retention for YouTube Non-Premium or paused music: keep showing the video/song!
+                currentInfo = new MediaInfo(
+                        false,
+                        lastValidMediaInfo.title,
+                        lastValidMediaInfo.artist,
+                        lastValidMediaInfo.packageName,
+                        lastValidMediaInfo.appName,
+                        lastValidMediaInfo.controller,
+                        lastValidMediaInfo.albumArt
+                );
+            } else if (activeController == null && title.isEmpty()) {
                 AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
                 boolean isMusic = am != null && am.isMusicActive();
                 if (isMusic) {
@@ -414,11 +477,8 @@ public final class NowPlayingManager {
                 } else {
                     currentInfo = new MediaInfo(false, "", "", "", "", null, null);
                 }
-            } else if (!isAllowedMusicApp(pkg)) {
-                currentInfo = new MediaInfo(false, "", "", "", "", null, null);
             } else {
-                String appName = getAppName(context, pkg);
-                currentInfo = new MediaInfo(isPlaying, title, artist, pkg, appName, activeController, albumArt);
+                currentInfo = new MediaInfo(false, "", "", "", "", null, null);
             }
 
             mainHandler.post(() -> {
@@ -440,7 +500,9 @@ public final class NowPlayingManager {
             return pm.getApplicationLabel(ai).toString();
         } catch (Exception e) {
             if ("com.spotify.tv.android".equals(pkg) || "com.spotify.music".equals(pkg)) return "Spotify";
-            if (pkg.contains("youtube")) return "YouTube Music";
+            if ("com.google.android.youtube.tv".equals(pkg) || "com.google.android.youtube".equals(pkg)) return "YouTube";
+            if (pkg.contains("music")) return "YouTube Music";
+            if (pkg.contains("youtube")) return "YouTube";
             return pkg;
         }
     }
@@ -537,7 +599,15 @@ public final class NowPlayingManager {
                 } catch (Exception ignored) {}
             }
         }
-        String pkg = currentInfo.packageName.isEmpty() ? "com.spotify.tv.android" : currentInfo.packageName;
+        String pkg = currentInfo.packageName;
+        if (pkg == null || pkg.isEmpty() || !isPackageInstalled(context, pkg)) {
+            if (isPackageInstalled(context, "com.google.android.youtube.tv")) pkg = "com.google.android.youtube.tv";
+            else if (isPackageInstalled(context, "com.google.android.youtube")) pkg = "com.google.android.youtube";
+            else if (isPackageInstalled(context, "com.google.android.apps.youtube.music")) pkg = "com.google.android.apps.youtube.music";
+            else if (isPackageInstalled(context, "com.spotify.tv.android")) pkg = "com.spotify.tv.android";
+            else if (isPackageInstalled(context, "com.spotify.music")) pkg = "com.spotify.music";
+            else return;
+        }
         try {
             Intent i = context.getPackageManager().getLeanbackLaunchIntentForPackage(pkg);
             if (i == null) {
