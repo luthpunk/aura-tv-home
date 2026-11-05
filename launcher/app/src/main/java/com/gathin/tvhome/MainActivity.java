@@ -4245,7 +4245,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 btnOpenApp.setVisibility(View.GONE);
             }
         }
-        }
     }
 
     private Dialog qrUploadDialog;
