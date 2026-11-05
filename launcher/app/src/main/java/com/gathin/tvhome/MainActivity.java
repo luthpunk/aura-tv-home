@@ -4086,13 +4086,29 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
         } else {
             // Frosted Glass
-            GradientDrawable panelBg = new GradientDrawable(
-                    GradientDrawable.Orientation.TOP_BOTTOM,
-                    new int[]{0xEE222836, 0xEE161B26}
-            );
-            panelBg.setCornerRadius(22 * density);
-            panelBg.setStroke(Math.max(1, Math.round(1.2f * density)), 0x4DFFFFFF);
-            panel.setBackground(panelBg);
+            GlassDrawable glassBg = new GlassDrawable(panel, 22 * density, density, null, 0.45f);
+            panel.setBackground(glassBg);
+            Backdrop.watch(panel);
+
+            if (headerTitle != null) {
+                headerTitle.setTextColor(0xFFFFFFFF);
+                headerTitle.setShadowLayer(3f, 0, 1f, 0x80000000);
+            }
+            if (txtTrackTitle != null) {
+                txtTrackTitle.setTextColor(0xFFFFFFFF);
+                txtTrackTitle.setShadowLayer(3f, 0, 1f, 0x80000000);
+            }
+            if (txtTrackArtist != null) {
+                txtTrackArtist.setTextColor(0xB3FFFFFF);
+                txtTrackArtist.setShadowLayer(2f, 0, 1f, 0x80000000);
+            }
+            if (badgeSource != null) {
+                GradientDrawable bbg = new GradientDrawable();
+                bbg.setColor(0x2EFFFFFF);
+                bbg.setCornerRadius(13 * density);
+                bbg.setStroke(Math.max(1, Math.round(1f * density)), 0x4DFFFFFF);
+                badgeSource.setBackground(bbg);
+            }
         }
 
         // Layout positioning: flush with left edge of nowPlayingCard, extending rightwards
@@ -4191,6 +4207,34 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 if (v == btnPopupPrev || v == btnPlayPause || v == btnPopupNext) {
                     closeNowPlayingPopup(true);
                     return true;
+                }
+                if (v == btnOpenApp || v == btnCloseDialog) {
+                    if (btnPlayPause != null) btnPlayPause.requestFocus();
+                    return true;
+                }
+            }
+            if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                if (v == btnOpenApp || v == btnCloseDialog) {
+                    // Penghalang: jangan biarkan tembus ke grid aplikasi beranda di bawah
+                    return true;
+                }
+                if (v == btnPopupPrev || v == btnPlayPause || v == btnPopupNext) {
+                    if (btnOpenApp != null && btnOpenApp.getVisibility() == View.VISIBLE) {
+                        btnOpenApp.requestFocus();
+                    } else if (btnCloseDialog != null && btnCloseDialog.getVisibility() == View.VISIBLE) {
+                        btnCloseDialog.requestFocus();
+                    }
+                    return true;
+                }
+            }
+            if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                if (v == btnPopupPrev || v == btnOpenApp) {
+                    return true; // Penghalang batas kiri
+                }
+            }
+            if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                if (v == btnPopupNext || v == btnCloseDialog) {
+                    return true; // Penghalang batas kanan
                 }
             }
             return false;

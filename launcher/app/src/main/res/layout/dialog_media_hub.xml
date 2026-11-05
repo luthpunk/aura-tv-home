@@ -152,6 +152,8 @@
             android:focusable="true"
             android:clickable="true"
             android:background="@drawable/bg_np_round_btn"
+            android:nextFocusLeft="@+id/btnPopupPrev"
+            android:nextFocusUp="@+id/btnPopupPrev"
             android:nextFocusRight="@+id/btnPlayPause"
             android:nextFocusDown="@+id/btnOpenApp" />
 
@@ -169,6 +171,7 @@
             android:clickable="true"
             android:background="@drawable/bg_np_round_btn"
             android:nextFocusLeft="@+id/btnPopupPrev"
+            android:nextFocusUp="@+id/btnPlayPause"
             android:nextFocusRight="@+id/btnPopupNext"
             android:nextFocusDown="@+id/btnOpenApp" />
 
@@ -184,6 +187,8 @@
             android:clickable="true"
             android:background="@drawable/bg_np_round_btn"
             android:nextFocusLeft="@+id/btnPlayPause"
+            android:nextFocusUp="@+id/btnPopupNext"
+            android:nextFocusRight="@+id/btnPopupNext"
             android:nextFocusDown="@+id/btnCloseDialog" />
     </LinearLayout>
 
@@ -212,8 +217,10 @@
             android:focusable="true"
             android:clickable="true"
             android:text="Buka Aplikasi"
+            android:nextFocusLeft="@+id/btnOpenApp"
             android:nextFocusUp="@+id/btnPlayPause"
-            android:nextFocusRight="@+id/btnCloseDialog" />
+            android:nextFocusRight="@+id/btnCloseDialog"
+            android:nextFocusDown="@+id/btnOpenApp" />
 
         <TextView
             android:id="@+id/btnCloseDialog"
@@ -230,7 +237,9 @@
             android:focusable="true"
             android:clickable="true"
             android:text="Tutup &amp; Hentikan"
+            android:nextFocusLeft="@+id/btnOpenApp"
             android:nextFocusUp="@+id/btnPlayPause"
-            android:nextFocusLeft="@+id/btnOpenApp" />
+            android:nextFocusRight="@+id/btnCloseDialog"
+            android:nextFocusDown="@+id/btnCloseDialog" />
     </LinearLayout>
 </LinearLayout>

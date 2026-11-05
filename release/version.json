@@ -1,7 +1,7 @@
 {
-  "versionCode": 37,
-  "versionName": "3.4.6-id",
+  "versionCode": 38,
+  "versionName": "3.4.7-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "feat(clock-menu): enforce 24-hour clock (HH:mm) and remove Tutup (X) row from all top menus",
+  "changelog": "fix: trap focus inside now playing popup to prevent leaking down into home apps grid, and apply true frosted glass with Backdrop blur on frosted glass theme",
   "releaseDate": "2026-11-05"
 }
