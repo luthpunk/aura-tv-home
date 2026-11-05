@@ -2,6 +2,6 @@
   "versionCode": 38,
   "versionName": "3.4.7-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "fix: trap focus inside now playing popup to prevent leaking down into home apps grid, and apply true frosted glass with Backdrop blur on frosted glass theme",
+  "changelog": "fix(now-playing): seal focus navigation barrier and apply true frosted glass only to glass theme",
   "releaseDate": "2026-11-05"
 }
