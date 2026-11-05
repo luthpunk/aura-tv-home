@@ -1,7 +1,7 @@
 {
-  "versionCode": 38,
-  "versionName": "3.4.7-id",
+  "versionCode": 39,
+  "versionName": "3.4.8-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "fix(now-playing): seal focus navigation barrier and apply true frosted glass only to glass theme",
+  "changelog": "fix: fix now playing pill to a stable constant medium width (168dp) with plenty of clearance from weather widget, and retain frosted glass exclusively on glass theme",
   "releaseDate": "2026-11-05"
 }
