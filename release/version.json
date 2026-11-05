@@ -2,6 +2,6 @@
   "versionCode": 33,
   "versionName": "3.4.2-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "feat: Dynamic Now Playing Pill di status bar (Opsi A) dan perbaikan deteksi musik",
+  "changelog": "fix: remove unused button references for compact top Now Playing Pill",
   "releaseDate": "2026-11-05"
 }
