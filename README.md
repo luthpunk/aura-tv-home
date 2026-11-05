@@ -60,7 +60,7 @@ Unduh file APK rilis terbaru:
 👉 **[Unduh aura-tv-home.apk](https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk)**
 
 ### Metode 1: Lewat Aplikasi Aura TV Tools (Rekomendasi Paling Mudah)
-1. Buka aplikasi **Aura TV Tools** di HP Android Anda.
+1. Pasang & buka aplikasi [**Aura TV Tools**](https://github.com/luthpunk/aura-tv-tools) di HP Android Anda.
 2. Sambungkan ke IP STB Anda (di port `5555`).
 3. Masuk ke tab **Aplikasi** > tekan **📂 Pilih & Install APK dari HP** dan pilih file `aura-tv-home.apk`.
 4. Tekan tombol **Home** pada remote TV, lalu pilih **Aura TV Home** dan klik **"Selalu" (Always)**.
