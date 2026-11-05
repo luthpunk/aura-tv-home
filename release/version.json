@@ -1,7 +1,7 @@
 {
-  "versionCode": 34,
-  "versionName": "3.4.3-id",
+  "versionCode": 35,
+  "versionName": "3.4.4-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "fix: remove redundant closing brace in MainActivity",
+  "changelog": "feat: Now Playing single glanceable pill with EqualizerWaveView, rounded squircle album art, theme matching focus highlight, and in-window dropdown media hub positioned right without overlapping weather widget",
   "releaseDate": "2026-11-05"
 }

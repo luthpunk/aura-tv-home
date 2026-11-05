@@ -36,6 +36,18 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public final class NowPlayingManager {
     private static final String TAG = "TvHome.NowPlaying";
 
+    public static boolean isPlayingState(PlaybackState state) {
+        if (state == null) return false;
+        int s = state.getState();
+        return s == PlaybackState.STATE_PLAYING
+                || s == PlaybackState.STATE_BUFFERING
+                || s == PlaybackState.STATE_CONNECTING
+                || s == PlaybackState.STATE_SKIPPING_TO_NEXT
+                || s == PlaybackState.STATE_SKIPPING_TO_PREVIOUS
+                || s == PlaybackState.STATE_FAST_FORWARDING
+                || s == PlaybackState.STATE_REWINDING;
+    }
+
     public static boolean isAllowedMusicApp(String pkg) {
         if (pkg == null || pkg.trim().isEmpty()) return false;
         String p = pkg.toLowerCase(java.util.Locale.ROOT).trim();
@@ -274,19 +286,17 @@ public final class NowPlayingManager {
                         for (MediaController mc : controllers) {
                             if (mc == null || !isAllowedMusicApp(mc.getPackageName())) continue;
                             PlaybackState state = mc.getPlaybackState();
-                            if (state != null && state.getState() == PlaybackState.STATE_PLAYING) {
+                            if (isPlayingState(state)) {
                                 activeController = mc;
                                 break;
                             }
                         }
-                        // Priority 2: Paused/Buffering controller from Spotify or YouTube Music
+                        // Priority 2: Paused controller from Spotify or YouTube Music
                         if (activeController == null) {
                             for (MediaController mc : controllers) {
                                 if (mc == null || !isAllowedMusicApp(mc.getPackageName())) continue;
                                 PlaybackState state = mc.getPlaybackState();
-                                if (state != null && (state.getState() == PlaybackState.STATE_PAUSED
-                                        || state.getState() == PlaybackState.STATE_BUFFERING
-                                        || state.getState() == PlaybackState.STATE_CONNECTING)) {
+                                if (state != null && state.getState() == PlaybackState.STATE_PAUSED) {
                                     activeController = mc;
                                     break;
                                 }
@@ -321,7 +331,7 @@ public final class NowPlayingManager {
             if (activeController != null) {
                 pkg = activeController.getPackageName();
                 PlaybackState state = activeController.getPlaybackState();
-                isPlaying = state != null && state.getState() == PlaybackState.STATE_PLAYING;
+                isPlaying = isPlayingState(state);
 
                 MediaMetadata metadata = activeController.getMetadata();
                 if (metadata != null) {
@@ -511,11 +521,27 @@ public final class NowPlayingManager {
         if (currentInfo != null && currentInfo.controller != null) {
             try {
                 PlaybackState state = currentInfo.controller.getPlaybackState();
-                if (state != null && state.getState() == PlaybackState.STATE_PLAYING) {
+                boolean isCurrentlyPlaying = isPlayingState(state) || currentInfo.isPlaying;
+                if (isCurrentlyPlaying) {
                     currentInfo.controller.getTransportControls().pause();
                 } else {
                     currentInfo.controller.getTransportControls().play();
                 }
+                boolean newPlaying = !isCurrentlyPlaying;
+                currentInfo = new MediaInfo(
+                        newPlaying,
+                        currentInfo.title,
+                        currentInfo.artist,
+                        currentInfo.packageName,
+                        currentInfo.appName,
+                        currentInfo.controller,
+                        currentInfo.albumArt
+                );
+                mainHandler.post(() -> {
+                    for (Listener l : listeners) {
+                        l.onMediaChanged(currentInfo);
+                    }
+                });
                 return;
             } catch (Exception e) {
                 Log.e(TAG, "Error toggling play/pause via controller: " + e.getMessage());
@@ -536,6 +562,20 @@ public final class NowPlayingManager {
         if (currentInfo != null && currentInfo.controller != null) {
             try {
                 currentInfo.controller.getTransportControls().pause();
+                currentInfo = new MediaInfo(
+                        false,
+                        currentInfo.title,
+                        currentInfo.artist,
+                        currentInfo.packageName,
+                        currentInfo.appName,
+                        currentInfo.controller,
+                        currentInfo.albumArt
+                );
+                mainHandler.post(() -> {
+                    for (Listener l : listeners) {
+                        l.onMediaChanged(currentInfo);
+                    }
+                });
                 return;
             } catch (Exception e) {
                 Log.e(TAG, "Error pausing via controller: " + e.getMessage());
@@ -556,6 +596,20 @@ public final class NowPlayingManager {
         if (currentInfo != null && currentInfo.controller != null) {
             try {
                 currentInfo.controller.getTransportControls().skipToNext();
+                currentInfo = new MediaInfo(
+                        true,
+                        currentInfo.title,
+                        currentInfo.artist,
+                        currentInfo.packageName,
+                        currentInfo.appName,
+                        currentInfo.controller,
+                        currentInfo.albumArt
+                );
+                mainHandler.post(() -> {
+                    for (Listener l : listeners) {
+                        l.onMediaChanged(currentInfo);
+                    }
+                });
                 return;
             } catch (Exception ignored) {}
         }
@@ -574,6 +628,20 @@ public final class NowPlayingManager {
         if (currentInfo != null && currentInfo.controller != null) {
             try {
                 currentInfo.controller.getTransportControls().skipToPrevious();
+                currentInfo = new MediaInfo(
+                        true,
+                        currentInfo.title,
+                        currentInfo.artist,
+                        currentInfo.packageName,
+                        currentInfo.appName,
+                        currentInfo.controller,
+                        currentInfo.albumArt
+                );
+                mainHandler.post(() -> {
+                    for (Listener l : listeners) {
+                        l.onMediaChanged(currentInfo);
+                    }
+                });
                 return;
             } catch (Exception ignored) {}
         }

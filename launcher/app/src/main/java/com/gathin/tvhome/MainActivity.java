@@ -14,6 +14,7 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
+import android.graphics.BitmapShader;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ColorFilter;
@@ -196,7 +197,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private View cardTrackInfo;
     private TextView cardSubtitle;
     private TextView cardTitle;
-    private ImageView cardWaveIcon;
+    private EqualizerWaveView cardEqualizerView;
+    private View activeNowPlayingPanel;
     private boolean nowPlayingDisabledByUser = false;
     private String lastPlayedTrackKey = "";
     private NowPlayingManager.Listener nowPlayingListener;
@@ -513,7 +515,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             cardTrackInfo = findViewById(R.id.cardTrackInfo);
             cardSubtitle = findViewById(R.id.cardSubtitle);
             cardTitle = findViewById(R.id.cardTitle);
-            cardWaveIcon = findViewById(R.id.cardWaveIcon);
+            cardEqualizerView = findViewById(R.id.cardEqualizerView);
 
             nowPlayingCard.setOnClickListener(v -> {
                 SoundEffects.playSelect();
@@ -521,19 +523,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     NowPlayingManager.openNotificationAccessSettings(this);
                     Toast.makeText(this, "Aktifkan 'Aura TV Media Listener' untuk menampilkan info lagu", Toast.LENGTH_LONG).show();
                 } else {
-                    showNowPlayingDialog();
+                    showNowPlayingPopup();
                 }
             });
 
             nowPlayingCard.setOnFocusChangeListener((v, hasFocus) -> {
                 if (hasFocus) {
-                    SoundEffects.playNav();
-                    hideShelf();
-                    if (glider != null) glider.hide();
+                    moveTopHighlight(v);
                 }
-                boolean isNeu = ThemeManager.isNeumorphism(MainActivity.this);
-                float scale = (hasFocus && !isNeu) ? 1.04f : 1.0f;
-                v.animate().scaleX(scale).scaleY(scale).setDuration(120).start();
             });
 
             nowPlayingCard.setOnKeyListener((v, keyCode, event) -> {
@@ -665,7 +662,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // The grid only shows the shape on the tray.
         glider.addCompanion(grid, tray.area);
         applyHomeScreenTheme();
-        for (int id : new int[]{R.id.btnInputs, R.id.btnWifi, R.id.btnAssistant, R.id.btnCandyBox, R.id.btnSettings}) {
+        for (int id : new int[]{R.id.btnInputs, R.id.btnWifi, R.id.btnAssistant, R.id.btnCandyBox, R.id.btnSettings, R.id.nowPlayingCard}) {
             View pill = findViewById(id);
             if (pill == null) continue;
             glider.addCompanion(pill);
@@ -1334,6 +1331,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (openPopup != null) openPopup.dismiss();
         closeAppDrawer(false);
         closeMenu(false);
+        if (activeNowPlayingPanel != null) closeNowPlayingPopup(false);
         finishMove();
     }
 
@@ -1884,14 +1882,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             } else if (isDark) {
                 StateListDrawable cardSld = new StateListDrawable();
                 GradientDrawable foc = new GradientDrawable();
-                foc.setColor(0xF2101726);
+                foc.setColor(0xFF0A0A0E);
                 foc.setCornerRadius(pillRadius);
-                foc.setStroke(Math.max(1, Math.round(1.5f * density)), 0xFF00F0FF);
+                foc.setStroke(Math.max(1, Math.round(1.25f * density)), 0xFF00F0FF);
 
                 GradientDrawable norm = new GradientDrawable();
-                norm.setColor(0xF20A0A10);
+                norm.setColor(0xEE08080A);
                 norm.setCornerRadius(pillRadius);
-                norm.setStroke(Math.max(1, Math.round(1.1f * density)), 0x4D00F0FF);
+                norm.setStroke(Math.max(1, Math.round(1.0f * density)), 0x33FFFFFF);
 
                 cardSld.addState(new int[]{android.R.attr.state_focused}, foc);
                 cardSld.addState(new int[]{}, norm);
@@ -1905,19 +1903,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     cardTitle.setShadowLayer(3f, 0, 1f, 0x80000000);
                 }
                 if (cardSubtitle != null) {
-                    cardSubtitle.setTextColor(0xFF00F0FF);
+                    cardSubtitle.setTextColor(0xB3FFFFFF);
                     cardSubtitle.setShadowLayer(2f, 0, 1f, 0x80000000);
                 }
             } else {
-                StateListDrawable cardSld = new StateListDrawable();
-                GradientDrawable foc = new GradientDrawable();
-                foc.setColor(0x80252B38);
-                foc.setCornerRadius(pillRadius);
-                foc.setStroke(Math.max(1, Math.round(1.5f * density)), 0xFFFFFFFF);
-
-                cardSld.addState(new int[]{android.R.attr.state_focused}, foc);
-                cardSld.addState(new int[]{}, new GlassDrawable(nowPlayingCard, pillRadius, density, glider, 0.45f, true));
-                nowPlayingCard.setBackground(cardSld);
+                nowPlayingCard.setBackground(new GlassDrawable(nowPlayingCard, pillRadius, density, glider));
                 Backdrop.watch(nowPlayingCard);
 
                 if (cardTrackInfo != null) cardTrackInfo.setBackground(null);
@@ -2007,7 +1997,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private boolean isTopPill(View v) {
         int id = v.getId();
-        return id == R.id.btnInputs || id == R.id.btnWifi || id == R.id.btnAssistant || id == R.id.btnCandyBox || id == R.id.btnSettings;
+        return id == R.id.btnInputs || id == R.id.btnWifi || id == R.id.btnAssistant || id == R.id.btnCandyBox || id == R.id.btnSettings || id == R.id.nowPlayingCard;
     }
 
     /** Sends the focus shape onto a pill: from a tile it glides up and narrows into the pill. */
@@ -3808,6 +3798,21 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         );
     }
 
+    private Bitmap getRoundedCornerBitmap(Bitmap bitmap, float radiusPx) {
+        if (bitmap == null) return null;
+        try {
+            Bitmap output = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(output);
+            Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            paint.setShader(new BitmapShader(bitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP));
+            RectF rectF = new RectF(0, 0, bitmap.getWidth(), bitmap.getHeight());
+            canvas.drawRoundRect(rectF, radiusPx, radiusPx, paint);
+            return output;
+        } catch (Exception e) {
+            return bitmap;
+        }
+    }
+
     private void updateNowPlayingUi(NowPlayingManager.MediaInfo info) {
         if (nowPlayingCard == null || cardTitle == null || cardSubtitle == null) return;
 
@@ -3815,20 +3820,24 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         if (!hasActiveMusic) {
             hideNowPlayingCard();
-            nowPlayingDisabledByUser = false;
             lastPlayedTrackKey = "";
+            if (activeNowPlayingPanel != null) {
+                updatePopupMediaInfo(activeNowPlayingPanel);
+            }
             return;
         }
 
-        String currentTrackKey = info.packageName + ":" + info.title;
-        if (!currentTrackKey.equals(lastPlayedTrackKey)) {
-            lastPlayedTrackKey = currentTrackKey;
-            nowPlayingDisabledByUser = false; // New song started playing -> show
-        }
-
+        // If the user manually closed the card, ONLY re-enable if music is ACTUALLY PLAYING again!
         if (nowPlayingDisabledByUser) {
-            hideNowPlayingCard();
-            return;
+            if (info.isPlaying) {
+                nowPlayingDisabledByUser = false;
+            } else {
+                hideNowPlayingCard();
+                if (activeNowPlayingPanel != null) {
+                    updatePopupMediaInfo(activeNowPlayingPanel);
+                }
+                return;
+            }
         }
 
         if (ayahBlock != null) {
@@ -3844,28 +3853,37 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             cardSubtitle.setText(info.appName.isEmpty() ? "SEDANG DIPUTAR" : info.appName.toUpperCase(Locale.ROOT));
         }
 
+        // Round the album art (circular squircle) so it blends perfectly into the rounded pill!
         if (info.albumArt != null && cardAlbumArt != null) {
-            cardAlbumArt.setImageBitmap(info.albumArt);
+            float r = Math.min(info.albumArt.getWidth(), info.albumArt.getHeight()) / 2f;
+            cardAlbumArt.setImageBitmap(getRoundedCornerBitmap(info.albumArt, r));
             cardAlbumArt.setPadding(0, 0, 0, 0);
         } else if (cardAlbumArt != null) {
             try {
                 Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
                 cardAlbumArt.setImageDrawable(appIcon);
-                cardAlbumArt.setPadding(6, 6, 6, 6);
+                cardAlbumArt.setPadding(4, 4, 4, 4);
             } catch (Exception e) {
                 cardAlbumArt.setImageResource(R.drawable.ic_music);
-                cardAlbumArt.setPadding(8, 8, 8, 8);
+                cardAlbumArt.setPadding(6, 6, 6, 6);
             }
         }
 
-        if (cardWaveIcon != null) {
-            cardWaveIcon.setImageResource(info.isPlaying ? R.drawable.ic_sound : R.drawable.ic_pause);
-            if (info.packageName.contains("spotify")) {
-                cardWaveIcon.setColorFilter(0xFF1DB954);
-            } else if (info.packageName.contains("youtube")) {
-                cardWaveIcon.setColorFilter(0xFFFF3344);
+        // Animated Music Equalizer Wave
+        if (cardEqualizerView != null) {
+            cardEqualizerView.setPlaying(info.isPlaying);
+            if (ThemeManager.isNeumorphism(this)) {
+                cardEqualizerView.setWaveColor(0xFF222934);
+            } else if (ThemeManager.isDarkGlow(this)) {
+                cardEqualizerView.setWaveColor(0xFF00F0FF);
             } else {
-                cardWaveIcon.setColorFilter(0xFF00F0FF);
+                if (info.packageName.contains("spotify")) {
+                    cardEqualizerView.setWaveColor(0xFF1DB954);
+                } else if (info.packageName.contains("youtube")) {
+                    cardEqualizerView.setWaveColor(0xFFFF3344);
+                } else {
+                    cardEqualizerView.setWaveColor(0xFF00F0FF);
+                }
             }
         }
 
@@ -3883,6 +3901,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     .setInterpolator(new android.view.animation.DecelerateInterpolator())
                     .withLayer()
                     .start();
+        }
+
+        // Realtime sync if popup panel is open
+        if (activeNowPlayingPanel != null) {
+            updatePopupMediaInfo(activeNowPlayingPanel);
         }
     }
 
@@ -3923,20 +3946,20 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     private void showNowPlayingDialog() {
-        final Dialog dialog = new Dialog(this);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        showNowPlayingPopup();
+    }
 
-        View panel = getLayoutInflater().inflate(R.layout.dialog_media_hub, root, false);
-        dialog.setContentView(panel);
-
-        Window w = dialog.getWindow();
-        if (w != null) {
-            w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            w.setLayout((int) (460 * density), ViewGroup.LayoutParams.WRAP_CONTENT);
-            w.setDimAmount(0.65f);
-            w.setFlags(android.view.WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
-                    android.view.WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED);
+    private void showNowPlayingPopup() {
+        if (openMenu != null) {
+            closeMenu(false);
         }
+        View anchor = nowPlayingCard;
+        if (anchor == null) return;
+
+        final View panel = getLayoutInflater().inflate(R.layout.dialog_media_hub, root, false);
+        activeNowPlayingPanel = panel;
+        openMenu = panel;
+        menuAnchor = anchor;
 
         ImageView headerIcon = panel.findViewById(R.id.headerIcon);
         TextView headerTitle = panel.findViewById(R.id.headerTitle);
@@ -4086,16 +4109,47 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             panel.setBackground(panelBg);
         }
 
-        updatePopupMediaInfo(panel, dialog);
+        // Layout positioning: flush with left edge of nowPlayingCard, extending rightwards
+        int width = (int) (430 * density);
+        anchor.getLocationInWindow(pillAt);
+        root.getLocationInWindow(rootAt);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(width, ViewGroup.LayoutParams.WRAP_CONTENT);
+
+        int leftMargin = pillAt[0] - rootAt[0];
+        int maxRight = root.getWidth() - (int)(32 * density);
+        if (leftMargin + width > maxRight) {
+            leftMargin = Math.max((int)(32 * density), maxRight - width);
+        }
+        int gap = (int) (8 * density);
+        int topMargin = pillAt[1] - rootAt[1] + anchor.getHeight() + gap;
+
+        lp.leftMargin = leftMargin;
+        lp.topMargin = topMargin;
+
+        // Populate initially before adding to view hierarchy so texts/images are NEVER blank!
+        updatePopupMediaInfo(panel);
+
+        root.addView(panel, lp);
+
+        // Entrance animation matching top menus (smooth slide-down from the pill + fade-in)
+        panel.setAlpha(0f);
+        panel.setTranslationY(-12 * density);
+        panel.animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setDuration(220)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f))
+                .start();
 
         if (btnPopupPrev != null) {
             btnPopupPrev.setOnClickListener(v -> {
                 SoundEffects.playSelect();
                 NowPlayingManager.skipToPrevious();
+                updatePopupMediaInfo(panel);
                 handler.postDelayed(() -> {
                     NowPlayingManager.updateCurrentMedia(MainActivity.this);
-                    updatePopupMediaInfo(panel, dialog);
-                }, 300);
+                    updatePopupMediaInfo(panel);
+                }, 350);
             });
         }
 
@@ -4103,10 +4157,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             btnPlayPause.setOnClickListener(v -> {
                 SoundEffects.playSelect();
                 NowPlayingManager.togglePlayPause();
+                updatePopupMediaInfo(panel);
                 handler.postDelayed(() -> {
                     NowPlayingManager.updateCurrentMedia(MainActivity.this);
-                    updatePopupMediaInfo(panel, dialog);
-                }, 300);
+                    updatePopupMediaInfo(panel);
+                }, 350);
             });
         }
 
@@ -4114,17 +4169,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             btnPopupNext.setOnClickListener(v -> {
                 SoundEffects.playSelect();
                 NowPlayingManager.skipToNext();
+                updatePopupMediaInfo(panel);
                 handler.postDelayed(() -> {
                     NowPlayingManager.updateCurrentMedia(MainActivity.this);
-                    updatePopupMediaInfo(panel, dialog);
-                }, 300);
+                    updatePopupMediaInfo(panel);
+                }, 350);
             });
         }
 
         if (btnOpenApp != null) {
             btnOpenApp.setOnClickListener(v -> {
                 SoundEffects.playSelect();
-                dialog.dismiss();
+                closeNowPlayingPopup(false);
                 NowPlayingManager.openMediaApp(MainActivity.this);
             });
         }
@@ -4132,7 +4188,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (btnCloseDialog != null) {
             btnCloseDialog.setOnClickListener(v -> {
                 SoundEffects.playSelect();
-                dialog.dismiss();
+                closeNowPlayingPopup(true);
                 disableNowPlaying();
             });
         }
@@ -4149,20 +4205,56 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     .start();
         };
 
-        if (btnPopupPrev != null) btnPopupPrev.setOnFocusChangeListener(btnFocus);
-        if (btnPlayPause != null) btnPlayPause.setOnFocusChangeListener(btnFocus);
-        if (btnPopupNext != null) btnPopupNext.setOnFocusChangeListener(btnFocus);
-        if (btnOpenApp != null) btnOpenApp.setOnFocusChangeListener(btnFocus);
-        if (btnCloseDialog != null) btnCloseDialog.setOnFocusChangeListener(btnFocus);
+        View.OnKeyListener menuKey = (v, keyCode, event) -> {
+            if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+            if (keyCode == KeyEvent.KEYCODE_BACK) {
+                closeNowPlayingPopup(true);
+                return true;
+            }
+            if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                if (v == btnPopupPrev || v == btnPlayPause || v == btnPopupNext) {
+                    closeNowPlayingPopup(true);
+                    return true;
+                }
+            }
+            return false;
+        };
 
-        dialog.show();
+        for (View b : new View[]{btnPopupPrev, btnPlayPause, btnPopupNext, btnOpenApp, btnCloseDialog}) {
+            if (b != null) {
+                b.setOnFocusChangeListener(btnFocus);
+                b.setOnKeyListener(menuKey);
+            }
+        }
+
+        updatePopupMediaInfo(panel);
+
         if (btnPlayPause != null) {
             btnPlayPause.requestFocus();
         }
     }
 
-    private void updatePopupMediaInfo(View panel, Dialog dialog) {
-        if (panel == null || (dialog != null && !dialog.isShowing())) return;
+    private void closeNowPlayingPopup(boolean toAnchor) {
+        View panel = activeNowPlayingPanel;
+        if (panel == null) return;
+        SoundEffects.playNav();
+        activeNowPlayingPanel = null;
+        if (openMenu == panel) openMenu = null;
+        View anchor = menuAnchor;
+        menuAnchor = null;
+        if (toAnchor && anchor != null) {
+            anchor.requestFocus();
+        }
+        panel.animate()
+                .alpha(0f)
+                .translationY(-10 * density)
+                .setDuration(150)
+                .withEndAction(() -> root.removeView(panel))
+                .start();
+    }
+
+    private void updatePopupMediaInfo(View panel) {
+        if (panel == null) return;
         NowPlayingManager.MediaInfo info = NowPlayingManager.getCurrentInfo();
         boolean hasMedia = info != null && info.hasMusic() && NowPlayingManager.isPackageInstalled(this, info.packageName);
 
@@ -4190,7 +4282,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
             if (imgAlbumArt != null) {
                 if (info.albumArt != null) {
-                    imgAlbumArt.setImageBitmap(info.albumArt);
+                    float r = 16f * density;
+                    imgAlbumArt.setImageBitmap(getRoundedCornerBitmap(info.albumArt, r));
                     imgAlbumArt.setPadding(0, 0, 0, 0);
                 } else if (!info.packageName.isEmpty()) {
                     try {
@@ -6584,6 +6677,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (panel == null) return;
         SoundEffects.playNav();
         openMenu = null;
+        if (activeNowPlayingPanel == panel) activeNowPlayingPanel = null;
         if (toAnchor && menuAnchor != null) menuAnchor.requestFocus();
         menuAnchor = null;
         panel.animate().alpha(0f).setDuration(reducedMotion ? 80 : 150).withEndAction(() -> {

@@ -885,15 +885,13 @@
                             android:ellipsize="end" />
                     </LinearLayout>
 
-                    <!-- Mini Playback State Wave / Equalizer Icon -->
-                    <ImageView
-                        android:id="@+id/cardWaveIcon"
+                    <!-- Animated Music Equalizer Wave -->
+                    <com.gathin.tvhome.EqualizerWaveView
+                        android:id="@+id/cardEqualizerView"
                         android:layout_width="16dp"
-                        android:layout_height="16dp"
-                        android:layout_marginStart="6dp"
-                        android:scaleType="centerInside"
-                        android:src="@drawable/ic_sound"
-                        android:tint="#1DB954"
+                        android:layout_height="14dp"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="2dp"
                         android:focusable="false"
                         android:clickable="false" />
                 </LinearLayout>
