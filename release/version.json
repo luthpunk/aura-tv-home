@@ -2,6 +2,6 @@
   "versionCode": 34,
   "versionName": "3.4.3-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "feat: Apple TV style Now Playing single pill, compact themed media hub popup, YouTube non-premium paused retention, security notification blacklist, neumorphism concave and dark neon highlight fixes",
+  "changelog": "fix: remove redundant closing brace in MainActivity",
   "releaseDate": "2026-11-05"
 }
