@@ -892,7 +892,7 @@
                         android:layout_height="16dp"
                         android:layout_marginStart="6dp"
                         android:scaleType="centerInside"
-                        android:src="@drawable/ic_volume_up"
+                        android:src="@drawable/ic_sound"
                         android:tint="#1DB954"
                         android:focusable="false"
                         android:clickable="false" />

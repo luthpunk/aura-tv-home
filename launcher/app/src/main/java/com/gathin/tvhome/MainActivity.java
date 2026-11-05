@@ -3859,7 +3859,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
 
         if (cardWaveIcon != null) {
-            cardWaveIcon.setImageResource(info.isPlaying ? R.drawable.ic_volume_up : R.drawable.ic_pause);
+            cardWaveIcon.setImageResource(info.isPlaying ? R.drawable.ic_sound : R.drawable.ic_pause);
             if (info.packageName.contains("spotify")) {
                 cardWaveIcon.setColorFilter(0xFF1DB954);
             } else if (info.packageName.contains("youtube")) {
