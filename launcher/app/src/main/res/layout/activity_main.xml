@@ -803,151 +803,6 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Now Playing Widget Card: Positioned to the right of the Weather Card -->
-            <LinearLayout
-                android:id="@+id/nowPlayingCard"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:minHeight="64dp"
-                android:layout_toEndOf="@id/weatherAirQuality"
-                android:layout_alignBottom="@id/weatherAirQuality"
-                android:layout_marginStart="14dp"
-                android:focusable="false"
-                android:visibility="gone"
-                android:background="@drawable/glass_panel"
-                android:paddingStart="12dp"
-                android:paddingEnd="14dp"
-                android:paddingTop="8dp"
-                android:paddingBottom="8dp"
-                android:clipChildren="false"
-                android:clipToPadding="false"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <ImageView
-                    android:id="@+id/cardAlbumArt"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:scaleType="centerCrop"
-                    android:background="@drawable/bg_media_app_pill"
-                    android:src="@drawable/ic_music"
-                    android:focusable="true"
-                    android:clickable="true"
-                    android:nextFocusRight="@+id/cardTrackInfo" />
-
-                <LinearLayout
-                    android:id="@+id/cardTrackInfo"
-                    android:layout_width="190dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
-                    android:paddingStart="6dp"
-                    android:paddingEnd="6dp"
-                    android:paddingTop="3dp"
-                    android:paddingBottom="3dp"
-                    android:orientation="vertical"
-                    android:background="@drawable/bg_track_info_selector"
-                    android:focusable="true"
-                    android:clickable="true"
-                    android:nextFocusLeft="@+id/cardAlbumArt"
-                    android:nextFocusRight="@+id/btnInlinePrev">
-
-                    <TextView
-                        android:id="@+id/cardSubtitle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Sedang diputar • SPOTIFY"
-                        android:textColor="#B3FFFFFF"
-                        android:textSize="11sp"
-                        android:fontFamily="@font/outfit"
-                        android:fontVariationSettings="'wght' 500"
-                        android:letterSpacing="0.04"
-                        android:singleLine="true" />
-
-                    <TextView
-                        android:id="@+id/cardTitle"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="Judul Lagu"
-                        android:textColor="#FFFFFFFF"
-                        android:textSize="15sp"
-                        android:fontFamily="@font/outfit"
-                        android:fontVariationSettings="'wght' 600"
-                        android:singleLine="true"
-                        android:ellipsize="marquee"
-                        android:marqueeRepeatLimit="marquee_forever" />
-                </LinearLayout>
-
-                <!-- Inline Media Controls: Prev, Play/Pause, Next (Round buttons with ic_np_tint) -->
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
-                    android:clipChildren="false"
-                    android:clipToPadding="false"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <ImageView
-                        android:id="@+id/btnInlinePrev"
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:padding="8dp"
-                        android:scaleType="centerInside"
-                        android:src="@drawable/ic_skip_previous"
-                        android:tint="@color/ic_np_tint"
-                        android:focusable="true"
-                        android:clickable="true"
-                        android:background="@drawable/bg_np_round_btn"
-                        android:nextFocusLeft="@+id/cardTrackInfo"
-                        android:nextFocusRight="@+id/btnInlinePlayPause" />
-
-                    <ImageView
-                        android:id="@+id/btnInlinePlayPause"
-                        android:layout_width="38dp"
-                        android:layout_height="38dp"
-                        android:layout_marginStart="8dp"
-                        android:padding="8dp"
-                        android:scaleType="centerInside"
-                        android:src="@drawable/ic_pause"
-                        android:tint="@color/ic_np_tint"
-                        android:focusable="true"
-                        android:clickable="true"
-                        android:background="@drawable/bg_np_round_btn"
-                        android:nextFocusLeft="@+id/btnInlinePrev"
-                        android:nextFocusRight="@+id/btnInlineNext" />
-
-                    <ImageView
-                        android:id="@+id/btnInlineNext"
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:layout_marginStart="8dp"
-                        android:padding="8dp"
-                        android:scaleType="centerInside"
-                        android:src="@drawable/ic_skip_next"
-                        android:tint="@color/ic_np_tint"
-                        android:focusable="true"
-                        android:clickable="true"
-                        android:background="@drawable/bg_np_round_btn"
-                        android:nextFocusLeft="@+id/btnInlinePlayPause"
-                        android:nextFocusRight="@+id/btnInlineClose" />
-
-                    <ImageView
-                        android:id="@+id/btnInlineClose"
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:layout_marginStart="8dp"
-                        android:padding="9dp"
-                        android:scaleType="centerInside"
-                        android:src="@drawable/ic_close"
-                        android:tint="@color/ic_np_tint"
-                        android:focusable="true"
-                        android:clickable="true"
-                        android:background="@drawable/bg_np_round_btn"
-                        android:nextFocusLeft="@+id/btnInlineNext" />
-                </LinearLayout>
-            </LinearLayout>
-
             <!-- Top Menu Buttons: Strictly in the same row, vertically centered with the clock -->
             <LinearLayout
                 android:id="@+id/topButtons"
@@ -960,6 +815,116 @@
                 android:clipToPadding="false"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
+
+                <!-- Dynamic Now Playing Pill: Option A (Cover -> Title/Artist -> Play/Pause -> Next) -->
+                <LinearLayout
+                    android:id="@+id/nowPlayingCard"
+                    android:layout_width="wrap_content"
+                    android:layout_height="42dp"
+                    android:layout_marginEnd="10dp"
+                    android:visibility="gone"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:focusable="false"
+                    android:clipChildren="false"
+                    android:clipToPadding="false"
+                    android:paddingStart="7dp"
+                    android:paddingEnd="8dp">
+
+                    <!-- 1. Banner / Album Art (Kiri) -->
+                    <ImageView
+                        android:id="@+id/cardAlbumArt"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:scaleType="centerCrop"
+                        android:background="@drawable/bg_media_app_pill"
+                        android:src="@drawable/ic_music"
+                        android:focusable="true"
+                        android:clickable="true"
+                        android:nextFocusRight="@+id/cardTrackInfo" />
+
+                    <!-- 2. Track Title & Artist (Tengah) -->
+                    <LinearLayout
+                        android:id="@+id/cardTrackInfo"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="8dp"
+                        android:paddingStart="2dp"
+                        android:paddingEnd="6dp"
+                        android:gravity="center_vertical"
+                        android:orientation="vertical"
+                        android:background="@drawable/bg_track_info_selector"
+                        android:focusable="true"
+                        android:clickable="true"
+                        android:nextFocusLeft="@+id/cardAlbumArt"
+                        android:nextFocusRight="@+id/btnInlinePlayPause">
+
+                        <TextView
+                            android:id="@+id/cardTitle"
+                            android:layout_width="wrap_content"
+                            android:maxWidth="130dp"
+                            android:layout_height="wrap_content"
+                            android:text="Judul Lagu"
+                            android:textColor="#FFFFFFFF"
+                            android:textSize="12sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 600"
+                            android:singleLine="true"
+                            android:ellipsize="marquee"
+                            android:marqueeRepeatLimit="marquee_forever" />
+
+                        <TextView
+                            android:id="@+id/cardSubtitle"
+                            android:layout_width="wrap_content"
+                            android:maxWidth="130dp"
+                            android:layout_height="wrap_content"
+                            android:text="Spotify"
+                            android:textColor="#B3FFFFFF"
+                            android:textSize="9.5sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 500"
+                            android:letterSpacing="0.02"
+                            android:singleLine="true"
+                            android:ellipsize="end" />
+                    </LinearLayout>
+
+                    <!-- 3. Inline Controls: Play/Pause and Next (Kanan) -->
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="4dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:id="@+id/btnInlinePlayPause"
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:padding="6dp"
+                            android:scaleType="centerInside"
+                            android:src="@drawable/ic_pause"
+                            android:tint="@color/ic_np_tint"
+                            android:focusable="true"
+                            android:clickable="true"
+                            android:background="@drawable/bg_np_round_btn"
+                            android:nextFocusLeft="@+id/cardTrackInfo"
+                            android:nextFocusRight="@+id/btnInlineNext" />
+
+                        <ImageView
+                            android:id="@+id/btnInlineNext"
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:layout_marginStart="4dp"
+                            android:padding="6dp"
+                            android:scaleType="centerInside"
+                            android:src="@drawable/ic_skip_next"
+                            android:tint="@color/ic_np_tint"
+                            android:focusable="true"
+                            android:clickable="true"
+                            android:background="@drawable/bg_np_round_btn"
+                            android:nextFocusLeft="@+id/btnInlinePlayPause" />
+                    </LinearLayout>
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/btnInputs"

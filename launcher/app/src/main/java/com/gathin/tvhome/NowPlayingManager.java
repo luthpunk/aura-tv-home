@@ -21,7 +21,9 @@ import android.media.session.PlaybackState;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.service.notification.StatusBarNotification;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
 
@@ -29,17 +31,53 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Manages active music playback detection strictly for Spotify and YouTube Music.
+ * Manages active music playback detection for all media players (Spotify, YouTube, Apple Music, VLC, etc.).
  */
 public final class NowPlayingManager {
     private static final String TAG = "TvHome.NowPlaying";
 
     public static boolean isAllowedMusicApp(String pkg) {
-        if (pkg == null) return false;
-        return pkg.equals("com.spotify.tv.android")
-                || pkg.equals("com.spotify.music")
-                || pkg.equals("com.google.android.apps.youtube.music")
-                || pkg.equals("com.google.android.youtube.tvmusic");
+        if (pkg == null || pkg.trim().isEmpty()) return false;
+        if (pkg.equals("com.gathin.tvhome")
+                || pkg.equals("android")
+                || pkg.equals("com.android.systemui")
+                || pkg.equals("com.google.android.katniss")) {
+            return false;
+        }
+        return true;
+    }
+
+    public static boolean isNotificationAccessGranted(Context context) {
+        if (context == null) return false;
+        try {
+            String pkgName = context.getPackageName();
+            String flat = Settings.Secure.getString(context.getContentResolver(), "enabled_notification_listeners");
+            if (flat != null && !flat.isEmpty()) {
+                String[] names = flat.split(":");
+                for (String name : names) {
+                    ComponentName cn = ComponentName.unflattenFromString(name);
+                    if (cn != null && TextUtils.equals(pkgName, cn.getPackageName())) {
+                        return true;
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        return false;
+    }
+
+    public static void openNotificationAccessSettings(Context context) {
+        if (context == null) return;
+        try {
+            Intent intent = new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS");
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+        } catch (Exception e1) {
+            try {
+                Intent intent = new Intent(Settings.ACTION_SETTINGS);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(intent);
+            } catch (Exception ignored) {}
+        }
     }
 
     public static class MediaInfo {
@@ -62,7 +100,13 @@ public final class NowPlayingManager {
         }
 
         public boolean hasMusic() {
-            return isPlaying && isAllowedMusicApp(packageName);
+            if (packageName.isEmpty() && isPlaying) {
+                return true; // Fallback: active audio playing on device
+            }
+            if (!isAllowedMusicApp(packageName)) {
+                return false;
+            }
+            return isPlaying || (!title.isEmpty());
         }
 
         public String getDisplayText() {
@@ -352,9 +396,24 @@ public final class NowPlayingManager {
                 pkg = activeController.getPackageName();
             }
 
-            // Strictly check if music is active in Spotify or YouTube Music
+            // Check if music is active or if audio is actively playing on the device
             if (activeController == null && title.isEmpty()) {
-                currentInfo = new MediaInfo(false, "", "", "", "", null, null);
+                AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+                boolean isMusic = am != null && am.isMusicActive();
+                if (isMusic) {
+                    boolean granted = isNotificationAccessGranted(context);
+                    currentInfo = new MediaInfo(
+                            true,
+                            "Musik Diputar",
+                            granted ? "Sedang memutar audio" : "Klik aktifkan izin lagu",
+                            "",
+                            "Media Player",
+                            null,
+                            null
+                    );
+                } else {
+                    currentInfo = new MediaInfo(false, "", "", "", "", null, null);
+                }
             } else if (!isAllowedMusicApp(pkg)) {
                 currentInfo = new MediaInfo(false, "", "", "", "", null, null);
             } else {
