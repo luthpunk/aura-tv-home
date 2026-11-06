@@ -2,6 +2,6 @@
   "versionCode": 40,
   "versionName": "3.4.9-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "fix(now-playing): center-crop 16:9 YouTube thumbnails to 1:1 circle, expand pill width to 184dp, and slow down marquee running text",
+  "changelog": "fix(now-playing): circle-crop YouTube banner, expand pill to 184dp, and slow marquee",
   "releaseDate": "2026-11-06"
 }
