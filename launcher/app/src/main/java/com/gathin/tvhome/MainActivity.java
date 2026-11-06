@@ -48,6 +48,7 @@ import android.os.Looper;
 import android.provider.Settings;
 import android.text.SpannableString;
 import android.text.Spanned;
+import java.lang.reflect.Field;
 import android.text.TextPaint;
 import android.text.TextUtils;
 import android.view.Gravity;
@@ -3781,18 +3782,74 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     private Bitmap getRoundedCornerBitmap(Bitmap bitmap, float radiusPx) {
-        if (bitmap == null) return null;
+        if (bitmap == null || bitmap.isRecycled()) return null;
         try {
-            Bitmap output = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), Bitmap.Config.ARGB_8888);
+            int w = bitmap.getWidth();
+            int h = bitmap.getHeight();
+            if (w <= 0 || h <= 0) return bitmap;
+
+            // 1. Center crop into 1:1 square so 16:9 banners (e.g. YouTube) never appear lonjong or overflow pill
+            int size = Math.min(w, h);
+            int cropX = (w - size) / 2;
+            int cropY = (h - size) / 2;
+            Bitmap square;
+            boolean needRecycleSquare = false;
+            if (w == h) {
+                square = bitmap;
+            } else {
+                square = Bitmap.createBitmap(bitmap, cropX, cropY, size, size);
+                needRecycleSquare = true;
+            }
+
+            // 2. Draw circular / squircle mask on the square bitmap
+            Bitmap output = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
             Canvas canvas = new Canvas(output);
-            Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            paint.setShader(new BitmapShader(bitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP));
-            RectF rectF = new RectF(0, 0, bitmap.getWidth(), bitmap.getHeight());
-            canvas.drawRoundRect(rectF, radiusPx, radiusPx, paint);
+            Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+            paint.setShader(new BitmapShader(square, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP));
+            RectF rectF = new RectF(0, 0, size, size);
+
+            float actualRadius = radiusPx;
+            if (radiusPx >= (size / 2f) - 1f) {
+                actualRadius = size / 2f;
+            }
+
+            canvas.drawRoundRect(rectF, actualRadius, actualRadius, paint);
+
+            if (needRecycleSquare && square != null && !square.isRecycled()) {
+                square.recycle();
+            }
             return output;
         } catch (Exception e) {
             return bitmap;
         }
+    }
+
+    private void setSlowMarqueeSpeed(TextView tv, float dpPerSecond) {
+        if (tv == null) return;
+        Runnable adjustSpeed = () -> {
+            try {
+                Field marqueeField = TextView.class.getDeclaredField("mMarquee");
+                marqueeField.setAccessible(true);
+                Object marqueeObject = marqueeField.get(tv);
+                if (marqueeObject != null) {
+                    float pixelsPerSecond = dpPerSecond * density;
+                    try {
+                        Field speedField = marqueeObject.getClass().getDeclaredField("mPixelsPerSecond");
+                        speedField.setAccessible(true);
+                        speedField.setFloat(marqueeObject, pixelsPerSecond);
+                    } catch (NoSuchFieldException e) {
+                        try {
+                            Field scrollUnitField = marqueeObject.getClass().getDeclaredField("mScrollUnit");
+                            scrollUnitField.setAccessible(true);
+                            scrollUnitField.setFloat(marqueeObject, pixelsPerSecond / 33f);
+                        } catch (Exception ignored) {}
+                    }
+                }
+            } catch (Throwable ignored) {}
+        };
+        tv.post(adjustSpeed);
+        tv.postDelayed(adjustSpeed, 150);
+        tv.postDelayed(adjustSpeed, 500);
     }
 
     private void updateNowPlayingUi(NowPlayingManager.MediaInfo info) {
@@ -3829,6 +3886,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Active playback from any media player
         cardTitle.setText(info.title.isEmpty() ? "Lagu Dimainkan" : info.title);
         cardTitle.setSelected(true);
+        setSlowMarqueeSpeed(cardTitle, 12f);
         if (!info.artist.isEmpty()) {
             cardSubtitle.setText(info.artist + (info.appName.isEmpty() ? "" : " • " + info.appName.toUpperCase(Locale.ROOT)));
         } else {
@@ -3837,7 +3895,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         // Round the album art (circular squircle) so it blends perfectly into the rounded pill!
         if (info.albumArt != null && cardAlbumArt != null) {
-            float r = Math.min(info.albumArt.getWidth(), info.albumArt.getHeight()) / 2f;
+            int bSize = Math.min(info.albumArt.getWidth(), info.albumArt.getHeight());
+            float r = bSize / 2f;
             cardAlbumArt.setImageBitmap(getRoundedCornerBitmap(info.albumArt, r));
             cardAlbumArt.setPadding(0, 0, 0, 0);
         } else if (cardAlbumArt != null) {
@@ -3861,7 +3920,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             } else {
                 if (info.packageName.contains("spotify")) {
                     cardEqualizerView.setWaveColor(0xFF1DB954);
-                } else if (info.packageName.contains("youtube")) {
+                } else if (info.packageName.contains("youtube") || info.packageName.contains("cobalt")) {
                     cardEqualizerView.setWaveColor(0xFFFF3344);
                 } else {
                     cardEqualizerView.setWaveColor(0xFF00F0FF);
@@ -4291,6 +4350,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (txtTrackTitle != null) {
                 txtTrackTitle.setText(info.title.isEmpty() ? "Lagu Diputar" : info.title);
                 txtTrackTitle.setSelected(true);
+                setSlowMarqueeSpeed(txtTrackTitle, 12f);
             }
             if (txtTrackArtist != null) {
                 txtTrackArtist.setText(info.artist.isEmpty() ? (info.appName.isEmpty() ? "Musik" : info.appName) : info.artist);
@@ -4302,7 +4362,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
             if (imgAlbumArt != null) {
                 if (info.albumArt != null) {
-                    float r = 16f * density;
+                    int bSize = Math.min(info.albumArt.getWidth(), info.albumArt.getHeight());
+                    float r = bSize * (16f / 96f);
                     imgAlbumArt.setImageBitmap(getRoundedCornerBitmap(info.albumArt, r));
                     imgAlbumArt.setPadding(0, 0, 0, 0);
                 } else if (!info.packageName.isEmpty()) {
@@ -4322,7 +4383,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 if (info.packageName.contains("spotify")) {
                     badgeSource.setTextColor(Color.parseColor("#1DB954"));
                     if (headerIcon != null) headerIcon.setColorFilter(Color.parseColor("#1DB954"));
-                } else if (info.packageName.contains("youtube")) {
+                } else if (info.packageName.contains("youtube") || info.packageName.contains("cobalt")) {
                     badgeSource.setTextColor(Color.parseColor("#FF3344"));
                     if (headerIcon != null) headerIcon.setColorFilter(Color.parseColor("#FF3344"));
                 } else {

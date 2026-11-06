@@ -817,10 +817,10 @@
                 android:orientation="horizontal">
 
                 <!-- Dynamic Now Playing Pill: Apple TV Style (Single Focus Glanceable Pill) -->
-                <!-- Dynamic Now Playing Pill: Apple TV Style (Fixed Medium Width) -->
+                <!-- Dynamic Now Playing Pill: Apple TV Style (Fixed Medium Width: 184dp) -->
                 <LinearLayout
                     android:id="@+id/nowPlayingCard"
-                    android:layout_width="168dp"
+                    android:layout_width="184dp"
                     android:layout_height="42dp"
                     android:layout_marginEnd="10dp"
                     android:visibility="gone"
