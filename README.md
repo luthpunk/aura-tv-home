@@ -10,7 +10,7 @@
 [![Platform](https://img.shields.io/badge/Platform-Android%20TV%20%7C%20Google%20TV%20%7C%20STB-10B981)](#)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-[**📥 Unduh APK Terbaru (aura-tv-home.apk)**](https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk) • [**Fitur**](#-fitur-utama) • [**Tampilan Layar**](#-tampilan-layar-tema) • [**Pembaruan OTA**](#-pembaruan-otomatis-ota) • [**Kredit & Lisensi**](#-kredit--lisensi)
+[**📥 Unduh APK Terbaru (aura-tv-home.apk)**](https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk) • [**Fitur**](#-fitur-utama) • [**Tampilan Layar**](#-tampilan-layar-tema) • [**Pemasangan**](#-cara-pemasangan-di-android-tv--stb) • [**Pembaruan OTA**](#-pembaruan-otomatis-ota) • [**Kredit & Lisensi**](#-kredit--lisensi)
 
 ---
 
@@ -59,15 +59,33 @@ Tema gelap dengan aksen kontras neon cyber minimalis dan teks putih bersih yang 
 Unduh file APK rilis terbaru:  
 👉 **[Unduh aura-tv-home.apk](https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk)**
 
-### Metode 1: Lewat Aplikasi Aura TV Tools (Rekomendasi Paling Mudah)
-1. Pasang & buka aplikasi [**Aura TV Tools**](https://github.com/luthpunk/aura-tv-tools) di HP Android Anda.
-2. Sambungkan ke IP STB Anda (di port `5555`).
-3. Masuk ke tab **Aplikasi** > tekan **📂 Pilih & Install APK dari HP** dan pilih file `aura-tv-home.apk`.
-4. Tekan tombol **Home** pada remote TV, lalu pilih **Aura TV Home** dan klik **"Selalu" (Always)**.
+### Metode 1: 1-Klik Otomatis Lewat Tab Boost di Aura TV Tools (Sangat Direkomendasikan ⭐)
+Tidak perlu mengunduh file APK manual atau mengetik perintah terminal. Anda cukup menggunakan aplikasi pendamping [**Aura TV Tools**](https://github.com/luthpunk/aura-tv-tools) dari ponsel Android Anda:
+
+1. Pasang & buka aplikasi [**Aura TV Tools**](https://github.com/luthpunk/aura-tv-tools) di ponsel Android Anda.
+2. Sambungkan ke Android TV / STB Anda (pilih TV dari daftar pencarian Wi-Fi otomatis atau masukkan IP TV).
+3. Masuk ke tab **🚀 Boost TV**.
+4. Pada kartu **Aura TV Home**, tekan tombol **"Pasang Aura TV Home"**.
+5. **Selesai secara otomatis!** Aplikasi Aura TV Tools akan langsung:
+   - Mengunduh file APK versi rilis terbaru `aura-tv-home.apk` dari repositori GitHub ini.
+   - Mengirim dan memasang APK ke TV / STB melalui jalur nirkabel ADB.
+   - Menetapkan Aura TV Home sebagai launcher beranda utama default (`set-home-activity` & role Home).
+   - Memberikan izin sistem aman (`WRITE_SECURE_SETTINGS`).
+   - Membuka dan menampilkan Aura TV Home langsung di layar TV Anda.
+   *(Jika suatu saat Anda ingin kembali ke launcher bawaan pabrik TV, cukup klik tombol "Pulihkan launcher bawaan" pada menu yang sama).*
 
 ---
 
-### Metode 2: Lewat ADB (PC / Laptop / Termux / Terminal)
+### Metode 2: Pasang Manual Lewat Tab Aplikasi di Aura TV Tools
+Jika Anda telah mengunduh file APK ke ponsel dan ingin memasangnya secara manual:
+1. Buka [**Aura TV Tools**](https://github.com/luthpunk/aura-tv-tools) dan sambungkan ke TV.
+2. Masuk ke tab **Aplikasi** > klik tombol **＋ Pasang APK dari ponsel**.
+3. Pilih file `aura-tv-home.apk` yang tersimpan di memori ponsel.
+4. Tekan tombol **Home** pada remote TV, pilih **Aura TV Home**, lalu pilih **"Selalu" (Always)**.
+
+---
+
+### Metode 3: Lewat ADB (PC / Laptop / Termux / Terminal)
 
 Jika tombol Home di remote STB Anda dikunci oleh launcher bawaan pabrik (seperti launcher IndiHome, Android TV Core, atau Google TV Launcher), Anda bisa menjadikannya default permanen lewat ADB:
 
