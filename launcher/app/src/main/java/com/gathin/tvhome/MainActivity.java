@@ -3907,7 +3907,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private static final android.util.LruCache<String, Bitmap> albumArtUriCache = new android.util.LruCache<>(10);
 
-    private void loadUriBitmapAsync(Uri uri, ImageView targetView, float radiusPx, String packageName, int fallbackPadding) {
+    private void loadUriBitmapAsync(Uri uri, ImageView targetView, float radiusPx, String packageName, int fallbackPadding, String trackKey) {
         if (uri == null || targetView == null) return;
         final String uriStr = uri.toString();
         Bitmap cached = albumArtUriCache.get(uriStr);
@@ -3921,6 +3921,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             targetView.setPadding(0, 0, 0, 0);
             targetView.setBackground(null);
             targetView.setTag(R.id.imgAlbumArt, "HAS_ART");
+            targetView.setTag(R.id.cardTrackInfo, trackKey);
+            targetView.setTag(R.id.txtTrackTitle, trackKey);
+            targetView.setTag(R.id.cardAlbumArt, uriStr);
             return;
         }
 
@@ -3969,14 +3972,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         targetView.setPadding(0, 0, 0, 0);
                         targetView.setBackground(null);
                         targetView.setTag(R.id.imgAlbumArt, "HAS_ART");
+                        targetView.setTag(R.id.cardTrackInfo, trackKey);
+                        targetView.setTag(R.id.txtTrackTitle, trackKey);
                     } else if (packageName != null && !packageName.isEmpty() && targetView.getDrawable() == null) {
                         try {
                             Drawable appIcon = getPackageManager().getApplicationIcon(packageName);
                             targetView.setImageDrawable(appIcon);
                             targetView.setPadding(fallbackPadding, fallbackPadding, fallbackPadding, fallbackPadding);
+                            targetView.setTag(R.id.imgAlbumArt, "APP_ICON");
                         } catch (Exception e) {
                             targetView.setImageResource(R.drawable.ic_music);
                             targetView.setPadding(fallbackPadding + 2, fallbackPadding + 2, fallbackPadding + 2, fallbackPadding + 2);
+                            targetView.setTag(R.id.imgAlbumArt, "APP_ICON");
                         }
                     }
                 }
@@ -4037,11 +4044,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             String pillTrackKey = info.packageName + "::" + info.title + "::" + info.artist;
             String currentPillKey = (String) cardAlbumArt.getTag(R.id.cardTrackInfo);
             Object currentPillArt = cardAlbumArt.getTag(R.id.imgAlbumArt);
-            boolean isSameSong = pillTrackKey.equals(currentPillKey) && cardAlbumArt.getDrawable() != null;
+            boolean isShowingValidArtForThisSong = pillTrackKey.equals(currentPillKey)
+                    && cardAlbumArt.getDrawable() != null
+                    && "HAS_ART".equals(currentPillArt);
 
             if (info.albumArt != null) {
-                // HANYA render jika trek berbeda ATAU cover asli belum terpasang ("HAS_ART")
-                if (!isSameSong || !"HAS_ART".equals(currentPillArt)) {
+                // HANYA render jika cover asli untuk lagu ini belum terpasang
+                if (!isShowingValidArtForThisSong) {
                     int bSize = Math.min(info.albumArt.getWidth(), info.albumArt.getHeight());
                     float r = bSize / 2f;
                     cardAlbumArt.setImageBitmap(getRoundedCornerBitmap(info.albumArt, r));
@@ -4054,9 +4063,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             } else if (info.albumArtUri != null) {
                 String uriStr = info.albumArtUri.toString();
                 Object currentTag = cardAlbumArt.getTag(R.id.cardAlbumArt);
-                if (!isSameSong || !"HAS_ART".equals(currentPillArt) || !uriStr.equals(currentTag)) {
-                    loadUriBitmapAsync(info.albumArtUri, cardAlbumArt, -1f, info.packageName, 4);
-                    cardAlbumArt.setTag(R.id.cardTrackInfo, pillTrackKey);
+                if (!isShowingValidArtForThisSong || !uriStr.equals(currentTag)) {
+                    loadUriBitmapAsync(info.albumArtUri, cardAlbumArt, -1f, info.packageName, 4, pillTrackKey);
                 }
             } else if (!info.packageName.isEmpty()) {
                 // Saat belum ada cover art dari controller maupun notifikasi:
@@ -4068,15 +4076,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         cardAlbumArt.setPadding(4, 4, 4, 4);
                         cardAlbumArt.setTag(R.id.cardAlbumArt, "APP_ICON");
                         cardAlbumArt.setTag(R.id.imgAlbumArt, "APP_ICON");
-                        cardAlbumArt.setTag(R.id.cardTrackInfo, pillTrackKey);
                     } catch (Exception e) {
                         cardAlbumArt.setImageResource(R.drawable.ic_music);
                         cardAlbumArt.setPadding(6, 6, 6, 6);
                         cardAlbumArt.setTag(R.id.imgAlbumArt, "APP_ICON");
-                        cardAlbumArt.setTag(R.id.cardTrackInfo, pillTrackKey);
                     }
                 }
                 // Jika SUDAH ada cover lagu sebelumnya: PERTAHANKAN terus tanpa berkedip!
+                // Jangan pernah ubah cardTrackInfo di sini agar begitu cover lagu baru tiba, langsung terpasang!
             }
         }
 
@@ -4551,16 +4558,19 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 }
             }
 
-            // HANYA perbarui gambar banner jika LAGU BERBEDA atau jika cover asli belum terpasang!
+            // HANYA perbarui gambar banner jika cover asli untuk lagu ini belum terpasang!
             // Mencegah banner berkedip saat play/pause, volume, atau polling tick!
             String trackKey = info.packageName + "::" + info.title + "::" + info.artist;
             String currentArtKey = (imgAlbumArt != null) ? (String) imgAlbumArt.getTag(R.id.txtTrackTitle) : null;
             Object currentArtType = (imgAlbumArt != null) ? imgAlbumArt.getTag(R.id.imgAlbumArt) : null;
-            boolean isSameSong = trackKey.equals(currentArtKey) && imgAlbumArt != null && imgAlbumArt.getDrawable() != null;
+            boolean isShowingValidArtForThisSong = trackKey.equals(currentArtKey)
+                    && imgAlbumArt != null
+                    && imgAlbumArt.getDrawable() != null
+                    && "HAS_ART".equals(currentArtType);
 
             if (imgAlbumArt != null) {
                 if (info.albumArt != null) {
-                    if (!isSameSong || !"HAS_ART".equals(currentArtType)) {
+                    if (!isShowingValidArtForThisSong) {
                         int bSize = Math.min(info.albumArt.getWidth(), info.albumArt.getHeight());
                         float r = bSize * (16f / 96f);
                         imgAlbumArt.setImageBitmap(getRoundedCornerBitmap(info.albumArt, r));
@@ -4573,9 +4583,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 } else if (info.albumArtUri != null) {
                     String uriStr = info.albumArtUri.toString();
                     Object currentTag = imgAlbumArt.getTag(R.id.cardAlbumArt);
-                    if (!isSameSong || !"HAS_ART".equals(currentArtType) || !uriStr.equals(currentTag)) {
-                        loadUriBitmapAsync(info.albumArtUri, imgAlbumArt, 16f * density, info.packageName, 16);
-                        imgAlbumArt.setTag(R.id.txtTrackTitle, trackKey);
+                    if (!isShowingValidArtForThisSong || !uriStr.equals(currentTag)) {
+                        loadUriBitmapAsync(info.albumArtUri, imgAlbumArt, 16f * density, info.packageName, 16, trackKey);
                     }
                 } else if (!info.packageName.isEmpty()) {
                     // Jika belum ada gambar sama sekali di panel, pasang app icon sebagai placeholder awal
@@ -4585,12 +4594,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                             imgAlbumArt.setImageDrawable(appIcon);
                             imgAlbumArt.setPadding(16, 16, 16, 16);
                             imgAlbumArt.setTag(R.id.imgAlbumArt, "APP_ICON");
-                            imgAlbumArt.setTag(R.id.txtTrackTitle, trackKey);
                         } catch (Exception e) {
                             imgAlbumArt.setImageResource(R.drawable.ic_music);
                             imgAlbumArt.setPadding(18, 18, 18, 18);
                             imgAlbumArt.setTag(R.id.imgAlbumArt, "APP_ICON");
-                            imgAlbumArt.setTag(R.id.txtTrackTitle, trackKey);
                         }
                     }
                     // Jika SUDAH ada gambar (misal cover lagu sebelumnya), PERTAHANKAN gambar itu!
