@@ -40,6 +40,19 @@ public class MediaNotificationListener extends NotificationListenerService {
         return instance != null;
     }
 
+    public static void requestRebindIfDisconnected(Context context) {
+        if (instance == null && context != null) {
+            try {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                    NotificationListenerService.requestRebind(getComponentName(context));
+                    Log.i(TAG, "Requested rebind for MediaNotificationListener");
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to request rebind: " + e.getMessage());
+            }
+        }
+    }
+
     public static MediaNotificationListener getInstance() {
         return instance;
     }

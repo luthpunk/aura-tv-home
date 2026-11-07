@@ -1,7 +1,7 @@
 {
-  "versionCode": 44,
-  "versionName": "3.5.3-id",
+  "versionCode": 45,
+  "versionName": "3.5.4-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "fix(now-playing): use native async decoder for media Uri without external glide dependency",
+  "changelog": "fix(now-playing): pill shows clean app icon, media hub shows song album art/thumbnail with auto rebind and TRIM_FULL extraction",
   "releaseDate": "2026-11-07"
 }

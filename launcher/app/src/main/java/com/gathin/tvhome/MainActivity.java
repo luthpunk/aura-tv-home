@@ -3940,15 +3940,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             cardSubtitle.setText(info.appName.isEmpty() ? "SEDANG DIPUTAR" : info.appName.toUpperCase(Locale.ROOT));
         }
 
-        // Round the album art (circular squircle) so it blends perfectly into the rounded pill!
-        if (info.albumArt != null && cardAlbumArt != null) {
-            int bSize = Math.min(info.albumArt.getWidth(), info.albumArt.getHeight());
-            float r = bSize / 2f;
-            cardAlbumArt.setImageBitmap(getRoundedCornerBitmap(info.albumArt, r));
-            cardAlbumArt.setPadding(0, 0, 0, 0);
-        } else if (info.albumArtUri != null && cardAlbumArt != null) {
-            loadUriBitmapAsync(info.albumArtUri, cardAlbumArt, -1f, info.packageName, 4);
-        } else if (cardAlbumArt != null) {
+        // Pill: Selalu tampilkan icon aplikasi pemutar musik (Spotify, YouTube, Cobalt, dll)
+        if (cardAlbumArt != null) {
             try {
                 Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
                 cardAlbumArt.setImageDrawable(appIcon);

@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
@@ -23,6 +24,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.service.notification.NotificationListenerService;
 import android.service.notification.StatusBarNotification;
 import android.text.TextUtils;
 import android.util.Log;
@@ -278,6 +280,7 @@ public final class NowPlayingManager {
     public static void init(Context context) {
         if (context == null) return;
         appContext = context.getApplicationContext();
+        MediaNotificationListener.requestRebindIfDisconnected(appContext);
         registerActiveSessionsListener(appContext);
         updateCurrentMedia(appContext);
     }
@@ -435,10 +438,27 @@ public final class NowPlayingManager {
                 }
             }
 
-            // Fallback: check notification extras ONLY for genuine media notifications (Spotify, YouTube, etc.)
-            if (MediaNotificationListener.isConnected()) {
+            // Ekstraksi cover album / thumbnail dari notifikasi media player
+            if (MediaNotificationListener.isConnected() || isNotificationAccessGranted(context)) {
+                MediaNotificationListener.requestRebindIfDisconnected(context);
                 try {
-                    StatusBarNotification[] sbns = MediaNotificationListener.getInstance().getActiveNotifications();
+                    StatusBarNotification[] sbns = null;
+                    if (MediaNotificationListener.isConnected()) {
+                        MediaNotificationListener listener = MediaNotificationListener.getInstance();
+                        if (listener != null) {
+                            try {
+                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                                    sbns = listener.getActiveNotifications(null, NotificationListenerService.TRIM_FULL);
+                                }
+                            } catch (Throwable ignored) {}
+                            if (sbns == null || sbns.length == 0) {
+                                try {
+                                    sbns = listener.getActiveNotifications();
+                                } catch (Throwable ignored) {}
+                            }
+                        }
+                    }
+
                     if (sbns != null) {
                         for (StatusBarNotification sbn : sbns) {
                             if (sbn == null || sbn.getNotification() == null) continue;
@@ -446,28 +466,63 @@ public final class NowPlayingManager {
                             if (!isAllowedMusicApp(sbnPkg)) continue;
                             if (!isPackageInstalled(context, sbnPkg)) continue;
 
+                            // Jika media player aktif sudah terdeteksi (misal Spotify atau YouTube),
+                            // fokuskan pencarian notifikasi pada paket pemutar yang bersangkutan.
+                            if (!pkg.isEmpty() && !sbnPkg.equalsIgnoreCase(pkg)) {
+                                continue;
+                            }
+
                             Notification n = sbn.getNotification();
                             Bundle extras = n.extras;
                             if (extras == null) continue;
 
-                            // GENUINE MEDIA NOTIFICATION VALIDATION:
-                            // Must have media session token, CATEGORY_TRANSPORT, match the active controller,
-                            // belong to a known music/media app, or belong to a playback notification channel.
-                            boolean hasMediaToken = extras.get(Notification.EXTRA_MEDIA_SESSION) instanceof MediaSession.Token;
-                            boolean isTransport = Notification.CATEGORY_TRANSPORT.equals(n.category);
-                            boolean matchesActive = activeController != null && sbnPkg.equalsIgnoreCase(activeController.getPackageName());
-                            String lowerPkg = sbnPkg.toLowerCase(java.util.Locale.ROOT);
-                            boolean isKnownMedia = lowerPkg.contains("spotify") || lowerPkg.contains("youtube")
-                                    || lowerPkg.contains("music") || lowerPkg.contains("netflix")
-                                    || lowerPkg.contains("disney") || lowerPkg.contains("vidio")
-                                    || lowerPkg.contains("cobalt");
-                            String chId = n.getChannelId() != null ? n.getChannelId().toLowerCase(java.util.Locale.ROOT) : "";
-                            boolean isPlaybackChannel = chId.contains("playback") || chId.contains("media");
-
-                            if (!hasMediaToken && !isTransport && !matchesActive && !isKnownMedia && !isPlaybackChannel) {
-                                continue; // Reject Windows login / Google account security notifications!
+                            // Ambil cover album / video thumbnail dari berbagai field icon notifikasi
+                            if (albumArt == null) {
+                                Object iconObj = extras.get(Notification.EXTRA_LARGE_ICON);
+                                if (iconObj instanceof Bitmap) {
+                                    albumArt = (Bitmap) iconObj;
+                                } else if (iconObj instanceof Icon) {
+                                    try {
+                                        Drawable d = ((Icon) iconObj).loadDrawable(context);
+                                        if (d instanceof BitmapDrawable) {
+                                            albumArt = ((BitmapDrawable) d).getBitmap();
+                                        } else if (d != null && d.getIntrinsicWidth() > 0 && d.getIntrinsicHeight() > 0) {
+                                            Bitmap b = Bitmap.createBitmap(d.getIntrinsicWidth(), d.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+                                            Canvas cvs = new Canvas(b);
+                                            d.setBounds(0, 0, cvs.getWidth(), cvs.getHeight());
+                                            d.draw(cvs);
+                                            albumArt = b;
+                                        }
+                                    } catch (Exception ignored) {}
+                                }
+                            }
+                            if (albumArt == null) {
+                                Object iconBig = extras.get("android.largeIcon.big");
+                                if (iconBig instanceof Bitmap) {
+                                    albumArt = (Bitmap) iconBig;
+                                } else if (iconBig instanceof Icon) {
+                                    try {
+                                        Drawable d = ((Icon) iconBig).loadDrawable(context);
+                                        if (d instanceof BitmapDrawable) {
+                                            albumArt = ((BitmapDrawable) d).getBitmap();
+                                        } else if (d != null && d.getIntrinsicWidth() > 0 && d.getIntrinsicHeight() > 0) {
+                                            Bitmap b = Bitmap.createBitmap(d.getIntrinsicWidth(), d.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+                                            Canvas cvs = new Canvas(b);
+                                            d.setBounds(0, 0, cvs.getWidth(), cvs.getHeight());
+                                            d.draw(cvs);
+                                            albumArt = b;
+                                        }
+                                    } catch (Exception ignored) {}
+                                }
+                            }
+                            if (albumArt == null) {
+                                Object picObj = extras.get(Notification.EXTRA_PICTURE);
+                                if (picObj instanceof Bitmap) {
+                                    albumArt = (Bitmap) picObj;
+                                }
                             }
 
+                            // Ekstraksi judul & artis jika belum terisi dari MediaController
                             CharSequence nTitle = extras.getCharSequence(Notification.EXTRA_TITLE);
                             CharSequence nText = extras.getCharSequence(Notification.EXTRA_TEXT);
                             if (nTitle != null && nTitle.length() > 0) {
@@ -482,45 +537,20 @@ public final class NowPlayingManager {
                                     }
                                     if (pkg.isEmpty()) pkg = sbnPkg;
                                 }
-                                if (albumArt == null) {
-                                    Object iconObj = extras.get(Notification.EXTRA_LARGE_ICON);
-                                    if (iconObj instanceof Bitmap) {
-                                        albumArt = (Bitmap) iconObj;
-                                    } else if (iconObj instanceof Icon) {
-                                        try {
-                                            Drawable d = ((Icon) iconObj).loadDrawable(context);
-                                            if (d instanceof BitmapDrawable) {
-                                                albumArt = ((BitmapDrawable) d).getBitmap();
-                                            }
-                                        } catch (Exception ignored) {}
-                                    }
-                                }
-                                if (albumArt == null) {
-                                    Object iconBig = extras.get("android.largeIcon.big");
-                                    if (iconBig instanceof Bitmap) {
-                                        albumArt = (Bitmap) iconBig;
-                                    } else if (iconBig instanceof Icon) {
-                                        try {
-                                            Drawable d = ((Icon) iconBig).loadDrawable(context);
-                                            if (d instanceof BitmapDrawable) {
-                                                albumArt = ((BitmapDrawable) d).getBitmap();
-                                            }
-                                        } catch (Exception ignored) {}
-                                    }
-                                }
-                                if (albumArt == null) {
-                                    Object picObj = extras.get(Notification.EXTRA_PICTURE);
-                                    if (picObj instanceof Bitmap) {
-                                        albumArt = (Bitmap) picObj;
-                                    }
-                                }
-                                if (activeController == null && hasMediaToken) {
+                            }
+
+                            if (activeController == null) {
+                                Object tokenObj = extras.get(Notification.EXTRA_MEDIA_SESSION);
+                                if (tokenObj instanceof MediaSession.Token) {
                                     try {
-                                        activeController = new MediaController(context, (MediaSession.Token) extras.get(Notification.EXTRA_MEDIA_SESSION));
+                                        activeController = new MediaController(context, (MediaSession.Token) tokenObj);
                                         PlaybackState ps = activeController.getPlaybackState();
                                         isPlaying = ps != null && ps.getState() == PlaybackState.STATE_PLAYING;
                                     } catch (Exception ignored) {}
                                 }
+                            }
+
+                            if (albumArt != null) {
                                 break;
                             }
                         }
