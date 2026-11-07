@@ -1,7 +1,7 @@
 {
-  "versionCode": 48,
-  "versionName": "3.5.7-id",
+  "versionCode": 49,
+  "versionName": "3.5.8-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "fix(now-playing): eliminate popup album art flicker on track skip and remove pill border for seamless edge-to-edge app icon (v3.5.7-id)",
+  "changelog": "fix(now-playing): full circular cropped app icon without square border in pill and prevent banner re-rendering on play/pause (v3.5.8-id)",
   "releaseDate": "2026-11-07"
 }

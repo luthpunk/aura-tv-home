@@ -3853,6 +3853,47 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         tv.postDelayed(adjustSpeed, 500);
     }
 
+    private static final android.util.LruCache<String, Bitmap> appIconCache = new android.util.LruCache<>(10);
+
+    private Bitmap getCircularAppIcon(String packageName, int sizePx) {
+        if (packageName == null || packageName.isEmpty()) return null;
+        Bitmap cached = appIconCache.get(packageName);
+        if (cached != null && !cached.isRecycled()) {
+            return cached;
+        }
+        try {
+            Drawable icon = getPackageManager().getApplicationIcon(packageName);
+            if (icon == null) return null;
+
+            // Jika AdaptiveIconDrawable (misal Spotify TV), ambil foreground-nya untuk menghilangkan kotak hitam bawaan!
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && icon instanceof android.graphics.drawable.AdaptiveIconDrawable) {
+                Drawable fg = ((android.graphics.drawable.AdaptiveIconDrawable) icon).getForeground();
+                if (fg != null) {
+                    icon = fg;
+                }
+            }
+
+            int w = sizePx > 0 ? sizePx : icon.getIntrinsicWidth();
+            int h = sizePx > 0 ? sizePx : icon.getIntrinsicHeight();
+            if (w <= 0) w = 96;
+            if (h <= 0) h = 96;
+
+            Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bmp);
+            icon.setBounds(0, 0, w, h);
+            icon.draw(canvas);
+
+            int minSize = Math.min(w, h);
+            Bitmap circular = getRoundedCornerBitmap(bmp, minSize / 2f);
+            if (circular != null) {
+                appIconCache.put(packageName, circular);
+            }
+            return circular;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
     private static final android.util.LruCache<String, Bitmap> albumArtUriCache = new android.util.LruCache<>(10);
 
     private void loadUriBitmapAsync(Uri uri, ImageView targetView, float radiusPx, String packageName, int fallbackPadding) {
@@ -3973,16 +4014,25 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             cardSubtitle.setText(info.appName.isEmpty() ? "SEDANG DIPUTAR" : info.appName.toUpperCase(Locale.ROOT));
         }
 
-        // Pill: Selalu tampilkan icon aplikasi pemutar musik (Spotify, YouTube, Cobalt, dll) pas tanpa bingkai
+        // Pill: Selalu tampilkan icon aplikasi pemutar musik bulat penuh (circular crop) seperti versi lama
         if (cardAlbumArt != null) {
-            cardAlbumArt.setBackground(null);
-            try {
-                Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
-                cardAlbumArt.setImageDrawable(appIcon);
+            String currentPkg = (String) cardAlbumArt.getTag();
+            if (!info.packageName.equals(currentPkg)) {
+                cardAlbumArt.setTag(info.packageName);
+                cardAlbumArt.setBackground(null);
                 cardAlbumArt.setPadding(0, 0, 0, 0);
-            } catch (Exception e) {
-                cardAlbumArt.setImageResource(R.drawable.ic_music);
-                cardAlbumArt.setPadding(4, 4, 4, 4);
+                int sizePx = Math.round(28 * density);
+                Bitmap circularIcon = getCircularAppIcon(info.packageName, sizePx);
+                if (circularIcon != null) {
+                    cardAlbumArt.setImageBitmap(circularIcon);
+                } else {
+                    try {
+                        cardAlbumArt.setImageDrawable(getPackageManager().getApplicationIcon(info.packageName));
+                    } catch (Exception e) {
+                        cardAlbumArt.setImageResource(R.drawable.ic_music);
+                        cardAlbumArt.setPadding(4, 4, 4, 4);
+                    }
+                }
             }
         }
 
@@ -4422,7 +4472,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 txtPlaybackStatus.setTextColor(info.isPlaying ? Color.parseColor("#1DB954") : Color.parseColor("#FFC107"));
             }
 
-            if (imgAlbumArt != null) {
+            if (btnPlayPause != null) {
+                btnPlayPause.setImageResource(info.isPlaying ? R.drawable.ic_pause : R.drawable.ic_play);
+            }
+
+            // HANYA perbarui gambar banner jika LAGU BERBEDA atau jika gambar belum terpasang!
+            // Mencegah banner berkedip saat play/pause ditekan!
+            String trackKey = info.packageName + "::" + info.title + "::" + info.artist;
+            String currentArtKey = (imgAlbumArt != null) ? (String) imgAlbumArt.getTag(R.id.txtTrackTitle) : null;
+            boolean isSameSong = trackKey.equals(currentArtKey) && imgAlbumArt != null && imgAlbumArt.getDrawable() != null;
+
+            if (imgAlbumArt != null && !isSameSong) {
                 Log.i("TvHome.Main", "updatePopupMediaInfo: [" + info.title + "] hasAlbumArt=" + (info.albumArt != null) + " uri=" + info.albumArtUri);
                 if (info.albumArt != null) {
                     imgAlbumArt.removeCallbacks(null);
@@ -4432,9 +4492,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     imgAlbumArt.setPadding(0, 0, 0, 0);
                     imgAlbumArt.setBackground(null);
                     imgAlbumArt.setTag(R.id.imgAlbumArt, "HAS_ART");
+                    imgAlbumArt.setTag(R.id.txtTrackTitle, trackKey);
                 } else if (info.albumArtUri != null) {
                     imgAlbumArt.removeCallbacks(null);
                     loadUriBitmapAsync(info.albumArtUri, imgAlbumArt, 16f * density, info.packageName, 16);
+                    imgAlbumArt.setTag(R.id.txtTrackTitle, trackKey);
                 } else if (!info.packageName.isEmpty()) {
                     boolean hadArt = "HAS_ART".equals(imgAlbumArt.getTag(R.id.imgAlbumArt));
                     if (!hadArt) {
@@ -4479,10 +4541,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     badgeSource.setTextColor(Color.parseColor("#00F0FF"));
                     if (headerIcon != null) headerIcon.setColorFilter(Color.parseColor("#00F0FF"));
                 }
-            }
-
-            if (btnPlayPause != null) {
-                btnPlayPause.setImageResource(info.isPlaying ? R.drawable.ic_pause : R.drawable.ic_play);
             }
 
             if (btnOpenApp != null) {
