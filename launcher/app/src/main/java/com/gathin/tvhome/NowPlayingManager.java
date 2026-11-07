@@ -475,6 +475,28 @@ public final class NowPlayingManager {
                             Bundle extras = n.extras;
                             if (extras == null) continue;
 
+                            // Jika belum ada controller aktif, hanya terima notifikasi media player asli
+                            // (tolak background service utilitas seperti Send Files to TV, download manager, dll)
+                            if (pkg.isEmpty()) {
+                                boolean hasMediaToken = extras.get(Notification.EXTRA_MEDIA_SESSION) instanceof MediaSession.Token;
+                                boolean isTransport = Notification.CATEGORY_TRANSPORT.equals(n.category);
+                                String lowerPkg = sbnPkg.toLowerCase(java.util.Locale.ROOT);
+                                boolean isKnownMedia = lowerPkg.contains("spotify") || lowerPkg.contains("youtube")
+                                        || lowerPkg.contains("music") || lowerPkg.contains("cobalt")
+                                        || lowerPkg.contains("smarttube") || lowerPkg.contains("vlc")
+                                        || lowerPkg.contains("audio") || lowerPkg.contains("sound")
+                                        || lowerPkg.contains("radio") || lowerPkg.contains("podcast")
+                                        || lowerPkg.contains("deezer") || lowerPkg.contains("tidal")
+                                        || lowerPkg.contains("netflix") || lowerPkg.contains("disney")
+                                        || lowerPkg.contains("vidio");
+                                String chId = n.getChannelId() != null ? n.getChannelId().toLowerCase(java.util.Locale.ROOT) : "";
+                                boolean isPlaybackChannel = chId.contains("playback") || chId.contains("media");
+
+                                if (!hasMediaToken && !isTransport && !isKnownMedia && !isPlaybackChannel) {
+                                    continue;
+                                }
+                            }
+
                             // Ambil cover album / video thumbnail dari berbagai field icon notifikasi
                             if (albumArt == null) {
                                 Object iconObj = extras.get(Notification.EXTRA_LARGE_ICON);
