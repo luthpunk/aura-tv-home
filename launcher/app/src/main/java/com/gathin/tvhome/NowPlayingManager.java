@@ -447,9 +447,8 @@ public final class NowPlayingManager {
                         MediaNotificationListener listener = MediaNotificationListener.getInstance();
                         if (listener != null) {
                             try {
-                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                                    sbns = listener.getActiveNotifications(null, NotificationListenerService.TRIM_FULL);
-                                }
+                                java.lang.reflect.Method m = NotificationListenerService.class.getMethod("getActiveNotifications", String[].class, int.class);
+                                sbns = (StatusBarNotification[]) m.invoke(listener, (Object) null, 0);
                             } catch (Throwable ignored) {}
                             if (sbns == null || sbns.length == 0) {
                                 try {
