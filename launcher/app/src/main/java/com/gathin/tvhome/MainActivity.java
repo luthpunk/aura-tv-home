@@ -3867,8 +3867,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
             targetView.setImageBitmap(getRoundedCornerBitmap(cached, r));
             targetView.setPadding(0, 0, 0, 0);
+            targetView.setBackground(null);
+            targetView.setTag(R.id.imgAlbumArt, "HAS_ART");
             return;
         }
+
+        targetView.setTag(R.id.cardAlbumArt, uriStr);
 
         new Thread(() -> {
             Bitmap bmp = null;
@@ -3902,7 +3906,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
             final Bitmap finalBmp = bmp;
             runOnUiThread(() -> {
-                if (targetView != null) {
+                if (targetView != null && uriStr.equals(targetView.getTag(R.id.cardAlbumArt))) {
                     if (finalBmp != null) {
                         float r = radiusPx;
                         if (r <= 0) {
@@ -3911,7 +3915,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         }
                         targetView.setImageBitmap(getRoundedCornerBitmap(finalBmp, r));
                         targetView.setPadding(0, 0, 0, 0);
-                    } else if (packageName != null && !packageName.isEmpty()) {
+                        targetView.setBackground(null);
+                        targetView.setTag(R.id.imgAlbumArt, "HAS_ART");
+                    } else if (packageName != null && !packageName.isEmpty() && targetView.getDrawable() == null) {
                         try {
                             Drawable appIcon = getPackageManager().getApplicationIcon(packageName);
                             targetView.setImageDrawable(appIcon);
@@ -3967,15 +3973,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             cardSubtitle.setText(info.appName.isEmpty() ? "SEDANG DIPUTAR" : info.appName.toUpperCase(Locale.ROOT));
         }
 
-        // Pill: Selalu tampilkan icon aplikasi pemutar musik (Spotify, YouTube, Cobalt, dll)
+        // Pill: Selalu tampilkan icon aplikasi pemutar musik (Spotify, YouTube, Cobalt, dll) pas tanpa bingkai
         if (cardAlbumArt != null) {
+            cardAlbumArt.setBackground(null);
             try {
                 Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
                 cardAlbumArt.setImageDrawable(appIcon);
-                cardAlbumArt.setPadding(4, 4, 4, 4);
+                cardAlbumArt.setPadding(0, 0, 0, 0);
             } catch (Exception e) {
                 cardAlbumArt.setImageResource(R.drawable.ic_music);
-                cardAlbumArt.setPadding(6, 6, 6, 6);
+                cardAlbumArt.setPadding(4, 4, 4, 4);
             }
         }
 
@@ -4276,11 +4283,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             btnPopupPrev.setOnClickListener(v -> {
                 SoundEffects.playSelect();
                 NowPlayingManager.skipToPrevious();
-                updatePopupMediaInfo(panel);
-                handler.postDelayed(() -> {
-                    NowPlayingManager.updateCurrentMedia(MainActivity.this);
-                    updatePopupMediaInfo(panel);
-                }, 350);
             });
         }
 
@@ -4288,11 +4290,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             btnPlayPause.setOnClickListener(v -> {
                 SoundEffects.playSelect();
                 NowPlayingManager.togglePlayPause();
-                updatePopupMediaInfo(panel);
-                handler.postDelayed(() -> {
-                    NowPlayingManager.updateCurrentMedia(MainActivity.this);
-                    updatePopupMediaInfo(panel);
-                }, 350);
             });
         }
 
@@ -4300,11 +4297,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             btnPopupNext.setOnClickListener(v -> {
                 SoundEffects.playSelect();
                 NowPlayingManager.skipToNext();
-                updatePopupMediaInfo(panel);
-                handler.postDelayed(() -> {
-                    NowPlayingManager.updateCurrentMedia(MainActivity.this);
-                    updatePopupMediaInfo(panel);
-                }, 350);
             });
         }
 
@@ -4378,8 +4370,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
         }
 
-        updatePopupMediaInfo(panel);
-
         if (btnPlayPause != null) {
             btnPlayPause.requestFocus();
         }
@@ -4435,20 +4425,44 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (imgAlbumArt != null) {
                 Log.i("TvHome.Main", "updatePopupMediaInfo: [" + info.title + "] hasAlbumArt=" + (info.albumArt != null) + " uri=" + info.albumArtUri);
                 if (info.albumArt != null) {
+                    imgAlbumArt.removeCallbacks(null);
                     int bSize = Math.min(info.albumArt.getWidth(), info.albumArt.getHeight());
                     float r = bSize * (16f / 96f);
                     imgAlbumArt.setImageBitmap(getRoundedCornerBitmap(info.albumArt, r));
                     imgAlbumArt.setPadding(0, 0, 0, 0);
+                    imgAlbumArt.setBackground(null);
+                    imgAlbumArt.setTag(R.id.imgAlbumArt, "HAS_ART");
                 } else if (info.albumArtUri != null) {
+                    imgAlbumArt.removeCallbacks(null);
                     loadUriBitmapAsync(info.albumArtUri, imgAlbumArt, 16f * density, info.packageName, 16);
                 } else if (!info.packageName.isEmpty()) {
-                    try {
-                        Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
-                        imgAlbumArt.setImageDrawable(appIcon);
-                        imgAlbumArt.setPadding(16, 16, 16, 16);
-                    } catch (Exception e) {
-                        imgAlbumArt.setImageResource(R.drawable.ic_music);
-                        imgAlbumArt.setPadding(18, 18, 18, 18);
+                    boolean hadArt = "HAS_ART".equals(imgAlbumArt.getTag(R.id.imgAlbumArt));
+                    if (!hadArt) {
+                        try {
+                            Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
+                            imgAlbumArt.setImageDrawable(appIcon);
+                            imgAlbumArt.setPadding(16, 16, 16, 16);
+                        } catch (Exception e) {
+                            imgAlbumArt.setImageResource(R.drawable.ic_music);
+                            imgAlbumArt.setPadding(18, 18, 18, 18);
+                        }
+                    } else {
+                        // Pertahankan cover lagu sebelumnya selama transisi track baru agar tidak berkedip!
+                        final String fallbackPkg = info.packageName;
+                        imgAlbumArt.removeCallbacks(null);
+                        imgAlbumArt.postDelayed(() -> {
+                            if (activeNowPlayingPanel == panel && "HAS_ART".equals(imgAlbumArt.getTag(R.id.imgAlbumArt))) {
+                                NowPlayingManager.MediaInfo latest = NowPlayingManager.getCurrentInfo();
+                                if (latest == null || (latest.albumArt == null && latest.albumArtUri == null)) {
+                                    try {
+                                        Drawable appIcon = getPackageManager().getApplicationIcon(fallbackPkg);
+                                        imgAlbumArt.setImageDrawable(appIcon);
+                                        imgAlbumArt.setPadding(16, 16, 16, 16);
+                                        imgAlbumArt.setTag(R.id.imgAlbumArt, null);
+                                    } catch (Exception ignored) {}
+                                }
+                            }
+                        }, 1500);
                     }
                 }
             }

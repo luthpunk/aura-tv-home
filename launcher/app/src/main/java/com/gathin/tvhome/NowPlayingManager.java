@@ -776,21 +776,6 @@ public final class NowPlayingManager {
         if (currentInfo != null && currentInfo.controller != null) {
             try {
                 currentInfo.controller.getTransportControls().skipToNext();
-                currentInfo = new MediaInfo(
-                        true,
-                        currentInfo.title,
-                        currentInfo.artist,
-                        currentInfo.packageName,
-                        currentInfo.appName,
-                        currentInfo.controller,
-                        currentInfo.albumArt,
-                        currentInfo.albumArtUri
-                );
-                mainHandler.post(() -> {
-                    for (Listener l : listeners) {
-                        l.onMediaChanged(currentInfo);
-                    }
-                });
                 return;
             } catch (Exception ignored) {}
         }
@@ -809,21 +794,6 @@ public final class NowPlayingManager {
         if (currentInfo != null && currentInfo.controller != null) {
             try {
                 currentInfo.controller.getTransportControls().skipToPrevious();
-                currentInfo = new MediaInfo(
-                        true,
-                        currentInfo.title,
-                        currentInfo.artist,
-                        currentInfo.packageName,
-                        currentInfo.appName,
-                        currentInfo.controller,
-                        currentInfo.albumArt,
-                        currentInfo.albumArtUri
-                );
-                mainHandler.post(() -> {
-                    for (Listener l : listeners) {
-                        l.onMediaChanged(currentInfo);
-                    }
-                });
                 return;
             } catch (Exception ignored) {}
         }
