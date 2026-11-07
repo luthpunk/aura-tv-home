@@ -3844,7 +3844,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void setSlowMarqueeSpeed(TextView tv, float dpPerSecond) {
         if (tv == null) return;
-        Runnable adjustSpeed = () -> {
+        tv.postDelayed(() -> {
             try {
                 Field marqueeField = TextView.class.getDeclaredField("mMarquee");
                 marqueeField.setAccessible(true);
@@ -3864,10 +3864,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     }
                 }
             } catch (Throwable ignored) {}
-        };
-        tv.post(adjustSpeed);
-        tv.postDelayed(adjustSpeed, 150);
-        tv.postDelayed(adjustSpeed, 500);
+        }, 180);
     }
 
     private static final android.util.LruCache<String, Bitmap> appIconCache = new android.util.LruCache<>(10);
@@ -4022,13 +4019,20 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
 
         // Active playback from any media player
-        cardTitle.setText(info.title.isEmpty() ? "Lagu Dimainkan" : info.title);
-        cardTitle.setSelected(true);
-        setSlowMarqueeSpeed(cardTitle, 12f);
-        if (!info.artist.isEmpty()) {
-            cardSubtitle.setText(info.artist + (info.appName.isEmpty() ? "" : " • " + info.appName.toUpperCase(Locale.ROOT)));
-        } else {
-            cardSubtitle.setText(info.appName.isEmpty() ? "SEDANG DIPUTAR" : info.appName.toUpperCase(Locale.ROOT));
+        String newTitle = info.title.isEmpty() ? "Lagu Dimainkan" : info.title;
+        if (!newTitle.contentEquals(cardTitle.getText())) {
+            cardTitle.setText(newTitle);
+            cardTitle.setSelected(true);
+            setSlowMarqueeSpeed(cardTitle, 22f);
+        } else if (!cardTitle.isSelected()) {
+            cardTitle.setSelected(true);
+        }
+
+        String newSubtitle = !info.artist.isEmpty()
+                ? (info.artist + (info.appName.isEmpty() ? "" : " • " + info.appName.toUpperCase(Locale.ROOT)))
+                : (info.appName.isEmpty() ? "SEDANG DIPUTAR" : info.appName.toUpperCase(Locale.ROOT));
+        if (!newSubtitle.contentEquals(cardSubtitle.getText())) {
+            cardSubtitle.setText(newSubtitle);
         }
 
         // Pill: Banner lagu 1:1 circular crop (bulat penuh), fallback ke ikon aplikasi jika tidak ada banner
@@ -4512,12 +4516,20 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         if (hasMedia) {
             if (txtTrackTitle != null) {
-                txtTrackTitle.setText(info.title.isEmpty() ? "Lagu Diputar" : info.title);
-                txtTrackTitle.setSelected(true);
-                setSlowMarqueeSpeed(txtTrackTitle, 12f);
+                String newTrackTitle = info.title.isEmpty() ? "Lagu Diputar" : info.title;
+                if (!newTrackTitle.contentEquals(txtTrackTitle.getText())) {
+                    txtTrackTitle.setText(newTrackTitle);
+                    txtTrackTitle.setSelected(true);
+                    setSlowMarqueeSpeed(txtTrackTitle, 24f);
+                } else if (!txtTrackTitle.isSelected()) {
+                    txtTrackTitle.setSelected(true);
+                }
             }
             if (txtTrackArtist != null) {
-                txtTrackArtist.setText(info.artist.isEmpty() ? (info.appName.isEmpty() ? "Musik" : info.appName) : info.artist);
+                String newTrackArtist = info.artist.isEmpty() ? (info.appName.isEmpty() ? "Musik" : info.appName) : info.artist;
+                if (!newTrackArtist.contentEquals(txtTrackArtist.getText())) {
+                    txtTrackArtist.setText(newTrackArtist);
+                }
             }
             if (txtPlaybackStatus != null) {
                 txtPlaybackStatus.setText(info.isPlaying ? "▶ Sedang Diputar" : "⏸ Jeda");
