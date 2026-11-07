@@ -522,7 +522,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 SoundEffects.playSelect();
                 if (!NowPlayingManager.isNotificationAccessGranted(this)) {
                     NowPlayingManager.openNotificationAccessSettings(this);
-                    Toast.makeText(this, "Aktifkan 'Aura TV Media Listener' untuk menampilkan info lagu", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, "Buka Akses aplikasi khusus > Akses notifikasi > Aktifkan Aura TV Home", Toast.LENGTH_LONG).show();
                 } else {
                     showNowPlayingPopup();
                 }
@@ -2912,7 +2912,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         addInputRow(rows, close, R.drawable.ic_music, "Izin Info Musik (Now Playing)", -1, () -> {
             SoundEffects.playSelect();
             NowPlayingManager.openNotificationAccessSettings(this);
-            Toast.makeText(this, "Aktifkan 'Aura TV Media Listener' untuk menampilkan info lagu", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Buka Akses aplikasi khusus > Akses notifikasi > Aktifkan Aura TV Home", Toast.LENGTH_LONG).show();
         });
 
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
@@ -3899,6 +3899,49 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             float r = bSize / 2f;
             cardAlbumArt.setImageBitmap(getRoundedCornerBitmap(info.albumArt, r));
             cardAlbumArt.setPadding(0, 0, 0, 0);
+        } else if (info.albumArtUri != null && cardAlbumArt != null) {
+            try {
+                com.bumptech.glide.Glide.with(this)
+                        .asBitmap()
+                        .load(info.albumArtUri)
+                        .into(new com.bumptech.glide.request.target.CustomTarget<Bitmap>() {
+                            @Override
+                            public void onResourceReady(Bitmap resource, com.bumptech.glide.request.transition.Transition<? super Bitmap> transition) {
+                                if (resource != null && cardAlbumArt != null) {
+                                    int bSize = Math.min(resource.getWidth(), resource.getHeight());
+                                    float r = bSize / 2f;
+                                    cardAlbumArt.setImageBitmap(getRoundedCornerBitmap(resource, r));
+                                    cardAlbumArt.setPadding(0, 0, 0, 0);
+                                }
+                            }
+
+                            @Override
+                            public void onLoadCleared(Drawable placeholder) {}
+
+                            @Override
+                            public void onLoadFailed(Drawable errorDrawable) {
+                                if (cardAlbumArt != null) {
+                                    try {
+                                        Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
+                                        cardAlbumArt.setImageDrawable(appIcon);
+                                        cardAlbumArt.setPadding(4, 4, 4, 4);
+                                    } catch (Exception e) {
+                                        cardAlbumArt.setImageResource(R.drawable.ic_music);
+                                        cardAlbumArt.setPadding(6, 6, 6, 6);
+                                    }
+                                }
+                            }
+                        });
+            } catch (Exception e) {
+                try {
+                    Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
+                    cardAlbumArt.setImageDrawable(appIcon);
+                    cardAlbumArt.setPadding(4, 4, 4, 4);
+                } catch (Exception e2) {
+                    cardAlbumArt.setImageResource(R.drawable.ic_music);
+                    cardAlbumArt.setPadding(6, 6, 6, 6);
+                }
+            }
         } else if (cardAlbumArt != null) {
             try {
                 Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
@@ -4366,6 +4409,43 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     float r = bSize * (16f / 96f);
                     imgAlbumArt.setImageBitmap(getRoundedCornerBitmap(info.albumArt, r));
                     imgAlbumArt.setPadding(0, 0, 0, 0);
+                } else if (info.albumArtUri != null) {
+                    try {
+                        com.bumptech.glide.Glide.with(this)
+                                .asBitmap()
+                                .load(info.albumArtUri)
+                                .into(new com.bumptech.glide.request.target.CustomTarget<Bitmap>() {
+                                    @Override
+                                    public void onResourceReady(Bitmap resource, com.bumptech.glide.request.transition.Transition<? super Bitmap> transition) {
+                                        if (resource != null && imgAlbumArt != null) {
+                                            int bSize = Math.min(resource.getWidth(), resource.getHeight());
+                                            float r = bSize * (16f / 96f);
+                                            imgAlbumArt.setImageBitmap(getRoundedCornerBitmap(resource, r));
+                                            imgAlbumArt.setPadding(0, 0, 0, 0);
+                                        }
+                                    }
+
+                                    @Override
+                                    public void onLoadCleared(Drawable placeholder) {}
+
+                                    @Override
+                                    public void onLoadFailed(Drawable errorDrawable) {
+                                        if (imgAlbumArt != null && !info.packageName.isEmpty()) {
+                                            try {
+                                                Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
+                                                imgAlbumArt.setImageDrawable(appIcon);
+                                                imgAlbumArt.setPadding(16, 16, 16, 16);
+                                            } catch (Exception ignored) {}
+                                        }
+                                    }
+                                });
+                    } catch (Exception ignored) {
+                        try {
+                            Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
+                            imgAlbumArt.setImageDrawable(appIcon);
+                            imgAlbumArt.setPadding(16, 16, 16, 16);
+                        } catch (Exception ignored2) {}
+                    }
                 } else if (!info.packageName.isEmpty()) {
                     try {
                         Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);

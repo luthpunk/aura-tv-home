@@ -18,6 +18,7 @@ import android.media.session.MediaController;
 import android.media.session.MediaSession;
 import android.media.session.MediaSessionManager;
 import android.media.session.PlaybackState;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -100,17 +101,45 @@ public final class NowPlayingManager {
 
     public static void openNotificationAccessSettings(Context context) {
         if (context == null) return;
+        // Priority 1: Direct to Android TV Apps menu where "Akses aplikasi khusus" is located
+        try {
+            Intent intent = new Intent();
+            intent.setComponent(new ComponentName("com.android.tv.settings", "com.android.tv.settings.device.apps.AppsActivity"));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+            return;
+        } catch (Exception ignored) {}
+
+        // Priority 2: Standard Manage Applications Settings
+        try {
+            Intent intent = new Intent(Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+            return;
+        } catch (Exception ignored) {}
+
+        // Priority 3: Application settings intent
+        try {
+            Intent intent = new Intent("android.settings.APPLICATION_SETTINGS");
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+            return;
+        } catch (Exception ignored) {}
+
+        // Priority 4: Try standard notification listener settings
         try {
             Intent intent = new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS");
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(intent);
-        } catch (Exception e1) {
-            try {
-                Intent intent = new Intent(Settings.ACTION_SETTINGS);
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                context.startActivity(intent);
-            } catch (Exception ignored) {}
-        }
+            return;
+        } catch (Exception ignored) {}
+
+        // Priority 5: Fallback to General Settings
+        try {
+            Intent intent = new Intent(Settings.ACTION_SETTINGS);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+        } catch (Exception ignored) {}
     }
 
     public static class MediaInfo {
@@ -121,8 +150,13 @@ public final class NowPlayingManager {
         public final String appName;
         public final MediaController controller;
         public final Bitmap albumArt;
+        public final Uri albumArtUri;
 
         public MediaInfo(boolean isPlaying, String title, String artist, String packageName, String appName, MediaController controller, Bitmap albumArt) {
+            this(isPlaying, title, artist, packageName, appName, controller, albumArt, null);
+        }
+
+        public MediaInfo(boolean isPlaying, String title, String artist, String packageName, String appName, MediaController controller, Bitmap albumArt, Uri albumArtUri) {
             this.isPlaying = isPlaying;
             this.title = title != null ? title : "";
             this.artist = artist != null ? artist : "";
@@ -130,6 +164,7 @@ public final class NowPlayingManager {
             this.appName = appName != null ? appName : "";
             this.controller = controller;
             this.albumArt = albumArt;
+            this.albumArtUri = albumArtUri;
         }
 
         public boolean hasMusic() {
@@ -326,6 +361,7 @@ public final class NowPlayingManager {
             String artist = "";
             String pkg = "";
             Bitmap albumArt = null;
+            Uri albumArtUri = null;
             boolean isPlaying = false;
 
             if (activeController != null) {
@@ -348,6 +384,9 @@ public final class NowPlayingManager {
                         }
                         if (albumArt == null && desc.getIconBitmap() != null) {
                             albumArt = desc.getIconBitmap();
+                        }
+                        if (albumArtUri == null && desc.getIconUri() != null) {
+                            albumArtUri = desc.getIconUri();
                         }
                     }
 
@@ -379,6 +418,20 @@ public final class NowPlayingManager {
                             }
                         } catch (Exception ignored) {}
                     }
+                    if (albumArtUri == null) {
+                        try {
+                            String u = metadata.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI);
+                            if (u == null || u.isEmpty()) {
+                                u = metadata.getString(MediaMetadata.METADATA_KEY_ART_URI);
+                            }
+                            if (u == null || u.isEmpty()) {
+                                u = metadata.getString(MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI);
+                            }
+                            if (u != null && !u.isEmpty()) {
+                                albumArtUri = Uri.parse(u);
+                            }
+                        } catch (Exception ignored) {}
+                    }
                 }
             }
 
@@ -397,10 +450,21 @@ public final class NowPlayingManager {
                             Bundle extras = n.extras;
                             if (extras == null) continue;
 
-                            // STRICT VALIDATION: must have media session token or CATEGORY_TRANSPORT
+                            // GENUINE MEDIA NOTIFICATION VALIDATION:
+                            // Must have media session token, CATEGORY_TRANSPORT, match the active controller,
+                            // belong to a known music/media app, or belong to a playback notification channel.
                             boolean hasMediaToken = extras.get(Notification.EXTRA_MEDIA_SESSION) instanceof MediaSession.Token;
                             boolean isTransport = Notification.CATEGORY_TRANSPORT.equals(n.category);
-                            if (!hasMediaToken && !isTransport) {
+                            boolean matchesActive = activeController != null && sbnPkg.equalsIgnoreCase(activeController.getPackageName());
+                            String lowerPkg = sbnPkg.toLowerCase(java.util.Locale.ROOT);
+                            boolean isKnownMedia = lowerPkg.contains("spotify") || lowerPkg.contains("youtube")
+                                    || lowerPkg.contains("music") || lowerPkg.contains("netflix")
+                                    || lowerPkg.contains("disney") || lowerPkg.contains("vidio")
+                                    || lowerPkg.contains("cobalt");
+                            String chId = n.getChannelId() != null ? n.getChannelId().toLowerCase(java.util.Locale.ROOT) : "";
+                            boolean isPlaybackChannel = chId.contains("playback") || chId.contains("media");
+
+                            if (!hasMediaToken && !isTransport && !matchesActive && !isKnownMedia && !isPlaybackChannel) {
                                 continue; // Reject Windows login / Google account security notifications!
                             }
 
@@ -431,6 +495,25 @@ public final class NowPlayingManager {
                                         } catch (Exception ignored) {}
                                     }
                                 }
+                                if (albumArt == null) {
+                                    Object iconBig = extras.get("android.largeIcon.big");
+                                    if (iconBig instanceof Bitmap) {
+                                        albumArt = (Bitmap) iconBig;
+                                    } else if (iconBig instanceof Icon) {
+                                        try {
+                                            Drawable d = ((Icon) iconBig).loadDrawable(context);
+                                            if (d instanceof BitmapDrawable) {
+                                                albumArt = ((BitmapDrawable) d).getBitmap();
+                                            }
+                                        } catch (Exception ignored) {}
+                                    }
+                                }
+                                if (albumArt == null) {
+                                    Object picObj = extras.get(Notification.EXTRA_PICTURE);
+                                    if (picObj instanceof Bitmap) {
+                                        albumArt = (Bitmap) picObj;
+                                    }
+                                }
                                 if (activeController == null && hasMediaToken) {
                                     try {
                                         activeController = new MediaController(context, (MediaSession.Token) extras.get(Notification.EXTRA_MEDIA_SESSION));
@@ -451,7 +534,7 @@ public final class NowPlayingManager {
 
             if (!pkg.isEmpty() && !title.isEmpty() && isAllowedMusicApp(pkg) && isPackageInstalled(context, pkg)) {
                 String appName = getAppName(context, pkg);
-                currentInfo = new MediaInfo(isPlaying, title, artist, pkg, appName, activeController, albumArt);
+                currentInfo = new MediaInfo(isPlaying, title, artist, pkg, appName, activeController, albumArt, albumArtUri);
                 // Remember this valid playback session for retention when YouTube non-premium pauses upon exiting!
                 lastValidMediaInfo = currentInfo;
                 lastValidMediaTimestamp = System.currentTimeMillis();
@@ -468,7 +551,8 @@ public final class NowPlayingManager {
                         lastValidMediaInfo.packageName,
                         lastValidMediaInfo.appName,
                         lastValidMediaInfo.controller,
-                        lastValidMediaInfo.albumArt
+                        lastValidMediaInfo.albumArt,
+                        lastValidMediaInfo.albumArtUri
                 );
             } else if (activeController == null && title.isEmpty()) {
                 AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
@@ -535,7 +619,8 @@ public final class NowPlayingManager {
                         currentInfo.packageName,
                         currentInfo.appName,
                         currentInfo.controller,
-                        currentInfo.albumArt
+                        currentInfo.albumArt,
+                        currentInfo.albumArtUri
                 );
                 mainHandler.post(() -> {
                     for (Listener l : listeners) {
@@ -569,7 +654,8 @@ public final class NowPlayingManager {
                         currentInfo.packageName,
                         currentInfo.appName,
                         currentInfo.controller,
-                        currentInfo.albumArt
+                        currentInfo.albumArt,
+                        currentInfo.albumArtUri
                 );
                 mainHandler.post(() -> {
                     for (Listener l : listeners) {
@@ -603,7 +689,8 @@ public final class NowPlayingManager {
                         currentInfo.packageName,
                         currentInfo.appName,
                         currentInfo.controller,
-                        currentInfo.albumArt
+                        currentInfo.albumArt,
+                        currentInfo.albumArtUri
                 );
                 mainHandler.post(() -> {
                     for (Listener l : listeners) {
@@ -635,7 +722,8 @@ public final class NowPlayingManager {
                         currentInfo.packageName,
                         currentInfo.appName,
                         currentInfo.controller,
-                        currentInfo.albumArt
+                        currentInfo.albumArt,
+                        currentInfo.albumArtUri
                 );
                 mainHandler.post(() -> {
                     for (Listener l : listeners) {

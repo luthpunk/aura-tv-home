@@ -1,7 +1,7 @@
 {
-  "versionCode": 43,
-  "versionName": "3.5.2-id",
+  "versionCode": 44,
+  "versionName": "3.5.3-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "fix(wallpaper): restore standard complete download flow & remove 9MB anime image",
+  "changelog": "fix(now-playing): restore notification cover extraction, support media URI, and direct notification settings to Apps menu",
   "releaseDate": "2026-11-07"
 }
