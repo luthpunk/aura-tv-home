@@ -3852,6 +3852,53 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         tv.postDelayed(adjustSpeed, 500);
     }
 
+    private void loadUriBitmapAsync(Uri uri, ImageView targetView, float radiusPx, String packageName, int fallbackPadding) {
+        if (uri == null || targetView == null) return;
+        new Thread(() -> {
+            Bitmap bmp = null;
+            try {
+                String scheme = uri.getScheme();
+                if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
+                    java.net.HttpURLConnection conn = (java.net.HttpURLConnection) new java.net.URL(uri.toString()).openConnection();
+                    conn.setConnectTimeout(4000);
+                    conn.setReadTimeout(4000);
+                    conn.connect();
+                    try (java.io.InputStream is = conn.getInputStream()) {
+                        bmp = android.graphics.BitmapFactory.decodeStream(is);
+                    }
+                } else {
+                    try (java.io.InputStream is = getContentResolver().openInputStream(uri)) {
+                        bmp = android.graphics.BitmapFactory.decodeStream(is);
+                    }
+                }
+            } catch (Exception ignored) {}
+
+            final Bitmap finalBmp = bmp;
+            runOnUiThread(() -> {
+                if (targetView != null) {
+                    if (finalBmp != null) {
+                        float r = radiusPx;
+                        if (r <= 0) {
+                            int bSize = Math.min(finalBmp.getWidth(), finalBmp.getHeight());
+                            r = bSize / 2f;
+                        }
+                        targetView.setImageBitmap(getRoundedCornerBitmap(finalBmp, r));
+                        targetView.setPadding(0, 0, 0, 0);
+                    } else if (packageName != null && !packageName.isEmpty()) {
+                        try {
+                            Drawable appIcon = getPackageManager().getApplicationIcon(packageName);
+                            targetView.setImageDrawable(appIcon);
+                            targetView.setPadding(fallbackPadding, fallbackPadding, fallbackPadding, fallbackPadding);
+                        } catch (Exception e) {
+                            targetView.setImageResource(R.drawable.ic_music);
+                            targetView.setPadding(fallbackPadding + 2, fallbackPadding + 2, fallbackPadding + 2, fallbackPadding + 2);
+                        }
+                    }
+                }
+            });
+        }).start();
+    }
+
     private void updateNowPlayingUi(NowPlayingManager.MediaInfo info) {
         if (nowPlayingCard == null || cardTitle == null || cardSubtitle == null) return;
 
@@ -3900,48 +3947,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             cardAlbumArt.setImageBitmap(getRoundedCornerBitmap(info.albumArt, r));
             cardAlbumArt.setPadding(0, 0, 0, 0);
         } else if (info.albumArtUri != null && cardAlbumArt != null) {
-            try {
-                com.bumptech.glide.Glide.with(this)
-                        .asBitmap()
-                        .load(info.albumArtUri)
-                        .into(new com.bumptech.glide.request.target.CustomTarget<Bitmap>() {
-                            @Override
-                            public void onResourceReady(Bitmap resource, com.bumptech.glide.request.transition.Transition<? super Bitmap> transition) {
-                                if (resource != null && cardAlbumArt != null) {
-                                    int bSize = Math.min(resource.getWidth(), resource.getHeight());
-                                    float r = bSize / 2f;
-                                    cardAlbumArt.setImageBitmap(getRoundedCornerBitmap(resource, r));
-                                    cardAlbumArt.setPadding(0, 0, 0, 0);
-                                }
-                            }
-
-                            @Override
-                            public void onLoadCleared(Drawable placeholder) {}
-
-                            @Override
-                            public void onLoadFailed(Drawable errorDrawable) {
-                                if (cardAlbumArt != null) {
-                                    try {
-                                        Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
-                                        cardAlbumArt.setImageDrawable(appIcon);
-                                        cardAlbumArt.setPadding(4, 4, 4, 4);
-                                    } catch (Exception e) {
-                                        cardAlbumArt.setImageResource(R.drawable.ic_music);
-                                        cardAlbumArt.setPadding(6, 6, 6, 6);
-                                    }
-                                }
-                            }
-                        });
-            } catch (Exception e) {
-                try {
-                    Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
-                    cardAlbumArt.setImageDrawable(appIcon);
-                    cardAlbumArt.setPadding(4, 4, 4, 4);
-                } catch (Exception e2) {
-                    cardAlbumArt.setImageResource(R.drawable.ic_music);
-                    cardAlbumArt.setPadding(6, 6, 6, 6);
-                }
-            }
+            loadUriBitmapAsync(info.albumArtUri, cardAlbumArt, -1f, info.packageName, 4);
         } else if (cardAlbumArt != null) {
             try {
                 Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
@@ -4410,42 +4416,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     imgAlbumArt.setImageBitmap(getRoundedCornerBitmap(info.albumArt, r));
                     imgAlbumArt.setPadding(0, 0, 0, 0);
                 } else if (info.albumArtUri != null) {
-                    try {
-                        com.bumptech.glide.Glide.with(this)
-                                .asBitmap()
-                                .load(info.albumArtUri)
-                                .into(new com.bumptech.glide.request.target.CustomTarget<Bitmap>() {
-                                    @Override
-                                    public void onResourceReady(Bitmap resource, com.bumptech.glide.request.transition.Transition<? super Bitmap> transition) {
-                                        if (resource != null && imgAlbumArt != null) {
-                                            int bSize = Math.min(resource.getWidth(), resource.getHeight());
-                                            float r = bSize * (16f / 96f);
-                                            imgAlbumArt.setImageBitmap(getRoundedCornerBitmap(resource, r));
-                                            imgAlbumArt.setPadding(0, 0, 0, 0);
-                                        }
-                                    }
-
-                                    @Override
-                                    public void onLoadCleared(Drawable placeholder) {}
-
-                                    @Override
-                                    public void onLoadFailed(Drawable errorDrawable) {
-                                        if (imgAlbumArt != null && !info.packageName.isEmpty()) {
-                                            try {
-                                                Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
-                                                imgAlbumArt.setImageDrawable(appIcon);
-                                                imgAlbumArt.setPadding(16, 16, 16, 16);
-                                            } catch (Exception ignored) {}
-                                        }
-                                    }
-                                });
-                    } catch (Exception ignored) {
-                        try {
-                            Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
-                            imgAlbumArt.setImageDrawable(appIcon);
-                            imgAlbumArt.setPadding(16, 16, 16, 16);
-                        } catch (Exception ignored2) {}
-                    }
+                    loadUriBitmapAsync(info.albumArtUri, imgAlbumArt, 16f * density, info.packageName, 16);
                 } else if (!info.packageName.isEmpty()) {
                     try {
                         Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
