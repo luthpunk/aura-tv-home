@@ -2,6 +2,6 @@
   "versionCode": 46,
   "versionName": "3.5.5-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "fix(now-playing): direct Icon mObj1 bitmap extraction, cache live onNotificationPosted extras, and enhanced User-Agent for Spotify CDN web URIs",
+  "changelog": "fix(build): import android.util.Log in MainActivity",
   "releaseDate": "2026-11-07"
 }
