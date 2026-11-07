@@ -565,18 +565,29 @@ public final class NowPlayingManager {
                             }
                         }
 
-                        // Ambil cover album / video thumbnail dari berbagai field icon notifikasi
-                        if (albumArt == null) {
-                            albumArt = extractBitmapFromNotificationObject(extras.get(Notification.EXTRA_LARGE_ICON), context);
-                        }
-                        if (albumArt == null) {
-                            albumArt = extractBitmapFromNotificationObject(extras.get("android.largeIcon.big"), context);
-                        }
-                        if (albumArt == null) {
-                            albumArt = extractBitmapFromNotificationObject(extras.get(Notification.EXTRA_PICTURE), context);
-                        }
-                        if (albumArt == null && n.getLargeIcon() != null) {
-                            albumArt = extractBitmapFromNotificationObject(n.getLargeIcon(), context);
+                        // Ambil cover album / video thumbnail dari berbagai field icon notifikasi.
+                        // Hanya sebagai cadangan terakhir: jika MediaSession sudah memberi URI cover,
+                        // JANGAN pakai bitmap notifikasi (di Spotify TV isinya logo 456x256, bukan cover).
+                        if (albumArt == null && albumArtUri == null) {
+                            Bitmap nBmp = extractBitmapFromNotificationObject(extras.get(Notification.EXTRA_LARGE_ICON), context);
+                            if (nBmp == null) {
+                                nBmp = extractBitmapFromNotificationObject(extras.get("android.largeIcon.big"), context);
+                            }
+                            if (nBmp == null) {
+                                nBmp = extractBitmapFromNotificationObject(extras.get(Notification.EXTRA_PICTURE), context);
+                            }
+                            if (nBmp == null && n.getLargeIcon() != null) {
+                                nBmp = extractBitmapFromNotificationObject(n.getLargeIcon(), context);
+                            }
+                            // Cover album/thumbnail wajar: hampir kotak (1:1) atau 16:9 video.
+                            // Spotify TV memakai 456x256 (logo) -> ditolak untuk paket spotify.
+                            if (nBmp != null && sbnPkg.toLowerCase(java.util.Locale.ROOT).contains("spotify")) {
+                                float ratio = nBmp.getWidth() / (float) Math.max(1, nBmp.getHeight());
+                                if (ratio > 1.2f || ratio < 0.83f) {
+                                    nBmp = null;
+                                }
+                            }
+                            albumArt = nBmp;
                         }
 
                         // Ekstraksi judul & artis jika belum terisi dari MediaController
@@ -632,7 +643,7 @@ public final class NowPlayingManager {
             if (!pkg.isEmpty() && !title.isEmpty() && isAllowedMusicApp(pkg) && isPackageInstalled(context, pkg)) {
                 String appName = getAppName(context, pkg);
                 currentInfo = new MediaInfo(isPlaying, title, artist, pkg, appName, activeController, albumArt, albumArtUri);
-                Log.i(TAG, "Active playback detected: [" + title + " • " + artist + "] pkg=" + pkg + " hasAlbumArt=" + (albumArt != null) + " uri=" + albumArtUri);
+                Log.i(TAG, "Active playback detected: [" + title + " • " + artist + "] pkg=" + pkg + " hasAlbumArt=" + (albumArt != null) + (albumArt != null ? " art=" + albumArt.getWidth() + "x" + albumArt.getHeight() : "") + " uri=" + albumArtUri);
                 // Remember this valid playback session for retention when YouTube non-premium pauses upon exiting!
                 lastValidMediaInfo = currentInfo;
                 lastValidMediaTimestamp = System.currentTimeMillis();

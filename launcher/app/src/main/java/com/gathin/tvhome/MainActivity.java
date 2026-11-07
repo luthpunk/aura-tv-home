@@ -3907,6 +3907,40 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     private static final android.util.LruCache<String, Bitmap> albumArtUriCache = new android.util.LruCache<>(10);
+    private final java.util.Set<String> uriLoadsInFlight = new java.util.HashSet<>();
+
+    /**
+     * Identitas gambar banner = identitas lagu + identitas GAMBARNYA (bukan pointer Bitmap).
+     * - Volume ditekan / polling: isi sama -> key sama -> tidak render ulang (zero flicker).
+     * - Cover asli datang belakangan untuk lagu yang sama -> key berubah -> ganti sekali.
+     * - Lagu/app berganti -> key berubah -> ganti sekali.
+     */
+    private static String buildArtKey(NowPlayingManager.MediaInfo info) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(info.packageName).append("::").append(info.title).append("::").append(info.artist);
+        Bitmap b = info.albumArt;
+        if (b != null && !b.isRecycled()) {
+            int w = b.getWidth();
+            int h = b.getHeight();
+            sb.append("|B").append(w).append('x').append(h);
+            try {
+                long hash = 17;
+                for (int i = 1; i <= 4; i++) {
+                    for (int j = 1; j <= 4; j++) {
+                        hash = hash * 31 + b.getPixel(Math.min(w - 1, w * i / 5), Math.min(h - 1, h * j / 5));
+                    }
+                }
+                sb.append(':').append(Long.toHexString(hash));
+            } catch (Throwable ignored) {
+                // HARDWARE bitmap tidak bisa getPixel: cukup ukuran saja
+            }
+        } else if (info.albumArtUri != null) {
+            sb.append("|U").append(info.albumArtUri);
+        } else {
+            sb.append("|ICON");
+        }
+        return sb.toString();
+    }
 
     private void loadUriBitmapAsync(Uri uri, ImageView targetView, float radiusPx, String packageName, int fallbackPadding, String trackKey) {
         if (uri == null || targetView == null) return;
@@ -3929,6 +3963,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
 
         targetView.setTag(R.id.cardAlbumArt, uriStr);
+
+        // Cegah thread download ganda untuk URI + view yang sama saat polling berjalan
+        final String flightKey = uriStr + "@" + System.identityHashCode(targetView);
+        if (!uriLoadsInFlight.add(flightKey)) return;
 
         new Thread(() -> {
             Bitmap bmp = null;
@@ -3962,6 +4000,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
             final Bitmap finalBmp = bmp;
             runOnUiThread(() -> {
+                uriLoadsInFlight.remove(flightKey);
                 if (targetView != null && uriStr.equals(targetView.getTag(R.id.cardAlbumArt))) {
                     if (finalBmp != null) {
                         float r = radiusPx;
@@ -3975,7 +4014,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         targetView.setTag(R.id.imgAlbumArt, "HAS_ART");
                         targetView.setTag(R.id.cardTrackInfo, trackKey);
                         targetView.setTag(R.id.txtTrackTitle, trackKey);
-                    } else if (packageName != null && !packageName.isEmpty() && targetView.getDrawable() == null) {
+                    } else if (packageName != null && !packageName.isEmpty()
+                            && (targetView.getDrawable() == null || !trackKey.equals(targetView.getTag(R.id.cardTrackInfo)))) {
+                        // Download gagal: jangan biarkan cover lagu/app lama tertinggal, pasang ikon app
                         try {
                             Drawable appIcon = getPackageManager().getApplicationIcon(packageName);
                             targetView.setImageDrawable(appIcon);
@@ -3986,6 +4027,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                             targetView.setPadding(fallbackPadding + 2, fallbackPadding + 2, fallbackPadding + 2, fallbackPadding + 2);
                             targetView.setTag(R.id.imgAlbumArt, "APP_ICON");
                         }
+                        targetView.setTag(R.id.cardTrackInfo, trackKey);
                     }
                 }
             });
@@ -4042,7 +4084,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         // Pill: Banner lagu 1:1 circular crop (bulat penuh), fallback ke ikon aplikasi jika tidak ada banner
         if (cardAlbumArt != null) {
-            String pillTrackKey = info.packageName + "::" + info.title + "::" + info.artist;
+            String pillTrackKey = buildArtKey(info);
             boolean isSameSong = pillTrackKey.equals(cardAlbumArt.getTag(R.id.cardTrackInfo)) && cardAlbumArt.getDrawable() != null;
 
             if (info.albumArt != null) {
@@ -4053,13 +4095,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     cardAlbumArt.setPadding(0, 0, 0, 0);
                     cardAlbumArt.setBackground(null);
                     cardAlbumArt.setTag(R.id.cardTrackInfo, pillTrackKey);
+                    cardAlbumArt.setTag(R.id.cardAlbumArt, null); // batalkan hasil download URI lama
                 }
             } else if (info.albumArtUri != null) {
                 if (!isSameSong) {
                     loadUriBitmapAsync(info.albumArtUri, cardAlbumArt, -1f, info.packageName, 4, pillTrackKey);
                 }
             } else if (!info.packageName.isEmpty()) {
-                if (cardAlbumArt.getDrawable() == null) {
+                // Tidak ada cover (misal YouTube Cobalt): pasang ikon app SEKALI saat lagu/app berganti,
+                // agar cover app sebelumnya (Spotify) tidak tertinggal.
+                if (!isSameSong) {
                     try {
                         Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
                         cardAlbumArt.setImageDrawable(appIcon);
@@ -4068,6 +4113,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         cardAlbumArt.setImageResource(R.drawable.ic_music);
                         cardAlbumArt.setPadding(6, 6, 6, 6);
                     }
+                    cardAlbumArt.setTag(R.id.cardTrackInfo, pillTrackKey);
+                    cardAlbumArt.setTag(R.id.cardAlbumArt, null);
                 }
             }
         }
@@ -4543,8 +4590,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 }
             }
 
-            // HANYA perbarui gambar banner jika cover lagu berbeda
-            String trackKey = info.packageName + "::" + info.title + "::" + info.artist;
+            // HANYA perbarui gambar banner jika identitas lagu ATAU gambarnya berbeda
+            String trackKey = buildArtKey(info);
             boolean isSameSong = trackKey.equals(imgAlbumArt != null ? imgAlbumArt.getTag(R.id.cardTrackInfo) : null) && imgAlbumArt != null && imgAlbumArt.getDrawable() != null;
 
             if (imgAlbumArt != null) {
@@ -4556,13 +4603,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         imgAlbumArt.setPadding(0, 0, 0, 0);
                         imgAlbumArt.setBackground(null);
                         imgAlbumArt.setTag(R.id.cardTrackInfo, trackKey);
+                        imgAlbumArt.setTag(R.id.cardAlbumArt, null); // batalkan hasil download URI lama
                     }
                 } else if (info.albumArtUri != null) {
                     if (!isSameSong) {
                         loadUriBitmapAsync(info.albumArtUri, imgAlbumArt, 16f * density, info.packageName, 16, trackKey);
                     }
                 } else if (!info.packageName.isEmpty()) {
-                    if (imgAlbumArt.getDrawable() == null) {
+                    if (!isSameSong) {
                         try {
                             Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
                             imgAlbumArt.setImageDrawable(appIcon);
@@ -4571,6 +4619,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                             imgAlbumArt.setImageResource(R.drawable.ic_music);
                             imgAlbumArt.setPadding(18, 18, 18, 18);
                         }
+                        imgAlbumArt.setTag(R.id.cardTrackInfo, trackKey);
+                        imgAlbumArt.setTag(R.id.cardAlbumArt, null);
                     }
                 }
             }
