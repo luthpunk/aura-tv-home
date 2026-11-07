@@ -207,9 +207,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         public void run() {
             if (activeNowPlayingPanel == null) return;
             NowPlayingManager.updateCurrentMedia(MainActivity.this);
-            if (activeNowPlayingPanel != null) {
-                updatePopupMediaInfo(activeNowPlayingPanel);
-            }
             if (popupPollCount < 15) {
                 popupPollCount++;
                 handler.postDelayed(this, 350);
@@ -4520,7 +4517,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 if (!newTrackTitle.contentEquals(txtTrackTitle.getText())) {
                     txtTrackTitle.setText(newTrackTitle);
                     txtTrackTitle.setSelected(true);
-                    setSlowMarqueeSpeed(txtTrackTitle, 24f);
+                    setSlowMarqueeSpeed(txtTrackTitle, 22f);
                 } else if (!txtTrackTitle.isSelected()) {
                     txtTrackTitle.setSelected(true);
                 }
@@ -4532,12 +4529,20 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 }
             }
             if (txtPlaybackStatus != null) {
-                txtPlaybackStatus.setText(info.isPlaying ? "▶ Sedang Diputar" : "⏸ Jeda");
-                txtPlaybackStatus.setTextColor(info.isPlaying ? Color.parseColor("#1DB954") : Color.parseColor("#FFC107"));
+                String newStatus = info.isPlaying ? "▶ Sedang Diputar" : "⏸ Jeda";
+                if (!newStatus.contentEquals(txtPlaybackStatus.getText())) {
+                    txtPlaybackStatus.setText(newStatus);
+                    txtPlaybackStatus.setTextColor(info.isPlaying ? Color.parseColor("#1DB954") : Color.parseColor("#FFC107"));
+                }
             }
 
             if (btnPlayPause != null) {
-                btnPlayPause.setImageResource(info.isPlaying ? R.drawable.ic_pause : R.drawable.ic_play);
+                int targetRes = info.isPlaying ? R.drawable.ic_pause : R.drawable.ic_play;
+                Object curRes = btnPlayPause.getTag(R.id.btnPlayPause);
+                if (curRes == null || (int) curRes != targetRes) {
+                    btnPlayPause.setImageResource(targetRes);
+                    btnPlayPause.setTag(R.id.btnPlayPause, targetRes);
+                }
             }
 
             // HANYA perbarui gambar banner jika LAGU BERBEDA atau jika gambar belum terpasang!
@@ -4585,22 +4590,30 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
 
             if (badgeSource != null) {
-                badgeSource.setText(info.appName.isEmpty() ? "NOW PLAYING" : info.appName.toUpperCase(Locale.ROOT));
-                if (info.packageName.contains("spotify")) {
-                    badgeSource.setTextColor(Color.parseColor("#1DB954"));
-                    if (headerIcon != null) headerIcon.setColorFilter(Color.parseColor("#1DB954"));
-                } else if (info.packageName.contains("youtube") || info.packageName.contains("cobalt")) {
-                    badgeSource.setTextColor(Color.parseColor("#FF3344"));
-                    if (headerIcon != null) headerIcon.setColorFilter(Color.parseColor("#FF3344"));
-                } else {
-                    badgeSource.setTextColor(Color.parseColor("#00F0FF"));
-                    if (headerIcon != null) headerIcon.setColorFilter(Color.parseColor("#00F0FF"));
+                String newSource = info.appName.isEmpty() ? "NOW PLAYING" : info.appName.toUpperCase(Locale.ROOT);
+                if (!newSource.contentEquals(badgeSource.getText())) {
+                    badgeSource.setText(newSource);
+                    if (info.packageName.contains("spotify")) {
+                        badgeSource.setTextColor(Color.parseColor("#1DB954"));
+                        if (headerIcon != null) headerIcon.setColorFilter(Color.parseColor("#1DB954"));
+                    } else if (info.packageName.contains("youtube") || info.packageName.contains("cobalt")) {
+                        badgeSource.setTextColor(Color.parseColor("#FF3344"));
+                        if (headerIcon != null) headerIcon.setColorFilter(Color.parseColor("#FF3344"));
+                    } else {
+                        badgeSource.setTextColor(Color.parseColor("#00F0FF"));
+                        if (headerIcon != null) headerIcon.setColorFilter(Color.parseColor("#00F0FF"));
+                    }
                 }
             }
 
             if (btnOpenApp != null) {
-                btnOpenApp.setVisibility(View.VISIBLE);
-                btnOpenApp.setText("Buka " + (info.appName.isEmpty() ? "Aplikasi" : info.appName));
+                if (btnOpenApp.getVisibility() != View.VISIBLE) {
+                    btnOpenApp.setVisibility(View.VISIBLE);
+                }
+                String newOpen = "Buka " + (info.appName.isEmpty() ? "Aplikasi" : info.appName);
+                if (!newOpen.contentEquals(btnOpenApp.getText())) {
+                    btnOpenApp.setText(newOpen);
+                }
             }
         } else {
             if (txtTrackTitle != null) txtTrackTitle.setText("Tidak Ada Lagu Diputar");

@@ -1,7 +1,7 @@
 {
-  "versionCode": 54,
-  "versionName": "3.6.3-id",
+  "versionCode": 55,
+  "versionName": "3.6.4-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "fix(now-playing): prevent marquee resetting jitter by checking text equality before setText (v3.6.3-id)",
+  "changelog": "fix(now-playing): eliminate marquee jitter in popup dialog by preventing redundant view layout updates (v3.6.4-id)",
   "releaseDate": "2026-11-07"
 }
