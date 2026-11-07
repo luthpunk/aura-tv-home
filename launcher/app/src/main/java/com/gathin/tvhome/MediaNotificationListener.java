@@ -17,7 +17,7 @@ public class MediaNotificationListener extends NotificationListenerService {
         instance = this;
         Log.i(TAG, "MediaNotificationListener connected");
         try {
-            StatusBarNotification[] sbns = getActiveNotifications();
+            StatusBarNotification[] sbns = getActiveFullNotifications();
             if (sbns != null) {
                 for (StatusBarNotification sbn : sbns) {
                     if (sbn != null && sbn.getPackageName() != null) {
@@ -52,6 +52,25 @@ public class MediaNotificationListener extends NotificationListenerService {
             postedNotifications.remove(sbn.getPackageName());
         }
         NowPlayingManager.notifySessionsChanged(this);
+    }
+
+    public static StatusBarNotification[] getActiveFullNotifications() {
+        if (instance == null) return null;
+        try {
+            java.lang.reflect.Method m = NotificationListenerService.class.getMethod("getActiveNotifications", int.class);
+            return (StatusBarNotification[]) m.invoke(instance, 0); // 0 = TRIM_FULL
+        } catch (Throwable t1) {
+            try {
+                java.lang.reflect.Method m = NotificationListenerService.class.getMethod("getActiveNotifications", String[].class, int.class);
+                return (StatusBarNotification[]) m.invoke(instance, (Object) null, 0); // 0 = TRIM_FULL
+            } catch (Throwable t2) {
+                try {
+                    return instance.getActiveNotifications();
+                } catch (Throwable t3) {
+                    return null;
+                }
+            }
+        }
     }
 
     public static StatusBarNotification getPostedNotification(String pkg) {

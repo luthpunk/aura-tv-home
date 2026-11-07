@@ -1,7 +1,7 @@
 {
-  "versionCode": 46,
-  "versionName": "3.5.5-id",
+  "versionCode": 47,
+  "versionName": "3.5.6-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "fix(build): import android.util.Log in MainActivity",
+  "changelog": "fix(now-playing): full TRIM_FULL active notification retrieval, prioritize high-res album art bitmap, Icon getBitmap extraction, and in-memory URI bitmap cache",
   "releaseDate": "2026-11-07"
 }

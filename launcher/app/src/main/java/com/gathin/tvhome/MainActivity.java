@@ -3853,14 +3853,29 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         tv.postDelayed(adjustSpeed, 500);
     }
 
+    private static final android.util.LruCache<String, Bitmap> albumArtUriCache = new android.util.LruCache<>(10);
+
     private void loadUriBitmapAsync(Uri uri, ImageView targetView, float radiusPx, String packageName, int fallbackPadding) {
         if (uri == null || targetView == null) return;
+        final String uriStr = uri.toString();
+        Bitmap cached = albumArtUriCache.get(uriStr);
+        if (cached != null && !cached.isRecycled()) {
+            float r = radiusPx;
+            if (r <= 0) {
+                int bSize = Math.min(cached.getWidth(), cached.getHeight());
+                r = bSize / 2f;
+            }
+            targetView.setImageBitmap(getRoundedCornerBitmap(cached, r));
+            targetView.setPadding(0, 0, 0, 0);
+            return;
+        }
+
         new Thread(() -> {
             Bitmap bmp = null;
             try {
                 String scheme = uri.getScheme();
                 if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
-                    java.net.HttpURLConnection conn = (java.net.HttpURLConnection) new java.net.URL(uri.toString()).openConnection();
+                    java.net.HttpURLConnection conn = (java.net.HttpURLConnection) new java.net.URL(uriStr).openConnection();
                     conn.setConnectTimeout(6000);
                     conn.setReadTimeout(6000);
                     conn.setInstanceFollowRedirects(true);
@@ -3879,6 +3894,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 }
             } catch (Throwable t) {
                 Log.w("TvHome.Main", "Error loading URI bitmap: " + t.getMessage());
+            }
+
+            if (bmp != null) {
+                albumArtUriCache.put(uriStr, bmp);
             }
 
             final Bitmap finalBmp = bmp;
@@ -4046,6 +4065,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         View anchor = nowPlayingCard;
         if (anchor == null) return;
+
+        // Ensure latest unstripped album art & metadata are refreshed before opening popup
+        NowPlayingManager.updateCurrentMedia(this);
 
         final View panel = getLayoutInflater().inflate(R.layout.dialog_media_hub, root, false);
         if (panel instanceof ViewGroup) {
@@ -4411,6 +4433,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
 
             if (imgAlbumArt != null) {
+                Log.i("TvHome.Main", "updatePopupMediaInfo: [" + info.title + "] hasAlbumArt=" + (info.albumArt != null) + " uri=" + info.albumArtUri);
                 if (info.albumArt != null) {
                     int bSize = Math.min(info.albumArt.getWidth(), info.albumArt.getHeight());
                     float r = bSize * (16f / 96f);

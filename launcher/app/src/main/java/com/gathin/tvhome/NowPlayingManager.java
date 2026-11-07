@@ -310,23 +310,51 @@ public final class NowPlayingManager {
     private static Bitmap extractBitmapFromNotificationObject(Object obj, Context context) {
         if (obj == null) return null;
         if (obj instanceof Bitmap) {
-            return (Bitmap) obj;
+            Bitmap bmp = (Bitmap) obj;
+            if (!bmp.isRecycled() && bmp.getWidth() > 0 && bmp.getHeight() > 0) {
+                return bmp;
+            }
+            return null;
+        }
+        if (obj instanceof BitmapDrawable) {
+            Bitmap bmp = ((BitmapDrawable) obj).getBitmap();
+            if (bmp != null && !bmp.isRecycled()) return bmp;
         }
         if (obj instanceof Icon) {
             Icon icon = (Icon) obj;
+            // 1. Try hidden method getBitmap() on Icon
+            try {
+                java.lang.reflect.Method m = Icon.class.getDeclaredMethod("getBitmap");
+                m.setAccessible(true);
+                Object val = m.invoke(icon);
+                if (val instanceof Bitmap) {
+                    Bitmap bmp = (Bitmap) val;
+                    if (!bmp.isRecycled() && bmp.getWidth() > 0 && bmp.getHeight() > 0) {
+                        return bmp;
+                    }
+                }
+            } catch (Throwable ignored) {}
+
+            // 2. Try direct field mObj1
             try {
                 java.lang.reflect.Field f = Icon.class.getDeclaredField("mObj1");
                 f.setAccessible(true);
                 Object val = f.get(icon);
                 if (val instanceof Bitmap) {
-                    return (Bitmap) val;
+                    Bitmap bmp = (Bitmap) val;
+                    if (!bmp.isRecycled() && bmp.getWidth() > 0 && bmp.getHeight() > 0) {
+                        return bmp;
+                    }
                 }
             } catch (Throwable ignored) {}
+
+            // 3. Try loadDrawable with context
             try {
                 if (context != null) {
                     Drawable d = icon.loadDrawable(context);
                     if (d instanceof BitmapDrawable) {
-                        return ((BitmapDrawable) d).getBitmap();
+                        Bitmap bmp = ((BitmapDrawable) d).getBitmap();
+                        if (bmp != null && !bmp.isRecycled()) return bmp;
                     } else if (d != null && d.getIntrinsicWidth() > 0 && d.getIntrinsicHeight() > 0) {
                         Bitmap b = Bitmap.createBitmap(d.getIntrinsicWidth(), d.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
                         Canvas cvs = new Canvas(b);
@@ -407,6 +435,14 @@ public final class NowPlayingManager {
 
                 MediaMetadata metadata = activeController.getMetadata();
                 if (metadata != null) {
+                    // Priority 1: High-resolution bitmap from METADATA_KEY_ALBUM_ART or ART
+                    try {
+                        albumArt = metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART);
+                        if (albumArt == null) {
+                            albumArt = metadata.getBitmap(MediaMetadata.METADATA_KEY_ART);
+                        }
+                    } catch (Exception ignored) {}
+
                     MediaDescription desc = metadata.getDescription();
                     if (desc != null) {
                         if (desc.getTitle() != null && desc.getTitle().length() > 0) {
@@ -446,14 +482,6 @@ public final class NowPlayingManager {
                         }
                     }
 
-                    if (albumArt == null) {
-                        try {
-                            albumArt = metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART);
-                            if (albumArt == null) {
-                                albumArt = metadata.getBitmap(MediaMetadata.METADATA_KEY_ART);
-                            }
-                        } catch (Exception ignored) {}
-                    }
                     if (albumArtUri == null) {
                         try {
                             String u = metadata.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI);
@@ -477,7 +505,7 @@ public final class NowPlayingManager {
                 try {
                     java.util.List<StatusBarNotification> candidateNotifications = new java.util.ArrayList<>();
 
-                    // 1. Prioritas Utama: Notifikasi langsung yang ditangkap saat onNotificationPosted (unstripped!)
+                    // 1. Live unstripped notifications from onNotificationPosted
                     if (!pkg.isEmpty()) {
                         StatusBarNotification posted = MediaNotificationListener.getPostedNotification(pkg);
                         if (posted != null) {
@@ -486,24 +514,12 @@ public final class NowPlayingManager {
                     }
                     candidateNotifications.addAll(MediaNotificationListener.getAllPostedNotifications());
 
-                    // 2. Fallback: getActiveNotifications() jika belum ada di cache onNotificationPosted
-                    if (candidateNotifications.isEmpty() && MediaNotificationListener.isConnected()) {
-                        MediaNotificationListener listener = MediaNotificationListener.getInstance();
-                        if (listener != null) {
-                            StatusBarNotification[] sbns = null;
-                            try {
-                                java.lang.reflect.Method m = NotificationListenerService.class.getMethod("getActiveNotifications", String[].class, int.class);
-                                sbns = (StatusBarNotification[]) m.invoke(listener, (Object) null, 0);
-                            } catch (Throwable ignored) {}
-                            if (sbns == null || sbns.length == 0) {
-                                try {
-                                    sbns = listener.getActiveNotifications();
-                                } catch (Throwable ignored) {}
-                            }
-                            if (sbns != null) {
-                                for (StatusBarNotification s : sbns) {
-                                    if (s != null) candidateNotifications.add(s);
-                                }
+                    // 2. Fetch full active notifications via TRIM_FULL reflection
+                    StatusBarNotification[] fullSbns = MediaNotificationListener.getActiveFullNotifications();
+                    if (fullSbns != null) {
+                        for (StatusBarNotification s : fullSbns) {
+                            if (s != null && !candidateNotifications.contains(s)) {
+                                candidateNotifications.add(s);
                             }
                         }
                     }
@@ -555,6 +571,9 @@ public final class NowPlayingManager {
                         if (albumArt == null) {
                             albumArt = extractBitmapFromNotificationObject(extras.get(Notification.EXTRA_PICTURE), context);
                         }
+                        if (albumArt == null && n.getLargeIcon() != null) {
+                            albumArt = extractBitmapFromNotificationObject(n.getLargeIcon(), context);
+                        }
 
                         // Ekstraksi judul & artis jika belum terisi dari MediaController
                         CharSequence nTitle = extras.getCharSequence(Notification.EXTRA_TITLE);
@@ -580,6 +599,17 @@ public final class NowPlayingManager {
                                     activeController = new MediaController(context, (MediaSession.Token) tokenObj);
                                     PlaybackState ps = activeController.getPlaybackState();
                                     isPlaying = ps != null && ps.getState() == PlaybackState.STATE_PLAYING;
+                                    MediaMetadata m = activeController.getMetadata();
+                                    if (m != null) {
+                                        if (albumArt == null) {
+                                            albumArt = m.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART);
+                                            if (albumArt == null) albumArt = m.getBitmap(MediaMetadata.METADATA_KEY_ART);
+                                        }
+                                        if (albumArtUri == null) {
+                                            String u = m.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI);
+                                            if (u != null && !u.isEmpty()) albumArtUri = Uri.parse(u);
+                                        }
+                                    }
                                 } catch (Exception ignored) {}
                             }
                         }
@@ -598,6 +628,7 @@ public final class NowPlayingManager {
             if (!pkg.isEmpty() && !title.isEmpty() && isAllowedMusicApp(pkg) && isPackageInstalled(context, pkg)) {
                 String appName = getAppName(context, pkg);
                 currentInfo = new MediaInfo(isPlaying, title, artist, pkg, appName, activeController, albumArt, albumArtUri);
+                Log.i(TAG, "Active playback detected: [" + title + " • " + artist + "] pkg=" + pkg + " hasAlbumArt=" + (albumArt != null) + " uri=" + albumArtUri);
                 // Remember this valid playback session for retention when YouTube non-premium pauses upon exiting!
                 lastValidMediaInfo = currentInfo;
                 lastValidMediaTimestamp = System.currentTimeMillis();
