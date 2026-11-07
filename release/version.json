@@ -2,6 +2,6 @@
   "versionCode": 44,
   "versionName": "3.5.3-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "fix(now-playing): restore notification cover extraction, support media URI, and direct notification settings to Apps menu",
+  "changelog": "fix(now-playing): use native async decoder for media Uri without external glide dependency",
   "releaseDate": "2026-11-07"
 }
