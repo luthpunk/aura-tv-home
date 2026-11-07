@@ -4035,42 +4035,48 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Pill: Banner lagu 1:1 circular crop (bulat penuh), fallback ke ikon aplikasi jika tidak ada banner
         if (cardAlbumArt != null) {
             String pillTrackKey = info.packageName + "::" + info.title + "::" + info.artist;
+            String currentPillKey = (String) cardAlbumArt.getTag(R.id.cardTrackInfo);
+            Object currentPillArt = cardAlbumArt.getTag(R.id.imgAlbumArt);
+            boolean isSameSong = pillTrackKey.equals(currentPillKey) && cardAlbumArt.getDrawable() != null;
 
             if (info.albumArt != null) {
-                // Cegah kedip di TV: hanya render dan set bitmap baru jika bitmap belum terpasang
-                Object currentBmp = cardAlbumArt.getTag(R.id.cardAlbumArt);
-                if (currentBmp != info.albumArt) {
+                // HANYA render jika trek berbeda ATAU cover asli belum terpasang ("HAS_ART")
+                if (!isSameSong || !"HAS_ART".equals(currentPillArt)) {
                     int bSize = Math.min(info.albumArt.getWidth(), info.albumArt.getHeight());
                     float r = bSize / 2f;
                     cardAlbumArt.setImageBitmap(getRoundedCornerBitmap(info.albumArt, r));
                     cardAlbumArt.setPadding(0, 0, 0, 0);
+                    cardAlbumArt.setBackground(null);
                     cardAlbumArt.setTag(R.id.cardAlbumArt, info.albumArt);
+                    cardAlbumArt.setTag(R.id.imgAlbumArt, "HAS_ART");
                     cardAlbumArt.setTag(R.id.cardTrackInfo, pillTrackKey);
                 }
             } else if (info.albumArtUri != null) {
                 String uriStr = info.albumArtUri.toString();
                 Object currentTag = cardAlbumArt.getTag(R.id.cardAlbumArt);
-                if (!uriStr.equals(currentTag)) {
+                if (!isSameSong || !"HAS_ART".equals(currentPillArt) || !uriStr.equals(currentTag)) {
                     loadUriBitmapAsync(info.albumArtUri, cardAlbumArt, -1f, info.packageName, 4);
                     cardAlbumArt.setTag(R.id.cardTrackInfo, pillTrackKey);
                 }
             } else if (!info.packageName.isEmpty()) {
-                // Saat info.albumArt == null (misal baru transisi trek)
-                // Jika BELUM ada gambar sama sekali (misal TV baru nyala), pasang app icon
+                // Saat belum ada cover art dari controller maupun notifikasi:
+                // Jika BELUM ada gambar sama sekali di view, pasang app icon sebagai placeholder awal
                 if (cardAlbumArt.getDrawable() == null) {
                     try {
                         Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
                         cardAlbumArt.setImageDrawable(appIcon);
                         cardAlbumArt.setPadding(4, 4, 4, 4);
                         cardAlbumArt.setTag(R.id.cardAlbumArt, "APP_ICON");
+                        cardAlbumArt.setTag(R.id.imgAlbumArt, "APP_ICON");
                         cardAlbumArt.setTag(R.id.cardTrackInfo, pillTrackKey);
                     } catch (Exception e) {
                         cardAlbumArt.setImageResource(R.drawable.ic_music);
                         cardAlbumArt.setPadding(6, 6, 6, 6);
+                        cardAlbumArt.setTag(R.id.imgAlbumArt, "APP_ICON");
+                        cardAlbumArt.setTag(R.id.cardTrackInfo, pillTrackKey);
                     }
                 }
-                // Jika SUDAH ada cover lagu sebelumnya: PERTAHANKAN terus!
-                // Jangan pernah berkedip ke ikon Spotify selama transisi trek!
+                // Jika SUDAH ada cover lagu sebelumnya: PERTAHANKAN terus tanpa berkedip!
             }
         }
 
@@ -4545,16 +4551,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 }
             }
 
-            // HANYA perbarui gambar banner jika LAGU BERBEDA atau jika gambar belum terpasang!
-            // Mencegah banner berkedip saat play/pause ditekan!
+            // HANYA perbarui gambar banner jika LAGU BERBEDA atau jika cover asli belum terpasang!
+            // Mencegah banner berkedip saat play/pause, volume, atau polling tick!
             String trackKey = info.packageName + "::" + info.title + "::" + info.artist;
             String currentArtKey = (imgAlbumArt != null) ? (String) imgAlbumArt.getTag(R.id.txtTrackTitle) : null;
+            Object currentArtType = (imgAlbumArt != null) ? imgAlbumArt.getTag(R.id.imgAlbumArt) : null;
             boolean isSameSong = trackKey.equals(currentArtKey) && imgAlbumArt != null && imgAlbumArt.getDrawable() != null;
 
             if (imgAlbumArt != null) {
                 if (info.albumArt != null) {
-                    Object currentBmp = imgAlbumArt.getTag(R.id.cardAlbumArt);
-                    if (currentBmp != info.albumArt || !isSameSong) {
+                    if (!isSameSong || !"HAS_ART".equals(currentArtType)) {
                         int bSize = Math.min(info.albumArt.getWidth(), info.albumArt.getHeight());
                         float r = bSize * (16f / 96f);
                         imgAlbumArt.setImageBitmap(getRoundedCornerBitmap(info.albumArt, r));
@@ -4567,7 +4573,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 } else if (info.albumArtUri != null) {
                     String uriStr = info.albumArtUri.toString();
                     Object currentTag = imgAlbumArt.getTag(R.id.cardAlbumArt);
-                    if (!uriStr.equals(currentTag) || !isSameSong) {
+                    if (!isSameSong || !"HAS_ART".equals(currentArtType) || !uriStr.equals(currentTag)) {
                         loadUriBitmapAsync(info.albumArtUri, imgAlbumArt, 16f * density, info.packageName, 16);
                         imgAlbumArt.setTag(R.id.txtTrackTitle, trackKey);
                     }
@@ -4578,14 +4584,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                             Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
                             imgAlbumArt.setImageDrawable(appIcon);
                             imgAlbumArt.setPadding(16, 16, 16, 16);
+                            imgAlbumArt.setTag(R.id.imgAlbumArt, "APP_ICON");
                             imgAlbumArt.setTag(R.id.txtTrackTitle, trackKey);
                         } catch (Exception e) {
                             imgAlbumArt.setImageResource(R.drawable.ic_music);
                             imgAlbumArt.setPadding(18, 18, 18, 18);
+                            imgAlbumArt.setTag(R.id.imgAlbumArt, "APP_ICON");
+                            imgAlbumArt.setTag(R.id.txtTrackTitle, trackKey);
                         }
                     }
                     // Jika SUDAH ada gambar (misal cover lagu sebelumnya), PERTAHANKAN gambar itu!
-                    // Jangan ditimpa oleh ikon Spotify! Fast-polling akan segera menggantinya dengan cover lagu baru.
                 }
             }
 
