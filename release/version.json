@@ -2,6 +2,6 @@
   "versionCode": 45,
   "versionName": "3.5.4-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "fix(build): use reflection for hidden getActiveNotifications TRIM_FULL API",
+  "changelog": "fix(now-playing): filter out utility service notifications when idle",
   "releaseDate": "2026-11-07"
 }
