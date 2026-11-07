@@ -4039,7 +4039,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 // Cegah kedip di TV: hanya render dan set bitmap baru jika bitmap belum terpasang
                 Object currentBmp = cardAlbumArt.getTag(R.id.cardAlbumArt);
                 if (currentBmp != info.albumArt) {
-                    cardAlbumArt.removeCallbacks(null);
                     int bSize = Math.min(info.albumArt.getWidth(), info.albumArt.getHeight());
                     float r = bSize / 2f;
                     cardAlbumArt.setImageBitmap(getRoundedCornerBitmap(info.albumArt, r));
@@ -4051,14 +4050,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 String uriStr = info.albumArtUri.toString();
                 Object currentTag = cardAlbumArt.getTag(R.id.cardAlbumArt);
                 if (!uriStr.equals(currentTag)) {
-                    cardAlbumArt.removeCallbacks(null);
                     loadUriBitmapAsync(info.albumArtUri, cardAlbumArt, -1f, info.packageName, 4);
                     cardAlbumArt.setTag(R.id.cardTrackInfo, pillTrackKey);
                 }
-            } else {
-                // Info lagu tidak punya album art saat ini (misal sedang loading / transisi)
-                boolean hasExistingDrawable = cardAlbumArt.getDrawable() != null;
-                if (!hasExistingDrawable) {
+            } else if (!info.packageName.isEmpty()) {
+                // Saat info.albumArt == null (misal baru transisi trek)
+                // Jika BELUM ada gambar sama sekali (misal TV baru nyala), pasang app icon
+                if (cardAlbumArt.getDrawable() == null) {
                     try {
                         Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
                         cardAlbumArt.setImageDrawable(appIcon);
@@ -4069,23 +4067,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         cardAlbumArt.setImageResource(R.drawable.ic_music);
                         cardAlbumArt.setPadding(6, 6, 6, 6);
                     }
-                } else {
-                    // PERTAHANKAN banner lagu lama selama transisi trek baru!
-                    // Jangan pernah berkedip ke ikon Spotify kecuali setelah 2500ms memang tidak ada banner lagu baru.
-                    final String fallbackPkg = info.packageName;
-                    cardAlbumArt.removeCallbacks(null);
-                    cardAlbumArt.postDelayed(() -> {
-                        NowPlayingManager.MediaInfo latest = NowPlayingManager.getCurrentInfo();
-                        if (latest == null || (latest.albumArt == null && latest.albumArtUri == null)) {
-                            try {
-                                Drawable appIcon = getPackageManager().getApplicationIcon(fallbackPkg);
-                                cardAlbumArt.setImageDrawable(appIcon);
-                                cardAlbumArt.setPadding(4, 4, 4, 4);
-                                cardAlbumArt.setTag(R.id.cardAlbumArt, "APP_ICON");
-                            } catch (Exception ignored) {}
-                        }
-                    }, 2500);
                 }
+                // Jika SUDAH ada cover lagu sebelumnya: PERTAHANKAN terus!
+                // Jangan pernah berkedip ke ikon Spotify selama transisi trek!
             }
         }
 
@@ -4550,50 +4534,41 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             String currentArtKey = (imgAlbumArt != null) ? (String) imgAlbumArt.getTag(R.id.txtTrackTitle) : null;
             boolean isSameSong = trackKey.equals(currentArtKey) && imgAlbumArt != null && imgAlbumArt.getDrawable() != null;
 
-            if (imgAlbumArt != null && !isSameSong) {
-                Log.i("TvHome.Main", "updatePopupMediaInfo: [" + info.title + "] hasAlbumArt=" + (info.albumArt != null) + " uri=" + info.albumArtUri);
+            if (imgAlbumArt != null) {
                 if (info.albumArt != null) {
-                    imgAlbumArt.removeCallbacks(null);
-                    int bSize = Math.min(info.albumArt.getWidth(), info.albumArt.getHeight());
-                    float r = bSize * (16f / 96f);
-                    imgAlbumArt.setImageBitmap(getRoundedCornerBitmap(info.albumArt, r));
-                    imgAlbumArt.setPadding(0, 0, 0, 0);
-                    imgAlbumArt.setBackground(null);
-                    imgAlbumArt.setTag(R.id.imgAlbumArt, "HAS_ART");
-                    imgAlbumArt.setTag(R.id.txtTrackTitle, trackKey);
+                    Object currentBmp = imgAlbumArt.getTag(R.id.cardAlbumArt);
+                    if (currentBmp != info.albumArt || !isSameSong) {
+                        int bSize = Math.min(info.albumArt.getWidth(), info.albumArt.getHeight());
+                        float r = bSize * (16f / 96f);
+                        imgAlbumArt.setImageBitmap(getRoundedCornerBitmap(info.albumArt, r));
+                        imgAlbumArt.setPadding(0, 0, 0, 0);
+                        imgAlbumArt.setBackground(null);
+                        imgAlbumArt.setTag(R.id.cardAlbumArt, info.albumArt);
+                        imgAlbumArt.setTag(R.id.imgAlbumArt, "HAS_ART");
+                        imgAlbumArt.setTag(R.id.txtTrackTitle, trackKey);
+                    }
                 } else if (info.albumArtUri != null) {
-                    imgAlbumArt.removeCallbacks(null);
-                    loadUriBitmapAsync(info.albumArtUri, imgAlbumArt, 16f * density, info.packageName, 16);
-                    imgAlbumArt.setTag(R.id.txtTrackTitle, trackKey);
+                    String uriStr = info.albumArtUri.toString();
+                    Object currentTag = imgAlbumArt.getTag(R.id.cardAlbumArt);
+                    if (!uriStr.equals(currentTag) || !isSameSong) {
+                        loadUriBitmapAsync(info.albumArtUri, imgAlbumArt, 16f * density, info.packageName, 16);
+                        imgAlbumArt.setTag(R.id.txtTrackTitle, trackKey);
+                    }
                 } else if (!info.packageName.isEmpty()) {
-                    boolean hadArt = "HAS_ART".equals(imgAlbumArt.getTag(R.id.imgAlbumArt));
-                    if (!hadArt) {
+                    // Jika belum ada gambar sama sekali di panel, pasang app icon sebagai placeholder awal
+                    if (imgAlbumArt.getDrawable() == null) {
                         try {
                             Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
                             imgAlbumArt.setImageDrawable(appIcon);
                             imgAlbumArt.setPadding(16, 16, 16, 16);
+                            imgAlbumArt.setTag(R.id.txtTrackTitle, trackKey);
                         } catch (Exception e) {
                             imgAlbumArt.setImageResource(R.drawable.ic_music);
                             imgAlbumArt.setPadding(18, 18, 18, 18);
                         }
-                    } else {
-                        // Pertahankan cover lagu sebelumnya selama transisi track baru agar tidak berkedip!
-                        final String fallbackPkg = info.packageName;
-                        imgAlbumArt.removeCallbacks(null);
-                        imgAlbumArt.postDelayed(() -> {
-                            if (activeNowPlayingPanel == panel && "HAS_ART".equals(imgAlbumArt.getTag(R.id.imgAlbumArt))) {
-                                NowPlayingManager.MediaInfo latest = NowPlayingManager.getCurrentInfo();
-                                if (latest == null || (latest.albumArt == null && latest.albumArtUri == null)) {
-                                    try {
-                                        Drawable appIcon = getPackageManager().getApplicationIcon(fallbackPkg);
-                                        imgAlbumArt.setImageDrawable(appIcon);
-                                        imgAlbumArt.setPadding(16, 16, 16, 16);
-                                        imgAlbumArt.setTag(R.id.imgAlbumArt, null);
-                                    } catch (Exception ignored) {}
-                                }
-                            }
-                        }, 1500);
                     }
+                    // Jika SUDAH ada gambar (misal cover lagu sebelumnya), PERTAHANKAN gambar itu!
+                    // Jangan ditimpa oleh ikon Spotify! Fast-polling akan segera menggantinya dengan cover lagu baru.
                 }
             }
 
