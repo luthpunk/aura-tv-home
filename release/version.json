@@ -1,7 +1,7 @@
 {
-  "versionCode": 60,
-  "versionName": "3.6.9-id",
+  "versionCode": 61,
+  "versionName": "3.7.0-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "fix(now-playing): art-identity key, prefer metadata cover URI over notification logo, app-icon fallback on app switch (v3.6.9-id)",
+  "changelog": "fix(now-playing): URI-first cover identity (Spotify alternates 640/160 bitmaps), no flicker, instant next, app-icon on app switch (v3.7.0-id)",
   "releaseDate": "2026-11-08"
 }
