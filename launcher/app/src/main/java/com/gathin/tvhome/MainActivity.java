@@ -207,6 +207,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         public void run() {
             if (activeNowPlayingPanel == null) return;
             NowPlayingManager.updateCurrentMedia(MainActivity.this);
+            updatePopupMediaInfo(activeNowPlayingPanel);
             if (popupPollCount < 15) {
                 popupPollCount++;
                 handler.postDelayed(this, 350);
@@ -4045,18 +4046,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             boolean isSameSong = pillTrackKey.equals(cardAlbumArt.getTag(R.id.cardTrackInfo)) && cardAlbumArt.getDrawable() != null;
 
             if (info.albumArt != null) {
-                if (!isSameSong || !"HAS_ART".equals(cardAlbumArt.getTag(R.id.imgAlbumArt))) {
+                if (!isSameSong) {
                     int bSize = Math.min(info.albumArt.getWidth(), info.albumArt.getHeight());
                     float r = bSize / 2f;
                     cardAlbumArt.setImageBitmap(getRoundedCornerBitmap(info.albumArt, r));
                     cardAlbumArt.setPadding(0, 0, 0, 0);
                     cardAlbumArt.setBackground(null);
-                    cardAlbumArt.setTag(R.id.imgAlbumArt, "HAS_ART");
                     cardAlbumArt.setTag(R.id.cardTrackInfo, pillTrackKey);
                 }
             } else if (info.albumArtUri != null) {
-                String uriStr = info.albumArtUri.toString();
-                if (!isSameSong || !"HAS_ART".equals(cardAlbumArt.getTag(R.id.imgAlbumArt)) || !uriStr.equals(cardAlbumArt.getTag(R.id.cardAlbumArt))) {
+                if (!isSameSong) {
                     loadUriBitmapAsync(info.albumArtUri, cardAlbumArt, -1f, info.packageName, 4, pillTrackKey);
                 }
             } else if (!info.packageName.isEmpty()) {
@@ -4065,11 +4064,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
                         cardAlbumArt.setImageDrawable(appIcon);
                         cardAlbumArt.setPadding(4, 4, 4, 4);
-                        cardAlbumArt.setTag(R.id.imgAlbumArt, "APP_ICON");
                     } catch (Exception e) {
                         cardAlbumArt.setImageResource(R.drawable.ic_music);
                         cardAlbumArt.setPadding(6, 6, 6, 6);
-                        cardAlbumArt.setTag(R.id.imgAlbumArt, "APP_ICON");
                     }
                 }
             }
@@ -4546,24 +4543,22 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 }
             }
 
-            // HANYA perbarui gambar banner jika cover lagu berbeda atau cover asli belum terpasang
+            // HANYA perbarui gambar banner jika cover lagu berbeda
             String trackKey = info.packageName + "::" + info.title + "::" + info.artist;
-            boolean isSameSong = trackKey.equals(imgAlbumArt != null ? imgAlbumArt.getTag(R.id.txtTrackTitle) : null) && imgAlbumArt != null && imgAlbumArt.getDrawable() != null;
+            boolean isSameSong = trackKey.equals(imgAlbumArt != null ? imgAlbumArt.getTag(R.id.cardTrackInfo) : null) && imgAlbumArt != null && imgAlbumArt.getDrawable() != null;
 
             if (imgAlbumArt != null) {
                 if (info.albumArt != null) {
-                    if (!isSameSong || !"HAS_ART".equals(imgAlbumArt.getTag(R.id.imgAlbumArt))) {
+                    if (!isSameSong) {
                         int bSize = Math.min(info.albumArt.getWidth(), info.albumArt.getHeight());
                         float r = bSize * (16f / 96f);
                         imgAlbumArt.setImageBitmap(getRoundedCornerBitmap(info.albumArt, r));
                         imgAlbumArt.setPadding(0, 0, 0, 0);
                         imgAlbumArt.setBackground(null);
-                        imgAlbumArt.setTag(R.id.imgAlbumArt, "HAS_ART");
-                        imgAlbumArt.setTag(R.id.txtTrackTitle, trackKey);
+                        imgAlbumArt.setTag(R.id.cardTrackInfo, trackKey);
                     }
                 } else if (info.albumArtUri != null) {
-                    String uriStr = info.albumArtUri.toString();
-                    if (!isSameSong || !"HAS_ART".equals(imgAlbumArt.getTag(R.id.imgAlbumArt)) || !uriStr.equals(imgAlbumArt.getTag(R.id.cardAlbumArt))) {
+                    if (!isSameSong) {
                         loadUriBitmapAsync(info.albumArtUri, imgAlbumArt, 16f * density, info.packageName, 16, trackKey);
                     }
                 } else if (!info.packageName.isEmpty()) {
@@ -4572,11 +4567,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                             Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
                             imgAlbumArt.setImageDrawable(appIcon);
                             imgAlbumArt.setPadding(16, 16, 16, 16);
-                            imgAlbumArt.setTag(R.id.imgAlbumArt, "APP_ICON");
                         } catch (Exception e) {
                             imgAlbumArt.setImageResource(R.drawable.ic_music);
                             imgAlbumArt.setPadding(18, 18, 18, 18);
-                            imgAlbumArt.setTag(R.id.imgAlbumArt, "APP_ICON");
                         }
                     }
                 }

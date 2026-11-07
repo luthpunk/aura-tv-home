@@ -1,7 +1,7 @@
 {
-  "versionCode": 58,
-  "versionName": "3.6.7-id",
+  "versionCode": 59,
+  "versionName": "3.6.8-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "fix(now-playing): deduplicate media broadcasts and add notification title-matching (v3.6.7-id)",
+  "changelog": "fix(now-playing): clean song-key banner transition and realtime popup sync (v3.6.8-id)",
   "releaseDate": "2026-11-07"
 }
