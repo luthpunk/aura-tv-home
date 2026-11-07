@@ -152,13 +152,12 @@ final class OnlineWallpapers {
             new WallpaperItem("https://w.wallhaven.cc/full/og/wallhaven-ogw3jp.jpg", "Anime 1", "", "Anime"),
             new WallpaperItem("https://w.wallhaven.cc/full/l8/wallhaven-l87332.png", "Anime 2", "", "Anime"),
             new WallpaperItem("https://w.wallhaven.cc/full/jx/wallhaven-jxg29p.png", "Anime 3", "", "Anime"),
-            new WallpaperItem("https://w.wallhaven.cc/full/l8/wallhaven-l85wyp.jpg", "Anime 4", "", "Anime"),
-            new WallpaperItem("https://w.wallhaven.cc/full/l8/wallhaven-l89vq2.png", "Anime 5", "", "Anime"),
-            new WallpaperItem("https://w.wallhaven.cc/full/og/wallhaven-ogxyp7.png", "Anime 6", "", "Anime"),
-            new WallpaperItem("https://w.wallhaven.cc/full/xe/wallhaven-xe127v.png", "Anime 7", "", "Anime"),
-            new WallpaperItem("https://w.wallhaven.cc/full/po/wallhaven-po3o93.jpg", "Anime 8", "", "Anime"),
-            new WallpaperItem("https://w.wallhaven.cc/full/x6/wallhaven-x6xqj3.png", "Anime 9", "", "Anime"),
-            new WallpaperItem("https://w.wallhaven.cc/full/we/wallhaven-we9pgq.png", "Anime 10", "", "Anime")
+            new WallpaperItem("https://w.wallhaven.cc/full/l8/wallhaven-l89vq2.png", "Anime 4", "", "Anime"),
+            new WallpaperItem("https://w.wallhaven.cc/full/og/wallhaven-ogxyp7.png", "Anime 5", "", "Anime"),
+            new WallpaperItem("https://w.wallhaven.cc/full/xe/wallhaven-xe127v.png", "Anime 6", "", "Anime"),
+            new WallpaperItem("https://w.wallhaven.cc/full/po/wallhaven-po3o93.jpg", "Anime 7", "", "Anime"),
+            new WallpaperItem("https://w.wallhaven.cc/full/x6/wallhaven-x6xqj3.png", "Anime 8", "", "Anime"),
+            new WallpaperItem("https://w.wallhaven.cc/full/we/wallhaven-we9pgq.png", "Anime 9", "", "Anime")
     };
 
     private OnlineWallpapers() {
@@ -272,10 +271,6 @@ final class OnlineWallpapers {
     }
 
     static boolean syncCategory(Context ctx, String category) {
-        return syncCategory(ctx, category, null);
-    }
-
-    static boolean syncCategory(Context ctx, String category, Runnable onFirstDownloaded) {
         File d = dir(ctx);
         if (d == null) return false;
         if (!d.exists() && !d.mkdirs()) return false;
@@ -332,11 +327,6 @@ final class OnlineWallpapers {
                         anyDownloaded = true;
                         count++;
                         Log.i(TAG, "Saved category wallpaper [" + category + "]: " + itemTitle);
-                        if (onFirstDownloaded != null) {
-                            try {
-                                onFirstDownloaded.run();
-                            } catch (Exception ignored) {}
-                        }
                     }
                 }
             } catch (Exception e) {
