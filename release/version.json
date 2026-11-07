@@ -2,6 +2,6 @@
   "versionCode": 42,
   "versionName": "3.5.1-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "fix: instant wallpaper switch on first download and robust metadata validation",
+  "changelog": "fix(wallpaper): instant switch on first downloaded image and robust metadata validation",
   "releaseDate": "2026-11-07"
 }
