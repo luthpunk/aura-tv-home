@@ -201,6 +201,23 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private TextView cardTitle;
     private EqualizerWaveView cardEqualizerView;
     private View activeNowPlayingPanel;
+    private int popupPollCount = 0;
+    private final Runnable popupPollRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (activeNowPlayingPanel == null) return;
+            NowPlayingManager.updateCurrentMedia(MainActivity.this);
+            if (activeNowPlayingPanel != null) {
+                updatePopupMediaInfo(activeNowPlayingPanel);
+            }
+            if (popupPollCount < 15) {
+                popupPollCount++;
+                handler.postDelayed(this, 350);
+            } else {
+                handler.postDelayed(this, 1500);
+            }
+        }
+    };
     private boolean nowPlayingDisabledByUser = false;
     private String lastPlayedTrackKey = "";
     private NowPlayingManager.Listener nowPlayingListener;
@@ -4014,22 +4031,61 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             cardSubtitle.setText(info.appName.isEmpty() ? "SEDANG DIPUTAR" : info.appName.toUpperCase(Locale.ROOT));
         }
 
-        // Round the album art (circular squircle) so it blends perfectly into the rounded pill!
-        if (info.albumArt != null && cardAlbumArt != null) {
-            int bSize = Math.min(info.albumArt.getWidth(), info.albumArt.getHeight());
-            float r = bSize / 2f;
-            cardAlbumArt.setImageBitmap(getRoundedCornerBitmap(info.albumArt, r));
-            cardAlbumArt.setPadding(0, 0, 0, 0);
-        } else if (info.albumArtUri != null && cardAlbumArt != null) {
-            loadUriBitmapAsync(info.albumArtUri, cardAlbumArt, -1f, info.packageName, 4);
-        } else if (cardAlbumArt != null) {
-            try {
-                Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
-                cardAlbumArt.setImageDrawable(appIcon);
-                cardAlbumArt.setPadding(4, 4, 4, 4);
-            } catch (Exception e) {
-                cardAlbumArt.setImageResource(R.drawable.ic_music);
-                cardAlbumArt.setPadding(6, 6, 6, 6);
+        // Pill: Banner lagu 1:1 circular crop (bulat penuh), fallback ke ikon aplikasi jika tidak ada banner
+        if (cardAlbumArt != null) {
+            String pillTrackKey = info.packageName + "::" + info.title + "::" + info.artist;
+
+            if (info.albumArt != null) {
+                // Cegah kedip di TV: hanya render dan set bitmap baru jika bitmap belum terpasang
+                Object currentBmp = cardAlbumArt.getTag(R.id.cardAlbumArt);
+                if (currentBmp != info.albumArt) {
+                    cardAlbumArt.removeCallbacks(null);
+                    int bSize = Math.min(info.albumArt.getWidth(), info.albumArt.getHeight());
+                    float r = bSize / 2f;
+                    cardAlbumArt.setImageBitmap(getRoundedCornerBitmap(info.albumArt, r));
+                    cardAlbumArt.setPadding(0, 0, 0, 0);
+                    cardAlbumArt.setTag(R.id.cardAlbumArt, info.albumArt);
+                    cardAlbumArt.setTag(R.id.cardTrackInfo, pillTrackKey);
+                }
+            } else if (info.albumArtUri != null) {
+                String uriStr = info.albumArtUri.toString();
+                Object currentTag = cardAlbumArt.getTag(R.id.cardAlbumArt);
+                if (!uriStr.equals(currentTag)) {
+                    cardAlbumArt.removeCallbacks(null);
+                    loadUriBitmapAsync(info.albumArtUri, cardAlbumArt, -1f, info.packageName, 4);
+                    cardAlbumArt.setTag(R.id.cardTrackInfo, pillTrackKey);
+                }
+            } else {
+                // Info lagu tidak punya album art saat ini (misal sedang loading / transisi)
+                boolean hasExistingDrawable = cardAlbumArt.getDrawable() != null;
+                if (!hasExistingDrawable) {
+                    try {
+                        Drawable appIcon = getPackageManager().getApplicationIcon(info.packageName);
+                        cardAlbumArt.setImageDrawable(appIcon);
+                        cardAlbumArt.setPadding(4, 4, 4, 4);
+                        cardAlbumArt.setTag(R.id.cardAlbumArt, "APP_ICON");
+                        cardAlbumArt.setTag(R.id.cardTrackInfo, pillTrackKey);
+                    } catch (Exception e) {
+                        cardAlbumArt.setImageResource(R.drawable.ic_music);
+                        cardAlbumArt.setPadding(6, 6, 6, 6);
+                    }
+                } else {
+                    // PERTAHANKAN banner lagu lama selama transisi trek baru!
+                    // Jangan pernah berkedip ke ikon Spotify kecuali setelah 2500ms memang tidak ada banner lagu baru.
+                    final String fallbackPkg = info.packageName;
+                    cardAlbumArt.removeCallbacks(null);
+                    cardAlbumArt.postDelayed(() -> {
+                        NowPlayingManager.MediaInfo latest = NowPlayingManager.getCurrentInfo();
+                        if (latest == null || (latest.albumArt == null && latest.albumArtUri == null)) {
+                            try {
+                                Drawable appIcon = getPackageManager().getApplicationIcon(fallbackPkg);
+                                cardAlbumArt.setImageDrawable(appIcon);
+                                cardAlbumArt.setPadding(4, 4, 4, 4);
+                                cardAlbumArt.setTag(R.id.cardAlbumArt, "APP_ICON");
+                            } catch (Exception ignored) {}
+                        }
+                    }, 2500);
+                }
             }
         }
 
@@ -4109,6 +4165,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
     }
 
+    private void startPopupRealtimePoll(boolean fast) {
+        handler.removeCallbacks(popupPollRunnable);
+        popupPollCount = fast ? 0 : 15;
+        handler.postDelayed(popupPollRunnable, fast ? 200 : 1500);
+    }
+
+    private void stopPopupRealtimePoll() {
+        handler.removeCallbacks(popupPollRunnable);
+    }
+
     private void showNowPlayingDialog() {
         showNowPlayingPopup();
     }
@@ -4131,6 +4197,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         activeNowPlayingPanel = panel;
         openMenu = panel;
         menuAnchor = anchor;
+        startPopupRealtimePoll(false);
 
         ImageView headerIcon = panel.findViewById(R.id.headerIcon);
         TextView headerTitle = panel.findViewById(R.id.headerTitle);
@@ -4330,8 +4397,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             btnPopupPrev.setOnClickListener(v -> {
                 SoundEffects.playSelect();
                 NowPlayingManager.skipToPrevious();
-                handler.postDelayed(() -> NowPlayingManager.updateCurrentMedia(MainActivity.this), 300);
-                handler.postDelayed(() -> NowPlayingManager.updateCurrentMedia(MainActivity.this), 750);
+                startPopupRealtimePoll(true);
             });
         }
 
@@ -4339,6 +4405,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             btnPlayPause.setOnClickListener(v -> {
                 SoundEffects.playSelect();
                 NowPlayingManager.togglePlayPause();
+                startPopupRealtimePoll(true);
             });
         }
 
@@ -4346,8 +4413,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             btnPopupNext.setOnClickListener(v -> {
                 SoundEffects.playSelect();
                 NowPlayingManager.skipToNext();
-                handler.postDelayed(() -> NowPlayingManager.updateCurrentMedia(MainActivity.this), 300);
-                handler.postDelayed(() -> NowPlayingManager.updateCurrentMedia(MainActivity.this), 750);
+                startPopupRealtimePoll(true);
             });
         }
 
@@ -4427,6 +4493,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     private void closeNowPlayingPopup(boolean toAnchor) {
+        stopPopupRealtimePoll();
         View panel = activeNowPlayingPanel;
         if (panel == null) return;
         SoundEffects.playNav();

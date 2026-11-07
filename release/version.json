@@ -1,7 +1,7 @@
 {
-  "versionCode": 51,
-  "versionName": "3.6.0-id",
+  "versionCode": 52,
+  "versionName": "3.6.1-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "revert(now-playing): restore original pill album art with 1:1 circular crop and app icon fallback without borders (v3.6.0-id)",
+  "changelog": "fix(now-playing): prevent pill album art flicker on startup/track transition and auto-refresh popup banner on next track (v3.6.1-id)",
   "releaseDate": "2026-11-07"
 }

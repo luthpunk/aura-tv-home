@@ -505,22 +505,26 @@ public final class NowPlayingManager {
                 try {
                     java.util.List<StatusBarNotification> candidateNotifications = new java.util.ArrayList<>();
 
-                    // 1. Live unstripped notifications from onNotificationPosted
-                    if (!pkg.isEmpty()) {
-                        StatusBarNotification posted = MediaNotificationListener.getPostedNotification(pkg);
-                        if (posted != null) {
-                            candidateNotifications.add(posted);
-                        }
-                    }
-                    candidateNotifications.addAll(MediaNotificationListener.getAllPostedNotifications());
-
-                    // 2. Fetch full active notifications via TRIM_FULL reflection
+                    // 1. Live full active notifications directly from system via TRIM_FULL (freshest data)
                     StatusBarNotification[] fullSbns = MediaNotificationListener.getActiveFullNotifications();
                     if (fullSbns != null) {
                         for (StatusBarNotification s : fullSbns) {
                             if (s != null && !candidateNotifications.contains(s)) {
                                 candidateNotifications.add(s);
                             }
+                        }
+                    }
+
+                    // 2. Fallback to cached notifications
+                    if (!pkg.isEmpty()) {
+                        StatusBarNotification posted = MediaNotificationListener.getPostedNotification(pkg);
+                        if (posted != null && !candidateNotifications.contains(posted)) {
+                            candidateNotifications.add(posted);
+                        }
+                    }
+                    for (StatusBarNotification s : MediaNotificationListener.getAllPostedNotifications()) {
+                        if (s != null && !candidateNotifications.contains(s)) {
+                            candidateNotifications.add(s);
                         }
                     }
 

@@ -56,21 +56,30 @@ public class MediaNotificationListener extends NotificationListenerService {
 
     public static StatusBarNotification[] getActiveFullNotifications() {
         if (instance == null) return null;
+        StatusBarNotification[] sbns = null;
         try {
             java.lang.reflect.Method m = NotificationListenerService.class.getMethod("getActiveNotifications", int.class);
-            return (StatusBarNotification[]) m.invoke(instance, 0); // 0 = TRIM_FULL
+            sbns = (StatusBarNotification[]) m.invoke(instance, 0); // 0 = TRIM_FULL
         } catch (Throwable t1) {
             try {
                 java.lang.reflect.Method m = NotificationListenerService.class.getMethod("getActiveNotifications", String[].class, int.class);
-                return (StatusBarNotification[]) m.invoke(instance, (Object) null, 0); // 0 = TRIM_FULL
+                sbns = (StatusBarNotification[]) m.invoke(instance, (Object) null, 0); // 0 = TRIM_FULL
             } catch (Throwable t2) {
                 try {
-                    return instance.getActiveNotifications();
+                    sbns = instance.getActiveNotifications();
                 } catch (Throwable t3) {
-                    return null;
+                    sbns = null;
                 }
             }
         }
+        if (sbns != null) {
+            for (StatusBarNotification sbn : sbns) {
+                if (sbn != null && sbn.getPackageName() != null) {
+                    postedNotifications.put(sbn.getPackageName(), sbn);
+                }
+            }
+        }
+        return sbns;
     }
 
     public static StatusBarNotification getPostedNotification(String pkg) {
