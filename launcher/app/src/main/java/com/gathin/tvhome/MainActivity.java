@@ -46,6 +46,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.util.Log;
 import android.text.SpannableString;
 import android.text.Spanned;
 import java.lang.reflect.Field;
