@@ -210,12 +210,33 @@ public final class NowPlayingManager {
 
     private static final List<Listener> listeners = new CopyOnWriteArrayList<>();
     private static MediaInfo currentInfo = new MediaInfo(false, "", "", "", "", null, null);
+    private static MediaInfo lastBroadcastInfo = null;
     private static MediaInfo lastValidMediaInfo = null;
     private static long lastValidMediaTimestamp = 0;
     private static final Handler mainHandler = new Handler(Looper.getMainLooper());
     private static MediaSessionManager.OnActiveSessionsChangedListener sessionsListener;
     private static Context appContext;
     private static MediaController trackedController;
+
+    private static boolean isSameMedia(MediaInfo a, MediaInfo b) {
+        if (a == b) return true;
+        if (a == null || b == null) return false;
+        if (a.isPlaying != b.isPlaying) return false;
+        if (!TextUtils.equals(a.packageName, b.packageName)) return false;
+        if (!TextUtils.equals(a.title, b.title)) return false;
+        if (!TextUtils.equals(a.artist, b.artist)) return false;
+        if (!TextUtils.equals(a.appName, b.appName)) return false;
+
+        boolean aHasArt = (a.albumArt != null && !a.albumArt.isRecycled()) || a.albumArtUri != null;
+        boolean bHasArt = (b.albumArt != null && !b.albumArt.isRecycled()) || b.albumArtUri != null;
+        if (aHasArt != bHasArt) return false;
+
+        if (a.albumArtUri != null && b.albumArtUri != null && !a.albumArtUri.equals(b.albumArtUri)) {
+            return false;
+        }
+
+        return true;
+    }
 
     private static final MediaController.Callback controllerCallback = new MediaController.Callback() {
         @Override
@@ -255,6 +276,7 @@ public final class NowPlayingManager {
     public static void clearMedia() {
         lastValidMediaInfo = null;
         lastValidMediaTimestamp = 0;
+        lastBroadcastInfo = null;
         currentInfo = new MediaInfo(false, "", "", "", "", null, null);
         mainHandler.post(() -> {
             for (Listener l : listeners) {
@@ -544,6 +566,22 @@ public final class NowPlayingManager {
                         Bundle extras = n.extras;
                         if (extras == null) continue;
 
+                        // Title-matching guard: Jika active controller sudah mendeteksi judul aktif (misal Lagu B),
+                        // jangan mengambil gambar dari notifikasi jika notifikasi di status bar masih milik lagu lama (Lagu A)!
+                        if (!title.isEmpty()) {
+                            CharSequence nTitle = extras.getCharSequence(Notification.EXTRA_TITLE);
+                            if (nTitle != null && nTitle.length() > 0) {
+                                String nTitleStr = nTitle.toString().trim();
+                                if (!"Spotify".equalsIgnoreCase(nTitleStr) && !"YouTube".equalsIgnoreCase(nTitleStr)) {
+                                    String lowerActive = title.toLowerCase(java.util.Locale.ROOT);
+                                    String lowerNotif = nTitleStr.toLowerCase(java.util.Locale.ROOT);
+                                    if (!lowerActive.contains(lowerNotif) && !lowerNotif.contains(lowerActive)) {
+                                        continue;
+                                    }
+                                }
+                            }
+                        }
+
                         // Jika belum ada controller aktif, hanya terima notifikasi media player asli
                         if (pkg.isEmpty()) {
                             boolean hasMediaToken = extras.get(Notification.EXTRA_MEDIA_SESSION) instanceof MediaSession.Token;
@@ -673,9 +711,17 @@ public final class NowPlayingManager {
                 currentInfo = new MediaInfo(false, "", "", "", "", null, null);
             }
 
+            // DEDUPLIKASI: Jika data sama persis dengan yang sudah dikirim ke UI, JANGAN BROADCAST ULANG!
+            // Menghilangkan 100% kedip saat volume ditekan atau polling interval berjalan.
+            if (isSameMedia(lastBroadcastInfo, currentInfo)) {
+                return;
+            }
+            lastBroadcastInfo = currentInfo;
+
+            final MediaInfo targetBroadcast = currentInfo;
             mainHandler.post(() -> {
                 for (Listener l : listeners) {
-                    l.onMediaChanged(currentInfo);
+                    l.onMediaChanged(targetBroadcast);
                 }
             });
 

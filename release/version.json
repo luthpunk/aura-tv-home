@@ -1,7 +1,7 @@
 {
-  "versionCode": 57,
-  "versionName": "3.6.6-id",
+  "versionCode": 58,
+  "versionName": "3.6.7-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "fix(now-playing): fix banner transition on track skip and eliminate volume flicker with post-render lock (v3.6.6-id)",
+  "changelog": "fix(now-playing): deduplicate media broadcasts and add notification title-matching (v3.6.7-id)",
   "releaseDate": "2026-11-07"
 }
