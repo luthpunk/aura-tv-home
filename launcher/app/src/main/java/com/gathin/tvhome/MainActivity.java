@@ -3860,18 +3860,25 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 String scheme = uri.getScheme();
                 if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
                     java.net.HttpURLConnection conn = (java.net.HttpURLConnection) new java.net.URL(uri.toString()).openConnection();
-                    conn.setConnectTimeout(4000);
-                    conn.setReadTimeout(4000);
+                    conn.setConnectTimeout(6000);
+                    conn.setReadTimeout(6000);
+                    conn.setInstanceFollowRedirects(true);
+                    conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
                     conn.connect();
-                    try (java.io.InputStream is = conn.getInputStream()) {
-                        bmp = android.graphics.BitmapFactory.decodeStream(is);
+                    int code = conn.getResponseCode();
+                    if (code == 200 || code == 206) {
+                        try (java.io.InputStream is = conn.getInputStream()) {
+                            bmp = android.graphics.BitmapFactory.decodeStream(is);
+                        }
                     }
                 } else {
                     try (java.io.InputStream is = getContentResolver().openInputStream(uri)) {
                         bmp = android.graphics.BitmapFactory.decodeStream(is);
                     }
                 }
-            } catch (Exception ignored) {}
+            } catch (Throwable t) {
+                Log.w("TvHome.Main", "Error loading URI bitmap: " + t.getMessage());
+            }
 
             final Bitmap finalBmp = bmp;
             runOnUiThread(() -> {

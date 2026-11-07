@@ -9,31 +9,58 @@ import android.util.Log;
 public class MediaNotificationListener extends NotificationListenerService {
     private static final String TAG = "TvHome.MediaListener";
     private static MediaNotificationListener instance;
+    private static final java.util.Map<String, StatusBarNotification> postedNotifications = new java.util.concurrent.ConcurrentHashMap<>();
 
     @Override
     public void onListenerConnected() {
         super.onListenerConnected();
         instance = this;
         Log.i(TAG, "MediaNotificationListener connected");
+        try {
+            StatusBarNotification[] sbns = getActiveNotifications();
+            if (sbns != null) {
+                for (StatusBarNotification sbn : sbns) {
+                    if (sbn != null && sbn.getPackageName() != null) {
+                        postedNotifications.put(sbn.getPackageName(), sbn);
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
         NowPlayingManager.notifyListenerConnected(this);
     }
 
     @Override
     public void onListenerDisconnected() {
         if (instance == this) instance = null;
+        postedNotifications.clear();
         super.onListenerDisconnected();
     }
 
     @Override
     public void onNotificationPosted(StatusBarNotification sbn) {
         super.onNotificationPosted(sbn);
+        if (sbn != null && sbn.getPackageName() != null) {
+            postedNotifications.put(sbn.getPackageName(), sbn);
+        }
         NowPlayingManager.notifySessionsChanged(this);
     }
 
     @Override
     public void onNotificationRemoved(StatusBarNotification sbn) {
         super.onNotificationRemoved(sbn);
+        if (sbn != null && sbn.getPackageName() != null) {
+            postedNotifications.remove(sbn.getPackageName());
+        }
         NowPlayingManager.notifySessionsChanged(this);
+    }
+
+    public static StatusBarNotification getPostedNotification(String pkg) {
+        if (pkg == null) return null;
+        return postedNotifications.get(pkg);
+    }
+
+    public static java.util.Collection<StatusBarNotification> getAllPostedNotifications() {
+        return postedNotifications.values();
     }
 
     public static boolean isConnected() {

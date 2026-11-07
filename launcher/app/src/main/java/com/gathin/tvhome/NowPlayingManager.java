@@ -307,6 +307,39 @@ public final class NowPlayingManager {
         }
     }
 
+    private static Bitmap extractBitmapFromNotificationObject(Object obj, Context context) {
+        if (obj == null) return null;
+        if (obj instanceof Bitmap) {
+            return (Bitmap) obj;
+        }
+        if (obj instanceof Icon) {
+            Icon icon = (Icon) obj;
+            try {
+                java.lang.reflect.Field f = Icon.class.getDeclaredField("mObj1");
+                f.setAccessible(true);
+                Object val = f.get(icon);
+                if (val instanceof Bitmap) {
+                    return (Bitmap) val;
+                }
+            } catch (Throwable ignored) {}
+            try {
+                if (context != null) {
+                    Drawable d = icon.loadDrawable(context);
+                    if (d instanceof BitmapDrawable) {
+                        return ((BitmapDrawable) d).getBitmap();
+                    } else if (d != null && d.getIntrinsicWidth() > 0 && d.getIntrinsicHeight() > 0) {
+                        Bitmap b = Bitmap.createBitmap(d.getIntrinsicWidth(), d.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+                        Canvas cvs = new Canvas(b);
+                        d.setBounds(0, 0, cvs.getWidth(), cvs.getHeight());
+                        d.draw(cvs);
+                        return b;
+                    }
+                }
+            } catch (Throwable ignored) {}
+        }
+        return null;
+    }
+
     public static synchronized void updateCurrentMedia(Context context) {
         if (context == null) return;
         if (appContext == null) appContext = context.getApplicationContext();
@@ -442,10 +475,22 @@ public final class NowPlayingManager {
             if (MediaNotificationListener.isConnected() || isNotificationAccessGranted(context)) {
                 MediaNotificationListener.requestRebindIfDisconnected(context);
                 try {
-                    StatusBarNotification[] sbns = null;
-                    if (MediaNotificationListener.isConnected()) {
+                    java.util.List<StatusBarNotification> candidateNotifications = new java.util.ArrayList<>();
+
+                    // 1. Prioritas Utama: Notifikasi langsung yang ditangkap saat onNotificationPosted (unstripped!)
+                    if (!pkg.isEmpty()) {
+                        StatusBarNotification posted = MediaNotificationListener.getPostedNotification(pkg);
+                        if (posted != null) {
+                            candidateNotifications.add(posted);
+                        }
+                    }
+                    candidateNotifications.addAll(MediaNotificationListener.getAllPostedNotifications());
+
+                    // 2. Fallback: getActiveNotifications() jika belum ada di cache onNotificationPosted
+                    if (candidateNotifications.isEmpty() && MediaNotificationListener.isConnected()) {
                         MediaNotificationListener listener = MediaNotificationListener.getInstance();
                         if (listener != null) {
+                            StatusBarNotification[] sbns = null;
                             try {
                                 java.lang.reflect.Method m = NotificationListenerService.class.getMethod("getActiveNotifications", String[].class, int.class);
                                 sbns = (StatusBarNotification[]) m.invoke(listener, (Object) null, 0);
@@ -455,125 +500,92 @@ public final class NowPlayingManager {
                                     sbns = listener.getActiveNotifications();
                                 } catch (Throwable ignored) {}
                             }
+                            if (sbns != null) {
+                                for (StatusBarNotification s : sbns) {
+                                    if (s != null) candidateNotifications.add(s);
+                                }
+                            }
                         }
                     }
 
-                    if (sbns != null) {
-                        for (StatusBarNotification sbn : sbns) {
-                            if (sbn == null || sbn.getNotification() == null) continue;
-                            String sbnPkg = sbn.getPackageName();
-                            if (!isAllowedMusicApp(sbnPkg)) continue;
-                            if (!isPackageInstalled(context, sbnPkg)) continue;
+                    for (StatusBarNotification sbn : candidateNotifications) {
+                        if (sbn == null || sbn.getNotification() == null) continue;
+                        String sbnPkg = sbn.getPackageName();
+                        if (!isAllowedMusicApp(sbnPkg)) continue;
+                        if (!isPackageInstalled(context, sbnPkg)) continue;
 
-                            // Jika media player aktif sudah terdeteksi (misal Spotify atau YouTube),
-                            // fokuskan pencarian notifikasi pada paket pemutar yang bersangkutan.
-                            if (!pkg.isEmpty() && !sbnPkg.equalsIgnoreCase(pkg)) {
+                        // Jika media player aktif sudah terdeteksi (misal Spotify atau YouTube),
+                        // fokuskan pencarian notifikasi pada paket pemutar yang bersangkutan.
+                        if (!pkg.isEmpty() && !sbnPkg.equalsIgnoreCase(pkg)) {
+                            continue;
+                        }
+
+                        Notification n = sbn.getNotification();
+                        Bundle extras = n.extras;
+                        if (extras == null) continue;
+
+                        // Jika belum ada controller aktif, hanya terima notifikasi media player asli
+                        if (pkg.isEmpty()) {
+                            boolean hasMediaToken = extras.get(Notification.EXTRA_MEDIA_SESSION) instanceof MediaSession.Token;
+                            boolean isTransport = Notification.CATEGORY_TRANSPORT.equals(n.category);
+                            String lowerPkg = sbnPkg.toLowerCase(java.util.Locale.ROOT);
+                            boolean isKnownMedia = lowerPkg.contains("spotify") || lowerPkg.contains("youtube")
+                                    || lowerPkg.contains("music") || lowerPkg.contains("cobalt")
+                                    || lowerPkg.contains("smarttube") || lowerPkg.contains("vlc")
+                                    || lowerPkg.contains("audio") || lowerPkg.contains("sound")
+                                    || lowerPkg.contains("radio") || lowerPkg.contains("podcast")
+                                    || lowerPkg.contains("deezer") || lowerPkg.contains("tidal")
+                                    || lowerPkg.contains("netflix") || lowerPkg.contains("disney")
+                                    || lowerPkg.contains("vidio");
+                            String chId = n.getChannelId() != null ? n.getChannelId().toLowerCase(java.util.Locale.ROOT) : "";
+                            boolean isPlaybackChannel = chId.contains("playback") || chId.contains("media");
+
+                            if (!hasMediaToken && !isTransport && !isKnownMedia && !isPlaybackChannel) {
                                 continue;
                             }
+                        }
 
-                            Notification n = sbn.getNotification();
-                            Bundle extras = n.extras;
-                            if (extras == null) continue;
+                        // Ambil cover album / video thumbnail dari berbagai field icon notifikasi
+                        if (albumArt == null) {
+                            albumArt = extractBitmapFromNotificationObject(extras.get(Notification.EXTRA_LARGE_ICON), context);
+                        }
+                        if (albumArt == null) {
+                            albumArt = extractBitmapFromNotificationObject(extras.get("android.largeIcon.big"), context);
+                        }
+                        if (albumArt == null) {
+                            albumArt = extractBitmapFromNotificationObject(extras.get(Notification.EXTRA_PICTURE), context);
+                        }
 
-                            // Jika belum ada controller aktif, hanya terima notifikasi media player asli
-                            // (tolak background service utilitas seperti Send Files to TV, download manager, dll)
-                            if (pkg.isEmpty()) {
-                                boolean hasMediaToken = extras.get(Notification.EXTRA_MEDIA_SESSION) instanceof MediaSession.Token;
-                                boolean isTransport = Notification.CATEGORY_TRANSPORT.equals(n.category);
-                                String lowerPkg = sbnPkg.toLowerCase(java.util.Locale.ROOT);
-                                boolean isKnownMedia = lowerPkg.contains("spotify") || lowerPkg.contains("youtube")
-                                        || lowerPkg.contains("music") || lowerPkg.contains("cobalt")
-                                        || lowerPkg.contains("smarttube") || lowerPkg.contains("vlc")
-                                        || lowerPkg.contains("audio") || lowerPkg.contains("sound")
-                                        || lowerPkg.contains("radio") || lowerPkg.contains("podcast")
-                                        || lowerPkg.contains("deezer") || lowerPkg.contains("tidal")
-                                        || lowerPkg.contains("netflix") || lowerPkg.contains("disney")
-                                        || lowerPkg.contains("vidio");
-                                String chId = n.getChannelId() != null ? n.getChannelId().toLowerCase(java.util.Locale.ROOT) : "";
-                                boolean isPlaybackChannel = chId.contains("playback") || chId.contains("media");
-
-                                if (!hasMediaToken && !isTransport && !isKnownMedia && !isPlaybackChannel) {
-                                    continue;
-                                }
-                            }
-
-                            // Ambil cover album / video thumbnail dari berbagai field icon notifikasi
-                            if (albumArt == null) {
-                                Object iconObj = extras.get(Notification.EXTRA_LARGE_ICON);
-                                if (iconObj instanceof Bitmap) {
-                                    albumArt = (Bitmap) iconObj;
-                                } else if (iconObj instanceof Icon) {
-                                    try {
-                                        Drawable d = ((Icon) iconObj).loadDrawable(context);
-                                        if (d instanceof BitmapDrawable) {
-                                            albumArt = ((BitmapDrawable) d).getBitmap();
-                                        } else if (d != null && d.getIntrinsicWidth() > 0 && d.getIntrinsicHeight() > 0) {
-                                            Bitmap b = Bitmap.createBitmap(d.getIntrinsicWidth(), d.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
-                                            Canvas cvs = new Canvas(b);
-                                            d.setBounds(0, 0, cvs.getWidth(), cvs.getHeight());
-                                            d.draw(cvs);
-                                            albumArt = b;
-                                        }
-                                    } catch (Exception ignored) {}
-                                }
-                            }
-                            if (albumArt == null) {
-                                Object iconBig = extras.get("android.largeIcon.big");
-                                if (iconBig instanceof Bitmap) {
-                                    albumArt = (Bitmap) iconBig;
-                                } else if (iconBig instanceof Icon) {
-                                    try {
-                                        Drawable d = ((Icon) iconBig).loadDrawable(context);
-                                        if (d instanceof BitmapDrawable) {
-                                            albumArt = ((BitmapDrawable) d).getBitmap();
-                                        } else if (d != null && d.getIntrinsicWidth() > 0 && d.getIntrinsicHeight() > 0) {
-                                            Bitmap b = Bitmap.createBitmap(d.getIntrinsicWidth(), d.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
-                                            Canvas cvs = new Canvas(b);
-                                            d.setBounds(0, 0, cvs.getWidth(), cvs.getHeight());
-                                            d.draw(cvs);
-                                            albumArt = b;
-                                        }
-                                    } catch (Exception ignored) {}
-                                }
-                            }
-                            if (albumArt == null) {
-                                Object picObj = extras.get(Notification.EXTRA_PICTURE);
-                                if (picObj instanceof Bitmap) {
-                                    albumArt = (Bitmap) picObj;
-                                }
-                            }
-
-                            // Ekstraksi judul & artis jika belum terisi dari MediaController
-                            CharSequence nTitle = extras.getCharSequence(Notification.EXTRA_TITLE);
-                            CharSequence nText = extras.getCharSequence(Notification.EXTRA_TEXT);
-                            if (nTitle != null && nTitle.length() > 0) {
-                                if (title.isEmpty()) {
-                                    if (!"Spotify".equalsIgnoreCase(nTitle.toString()) && !"YouTube".equalsIgnoreCase(nTitle.toString())) {
-                                        title = nTitle.toString();
-                                        if (nText != null && !"Spotify".equalsIgnoreCase(nText.toString()) && !"YouTube".equalsIgnoreCase(nText.toString())) {
-                                            artist = nText.toString();
-                                        }
-                                    } else if (nText != null && !"Spotify".equalsIgnoreCase(nText.toString()) && !"YouTube".equalsIgnoreCase(nText.toString())) {
-                                        title = nText.toString();
+                        // Ekstraksi judul & artis jika belum terisi dari MediaController
+                        CharSequence nTitle = extras.getCharSequence(Notification.EXTRA_TITLE);
+                        CharSequence nText = extras.getCharSequence(Notification.EXTRA_TEXT);
+                        if (nTitle != null && nTitle.length() > 0) {
+                            if (title.isEmpty()) {
+                                if (!"Spotify".equalsIgnoreCase(nTitle.toString()) && !"YouTube".equalsIgnoreCase(nTitle.toString())) {
+                                    title = nTitle.toString();
+                                    if (nText != null && !"Spotify".equalsIgnoreCase(nText.toString()) && !"YouTube".equalsIgnoreCase(nText.toString())) {
+                                        artist = nText.toString();
                                     }
-                                    if (pkg.isEmpty()) pkg = sbnPkg;
+                                } else if (nText != null && !"Spotify".equalsIgnoreCase(nText.toString()) && !"YouTube".equalsIgnoreCase(nText.toString())) {
+                                    title = nText.toString();
                                 }
+                                if (pkg.isEmpty()) pkg = sbnPkg;
                             }
+                        }
 
-                            if (activeController == null) {
-                                Object tokenObj = extras.get(Notification.EXTRA_MEDIA_SESSION);
-                                if (tokenObj instanceof MediaSession.Token) {
-                                    try {
-                                        activeController = new MediaController(context, (MediaSession.Token) tokenObj);
-                                        PlaybackState ps = activeController.getPlaybackState();
-                                        isPlaying = ps != null && ps.getState() == PlaybackState.STATE_PLAYING;
-                                    } catch (Exception ignored) {}
-                                }
+                        if (activeController == null) {
+                            Object tokenObj = extras.get(Notification.EXTRA_MEDIA_SESSION);
+                            if (tokenObj instanceof MediaSession.Token) {
+                                try {
+                                    activeController = new MediaController(context, (MediaSession.Token) tokenObj);
+                                    PlaybackState ps = activeController.getPlaybackState();
+                                    isPlaying = ps != null && ps.getState() == PlaybackState.STATE_PLAYING;
+                                } catch (Exception ignored) {}
                             }
+                        }
 
-                            if (albumArt != null) {
-                                break;
-                            }
+                        if (albumArt != null) {
+                            break;
                         }
                     }
                 } catch (Exception ignored) {}
