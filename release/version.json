@@ -2,6 +2,6 @@
   "versionCode": 52,
   "versionName": "3.6.1-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "fix(now-playing): prevent pill album art flicker on startup/track transition and auto-refresh popup banner on next track (v3.6.1-id)",
+  "changelog": "fix(now-playing): prevent pill art flicker and auto-refresh popup banner on next track (v3.6.1-id)",
   "releaseDate": "2026-11-07"
 }
