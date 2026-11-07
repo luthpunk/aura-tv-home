@@ -1,7 +1,7 @@
 {
-  "versionCode": 40,
-  "versionName": "3.4.9-id",
+  "versionCode": 41,
+  "versionName": "3.5.0-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "fix(now-playing): circle-crop YouTube banner, expand pill to 184dp, and slow marquee",
-  "releaseDate": "2026-11-06"
+  "changelog": "feat: update wallpaper collections for Indonesia and Anime categories",
+  "releaseDate": "2026-11-07"
 }
