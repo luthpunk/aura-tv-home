@@ -10,8 +10,8 @@ android {
         applicationId 'com.gathin.tvhome'
         minSdk 26
         targetSdk 34
-        versionCode 49
-        versionName '3.5.8-id'
+        versionCode 50
+        versionName '3.5.9-id'
     }
 
     signingConfigs {

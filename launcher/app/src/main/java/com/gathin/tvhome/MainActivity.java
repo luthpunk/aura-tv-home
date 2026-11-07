@@ -1873,7 +1873,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 nowPlayingCard.setBackground(cardSld);
 
                 if (cardTrackInfo != null) cardTrackInfo.setBackground(null);
-                if (cardAlbumArt != null) cardAlbumArt.setBackground(null);
+                if (cardAlbumArt != null) {
+                    GradientDrawable circleBg = new GradientDrawable();
+                    circleBg.setShape(GradientDrawable.OVAL);
+                    circleBg.setColor(0x0A000000);
+                    circleBg.setStroke(Math.max(1, Math.round(1.0f * density)), 0x1F000000);
+                    cardAlbumArt.setBackground(circleBg);
+                }
 
                 if (cardTitle != null) {
                     cardTitle.setTextColor(0xFF222934);
@@ -1900,7 +1906,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 nowPlayingCard.setBackground(cardSld);
 
                 if (cardTrackInfo != null) cardTrackInfo.setBackground(null);
-                if (cardAlbumArt != null) cardAlbumArt.setBackground(null);
+                if (cardAlbumArt != null) {
+                    GradientDrawable circleBg = new GradientDrawable();
+                    circleBg.setShape(GradientDrawable.OVAL);
+                    circleBg.setColor(0x26000000);
+                    circleBg.setStroke(Math.max(1, Math.round(1.0f * density)), 0x3300F0FF);
+                    cardAlbumArt.setBackground(circleBg);
+                }
 
                 if (cardTitle != null) {
                     cardTitle.setTextColor(0xFFFFFFFF);
@@ -1915,7 +1927,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 Backdrop.watch(nowPlayingCard);
 
                 if (cardTrackInfo != null) cardTrackInfo.setBackground(null);
-                if (cardAlbumArt != null) cardAlbumArt.setBackground(null);
+                if (cardAlbumArt != null) {
+                    GradientDrawable circleBg = new GradientDrawable();
+                    circleBg.setShape(GradientDrawable.OVAL);
+                    circleBg.setColor(0x1AFFFFFF);
+                    circleBg.setStroke(Math.max(1, Math.round(1.0f * density)), 0x33FFFFFF);
+                    cardAlbumArt.setBackground(circleBg);
+                }
 
                 if (cardTitle != null) {
                     cardTitle.setTextColor(0xFFFFFFFF);
@@ -4014,13 +4032,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             cardSubtitle.setText(info.appName.isEmpty() ? "SEDANG DIPUTAR" : info.appName.toUpperCase(Locale.ROOT));
         }
 
-        // Pill: Selalu tampilkan icon aplikasi pemutar musik bulat penuh (circular crop) seperti versi lama
+        // Pill: Selalu tampilkan icon aplikasi pemutar musik bulat penuh (circular crop) di dalam bingkai bulat
         if (cardAlbumArt != null) {
             String currentPkg = (String) cardAlbumArt.getTag();
             if (!info.packageName.equals(currentPkg)) {
                 cardAlbumArt.setTag(info.packageName);
-                cardAlbumArt.setBackground(null);
-                cardAlbumArt.setPadding(0, 0, 0, 0);
+                int padPx = Math.round(2.5f * density);
+                cardAlbumArt.setPadding(padPx, padPx, padPx, padPx);
                 int sizePx = Math.round(28 * density);
                 Bitmap circularIcon = getCircularAppIcon(info.packageName, sizePx);
                 if (circularIcon != null) {
@@ -4030,7 +4048,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         cardAlbumArt.setImageDrawable(getPackageManager().getApplicationIcon(info.packageName));
                     } catch (Exception e) {
                         cardAlbumArt.setImageResource(R.drawable.ic_music);
-                        cardAlbumArt.setPadding(4, 4, 4, 4);
                     }
                 }
             }
@@ -4333,6 +4350,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             btnPopupPrev.setOnClickListener(v -> {
                 SoundEffects.playSelect();
                 NowPlayingManager.skipToPrevious();
+                handler.postDelayed(() -> NowPlayingManager.updateCurrentMedia(MainActivity.this), 300);
+                handler.postDelayed(() -> NowPlayingManager.updateCurrentMedia(MainActivity.this), 750);
             });
         }
 
@@ -4347,6 +4366,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             btnPopupNext.setOnClickListener(v -> {
                 SoundEffects.playSelect();
                 NowPlayingManager.skipToNext();
+                handler.postDelayed(() -> NowPlayingManager.updateCurrentMedia(MainActivity.this), 300);
+                handler.postDelayed(() -> NowPlayingManager.updateCurrentMedia(MainActivity.this), 750);
             });
         }
 

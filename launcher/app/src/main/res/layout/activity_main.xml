@@ -833,12 +833,14 @@
                     android:paddingStart="7dp"
                     android:paddingEnd="10dp">
 
-                    <!-- Album Art / Thumbnail -->
+                    <!-- Album Art / Thumbnail with circular ring frame blending into left pill -->
                     <ImageView
                         android:id="@+id/cardAlbumArt"
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
+                        android:layout_width="30dp"
+                        android:layout_height="30dp"
                         android:scaleType="centerCrop"
+                        android:background="@drawable/bg_media_logo_circle"
+                        android:padding="2dp"
                         android:src="@drawable/ic_music"
                         android:focusable="false"
                         android:clickable="false" />
