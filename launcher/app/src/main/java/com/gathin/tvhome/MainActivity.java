@@ -425,7 +425,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             final boolean wasEmpty = catFiles.isEmpty();
             if (catFiles.size() < OnlineWallpapers.countForCategory(activeCat)) {
                 new Thread(() -> {
-                    OnlineWallpapers.syncCategory(getApplicationContext(), activeCat);
+                    OnlineWallpapers.syncCategory(getApplicationContext(), activeCat, () -> {
+                        handler.post(() -> {
+                            if (isDestroyed()) return;
+                            List<File> fresh = OnlineWallpapers.listByCategory(MainActivity.this, activeCat);
+                            if (!fresh.isEmpty()) {
+                                wallpapers = fresh;
+                                if (wasEmpty) showNextWallpaper(false);
+                            }
+                        });
+                    });
                     handler.post(() -> {
                         if (isDestroyed()) return;
                         List<File> fresh = OnlineWallpapers.listByCategory(MainActivity.this, activeCat);
@@ -4787,7 +4796,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         if (matching.size() < OnlineWallpapers.countForCategory(category)) {
             new Thread(() -> {
-                boolean downloaded = OnlineWallpapers.syncCategory(getApplicationContext(), category);
+                boolean downloaded = OnlineWallpapers.syncCategory(getApplicationContext(), category, () -> {
+                    handler.post(() -> {
+                        if (isDestroyed()) return;
+                        List<File> fresh = OnlineWallpapers.listByCategory(MainActivity.this, category);
+                        if (!fresh.isEmpty()) {
+                            wallpapers = fresh;
+                            if (!hadCached) {
+                                showNextWallpaper(true);
+                            }
+                        }
+                    });
+                });
                 handler.post(() -> {
                     if (isDestroyed()) return;
                     List<File> fresh = OnlineWallpapers.listByCategory(MainActivity.this, category);

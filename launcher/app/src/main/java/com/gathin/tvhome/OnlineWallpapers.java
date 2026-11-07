@@ -56,15 +56,15 @@ final class OnlineWallpapers {
     // Built-in curated catalog of dark, moody, atmospheric 4K desktop wallpapers (Unsplash & Pexels)
     private static final WallpaperItem[] CURATED_CATALOG = new WallpaperItem[]{
             // Indonesia (Pilihan Pengguna)
-            new WallpaperItem("https://images.unsplash.com/photo-1724258391590-6cfdc2d783b4?auto=format&fit=crop&w=3840&h=2160&q=85", "", "", "Indonesia"),
-            new WallpaperItem("https://images.unsplash.com/photo-1528214968864-8dd00782fa9e?auto=format&fit=crop&w=3840&h=2160&q=85", "", "", "Indonesia"),
-            new WallpaperItem("https://images.unsplash.com/photo-1691551416161-9f68721909c9?auto=format&fit=crop&w=3840&h=2160&q=85", "", "", "Indonesia"),
-            new WallpaperItem("https://images.unsplash.com/photo-1505993597083-3bd19fb75e57?auto=format&fit=crop&w=3840&h=2160&q=85", "", "", "Indonesia"),
-            new WallpaperItem("https://images.unsplash.com/photo-1476158085676-e67f57ed9ed7?auto=format&fit=crop&w=3840&h=2160&q=85", "", "", "Indonesia"),
-            new WallpaperItem("https://images.unsplash.com/photo-1513415756790-2ac1db1297d0?auto=format&fit=crop&w=3840&h=2160&q=85", "", "", "Indonesia"),
-            new WallpaperItem("https://images.unsplash.com/photo-1604999333679-b86d54738315?auto=format&fit=crop&w=3840&h=2160&q=85", "", "", "Indonesia"),
-            new WallpaperItem("https://images.unsplash.com/photo-1605752696606-0abcfc95ba5f?auto=format&fit=crop&w=3840&h=2160&q=85", "", "", "Indonesia"),
-            new WallpaperItem("https://images.unsplash.com/photo-1566559532224-6d65e9fc0f37?auto=format&fit=crop&w=3840&h=2160&q=85", "", "", "Indonesia"),
+            new WallpaperItem("https://images.unsplash.com/photo-1724258391590-6cfdc2d783b4?auto=format&fit=crop&w=3840&h=2160&q=85", "Indonesia 1", "", "Indonesia"),
+            new WallpaperItem("https://images.unsplash.com/photo-1528214968864-8dd00782fa9e?auto=format&fit=crop&w=3840&h=2160&q=85", "Indonesia 2", "", "Indonesia"),
+            new WallpaperItem("https://images.unsplash.com/photo-1691551416161-9f68721909c9?auto=format&fit=crop&w=3840&h=2160&q=85", "Indonesia 3", "", "Indonesia"),
+            new WallpaperItem("https://images.unsplash.com/photo-1505993597083-3bd19fb75e57?auto=format&fit=crop&w=3840&h=2160&q=85", "Indonesia 4", "", "Indonesia"),
+            new WallpaperItem("https://images.unsplash.com/photo-1476158085676-e67f57ed9ed7?auto=format&fit=crop&w=3840&h=2160&q=85", "Indonesia 5", "", "Indonesia"),
+            new WallpaperItem("https://images.unsplash.com/photo-1513415756790-2ac1db1297d0?auto=format&fit=crop&w=3840&h=2160&q=85", "Indonesia 6", "", "Indonesia"),
+            new WallpaperItem("https://images.unsplash.com/photo-1604999333679-b86d54738315?auto=format&fit=crop&w=3840&h=2160&q=85", "Indonesia 7", "", "Indonesia"),
+            new WallpaperItem("https://images.unsplash.com/photo-1605752696606-0abcfc95ba5f?auto=format&fit=crop&w=3840&h=2160&q=85", "Indonesia 8", "", "Indonesia"),
+            new WallpaperItem("https://images.unsplash.com/photo-1566559532224-6d65e9fc0f37?auto=format&fit=crop&w=3840&h=2160&q=85", "Indonesia 9", "", "Indonesia"),
 
             // Nature & Landscapes (Alam Semula Jadi - Pexels & Unsplash 4K)
             new WallpaperItem("https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=3840&h=2160&q=80",
@@ -149,16 +149,16 @@ final class OnlineWallpapers {
                     "Gelombang Sutra Obsidian", "Alunan gelombang cairan 3D hitam pekat dengan bias cahaya halus untuk layar OLED", "Minimalist"),
 
             // Anime (Pilihan Pengguna)
-            new WallpaperItem("https://w.wallhaven.cc/full/og/wallhaven-ogw3jp.jpg", "", "", "Anime"),
-            new WallpaperItem("https://w.wallhaven.cc/full/l8/wallhaven-l87332.png", "", "", "Anime"),
-            new WallpaperItem("https://w.wallhaven.cc/full/jx/wallhaven-jxg29p.png", "", "", "Anime"),
-            new WallpaperItem("https://w.wallhaven.cc/full/l8/wallhaven-l85wyp.jpg", "", "", "Anime"),
-            new WallpaperItem("https://w.wallhaven.cc/full/l8/wallhaven-l89vq2.png", "", "", "Anime"),
-            new WallpaperItem("https://w.wallhaven.cc/full/og/wallhaven-ogxyp7.png", "", "", "Anime"),
-            new WallpaperItem("https://w.wallhaven.cc/full/xe/wallhaven-xe127v.png", "", "", "Anime"),
-            new WallpaperItem("https://w.wallhaven.cc/full/po/wallhaven-po3o93.jpg", "", "", "Anime"),
-            new WallpaperItem("https://w.wallhaven.cc/full/x6/wallhaven-x6xqj3.png", "", "", "Anime"),
-            new WallpaperItem("https://w.wallhaven.cc/full/we/wallhaven-we9pgq.png", "", "", "Anime")
+            new WallpaperItem("https://w.wallhaven.cc/full/og/wallhaven-ogw3jp.jpg", "Anime 1", "", "Anime"),
+            new WallpaperItem("https://w.wallhaven.cc/full/l8/wallhaven-l87332.png", "Anime 2", "", "Anime"),
+            new WallpaperItem("https://w.wallhaven.cc/full/jx/wallhaven-jxg29p.png", "Anime 3", "", "Anime"),
+            new WallpaperItem("https://w.wallhaven.cc/full/l8/wallhaven-l85wyp.jpg", "Anime 4", "", "Anime"),
+            new WallpaperItem("https://w.wallhaven.cc/full/l8/wallhaven-l89vq2.png", "Anime 5", "", "Anime"),
+            new WallpaperItem("https://w.wallhaven.cc/full/og/wallhaven-ogxyp7.png", "Anime 6", "", "Anime"),
+            new WallpaperItem("https://w.wallhaven.cc/full/xe/wallhaven-xe127v.png", "Anime 7", "", "Anime"),
+            new WallpaperItem("https://w.wallhaven.cc/full/po/wallhaven-po3o93.jpg", "Anime 8", "", "Anime"),
+            new WallpaperItem("https://w.wallhaven.cc/full/x6/wallhaven-x6xqj3.png", "Anime 9", "", "Anime"),
+            new WallpaperItem("https://w.wallhaven.cc/full/we/wallhaven-we9pgq.png", "Anime 10", "", "Anime")
     };
 
     private OnlineWallpapers() {
@@ -272,6 +272,10 @@ final class OnlineWallpapers {
     }
 
     static boolean syncCategory(Context ctx, String category) {
+        return syncCategory(ctx, category, null);
+    }
+
+    static boolean syncCategory(Context ctx, String category, Runnable onFirstDownloaded) {
         File d = dir(ctx);
         if (d == null) return false;
         if (!d.exists() && !d.mkdirs()) return false;
@@ -294,7 +298,21 @@ final class OnlineWallpapers {
             if (count >= targetNew) break;
             String fileName = hashFilename(item.url) + ".jpg";
             File targetFile = new File(d, fileName);
+            String itemTitle = (item.title != null && !item.title.trim().isEmpty()) ? item.title.trim() : "Wallpaper";
+            String itemCat = (item.category != null && !item.category.trim().isEmpty()) ? item.category.trim() : category;
+
             if (targetFile.exists() && targetFile.length() > 50_000) {
+                // Ensure valid companion txt exists with category info
+                File finalTxt = new File(d, fileName.replace(".jpg", ".txt"));
+                if (!finalTxt.exists() || finalTxt.length() == 0 || describe(targetFile) == null) {
+                    String meta = itemTitle + "\n"
+                            + (item.description != null ? item.description : "") + "\n"
+                            + itemCat;
+                    try (OutputStream os = new FileOutputStream(finalTxt)) {
+                        os.write(meta.getBytes(StandardCharsets.UTF_8));
+                    } catch (Exception ignored) {}
+                }
+                count++;
                 continue;
             }
 
@@ -302,9 +320,9 @@ final class OnlineWallpapers {
             File tempTxt = new File(d, fileName.replace(".jpg", ".txt") + ".tmp");
             try {
                 if (downloadUrlToFile(item.url, tempFile)) {
-                    String meta = (item.title != null ? item.title : "4K Wallpaper") + "\n"
+                    String meta = itemTitle + "\n"
                             + (item.description != null ? item.description : "") + "\n"
-                            + (item.category != null ? item.category : category);
+                            + itemCat;
                     try (OutputStream os = new FileOutputStream(tempTxt)) {
                         os.write(meta.getBytes(StandardCharsets.UTF_8));
                     }
@@ -313,7 +331,12 @@ final class OnlineWallpapers {
                         tempTxt.renameTo(finalTxt);
                         anyDownloaded = true;
                         count++;
-                        Log.i(TAG, "Saved category wallpaper [" + category + "]: " + item.title);
+                        Log.i(TAG, "Saved category wallpaper [" + category + "]: " + itemTitle);
+                        if (onFirstDownloaded != null) {
+                            try {
+                                onFirstDownloaded.run();
+                            } catch (Exception ignored) {}
+                        }
                     }
                 }
             } catch (Exception e) {
@@ -349,7 +372,9 @@ final class OnlineWallpapers {
         try (BufferedReader r = new BufferedReader(
                 new InputStreamReader(new FileInputStream(text), StandardCharsets.UTF_8))) {
             String title = r.readLine();
-            if (title == null || title.trim().isEmpty()) return null;
+            if (title == null || title.trim().isEmpty()) {
+                title = "Wallpaper";
+            }
             String desc = r.readLine();
             String cat = r.readLine();
             return new String[]{

@@ -1,7 +1,7 @@
 {
-  "versionCode": 41,
-  "versionName": "3.5.0-id",
+  "versionCode": 42,
+  "versionName": "3.5.1-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "feat(wallpaper): update Indonesia and Anime wallpaper collections",
+  "changelog": "fix: instant wallpaper switch on first download and robust metadata validation",
   "releaseDate": "2026-11-07"
 }
