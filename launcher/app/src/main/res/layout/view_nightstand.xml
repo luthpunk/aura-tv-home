@@ -13,12 +13,20 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:gravity="center"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:padding="28dp"
         android:orientation="vertical">
 
-        <!-- StandBy Clock Display -->
+        <!-- StandBy Clock Display Card -->
         <LinearLayout
+            android:id="@+id/nightstandClockCard"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:paddingStart="44dp"
+            android:paddingEnd="44dp"
+            android:paddingTop="18dp"
+            android:paddingBottom="22dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -58,16 +66,20 @@
                 android:includeFontPadding="false" />
         </LinearLayout>
 
-        <!-- Gregorian Date -->
+        <!-- Gregorian Date Capsule -->
         <TextClock
             android:id="@+id/nightstandDate"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="22dp"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:paddingTop="9dp"
+            android:paddingBottom="9dp"
             android:format12Hour="EEEE, d MMMM yyyy"
             android:format24Hour="EEEE, d MMMM yyyy"
             android:textColor="#E6FFFFFF"
-            android:textSize="19sp"
+            android:textSize="18sp"
             android:fontFamily="@font/outfit"
             android:fontVariationSettings="'wght' 500"
             android:letterSpacing="0.04"

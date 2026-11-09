@@ -1,7 +1,7 @@
 {
-  "versionCode": 62,
-  "versionName": "3.7.1-id",
+  "versionCode": 63,
+  "versionName": "3.7.2-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "feat(theme): add Neumorphism Dark theme with tactile 3D Soft UI on deep charcoal-navy canvas (v3.7.1-id)",
+  "changelog": "feat(screensaver): theme-adaptive StandBy screensaver for Frosted Glass, Neumorphism Light, Neumorphism Dark, and Dark Glow (v3.7.2-id)",
   "releaseDate": "2026-11-09"
 }

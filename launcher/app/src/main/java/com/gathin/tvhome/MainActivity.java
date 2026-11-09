@@ -5742,43 +5742,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             content.setTranslationY(0f);
         }
 
-        // iPhone StandBy Wind Down Mode: 10:00 PM (22:00) to 6:00 AM (06:00) -> Red Monochrome
-        java.util.Calendar cal = java.util.Calendar.getInstance();
-        int hour = cal.get(java.util.Calendar.HOUR_OF_DAY);
-        boolean isNightMode = (hour >= 22 || hour < 6);
-
-        TextView clock = screensaverView.findViewById(R.id.nightstandClock);
-        TextView ampm = screensaverView.findViewById(R.id.nightstandAmPm);
-        TextView date = screensaverView.findViewById(R.id.nightstandDate);
-        TextView hint = screensaverView.findViewById(R.id.nightstandHint);
-
-        if (isNightMode) {
-            int red = 0xFFFF453A;
-            if (clock != null) clock.setTextColor(red);
-            if (ampm != null) ampm.setTextColor(0xCCFF453A);
-            if (date != null) date.setTextColor(0xE6FF453A);
-            if (hijri != null) hijri.setTextColor(0xE6FF453A);
-            if (prayer != null) {
-                prayer.setTextColor(red);
-                android.graphics.drawable.GradientDrawable redPill = new android.graphics.drawable.GradientDrawable();
-                redPill.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
-                redPill.setColor(0x26FF453A);
-                redPill.setStroke((int) (1 * density), 0x59FF453A);
-                redPill.setCornerRadius(21 * density);
-                prayer.setBackground(redPill);
-            }
-            if (hint != null) hint.setTextColor(0x55FF453A);
-        } else {
-            if (clock != null) clock.setTextColor(0xFFFFFFFF);
-            if (ampm != null) ampm.setTextColor(0xB3FFFFFF);
-            if (date != null) date.setTextColor(0xE6FFFFFF);
-            if (hijri != null) hijri.setTextColor(0xD9E6E0D2);
-            if (prayer != null) {
-                prayer.setTextColor(0xFFFFFFFF);
-                prayer.setBackgroundResource(R.drawable.pill_bg);
-            }
-            if (hint != null) hint.setTextColor(0x4DFFFFFF);
-        }
+        ClockDream.applyThemeStyle(this, screensaverView);
     }
 
     private void dismissScreensaver() {
