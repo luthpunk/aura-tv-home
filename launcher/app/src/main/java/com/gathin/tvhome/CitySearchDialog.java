@@ -87,7 +87,7 @@ public final class CitySearchDialog {
         TextView titleView = new TextView(activity);
         titleView.setText("📍 Ubah Kota Cuaca");
         titleView.setTextSize(17.5f);
-        titleView.setTextColor(isNeu ? 0xFF2B3036 : 0xFFFFFFFF);
+        titleView.setTextColor(isNeu ? ThemeManager.neu(0xFF2B3036) : 0xFFFFFFFF);
         titleView.setTypeface(outfit, Typeface.BOLD);
         titleView.setFontVariationSettings("'wght' 700");
         if (!isNeu) titleView.setShadowLayer(4 * density, 0, 1 * density, 0xDD000000);
@@ -98,7 +98,7 @@ public final class CitySearchDialog {
         TextView subView = new TextView(activity);
         subView.setText("Kota saat ini: " + currentCity + ", " + currentProvince);
         subView.setTextSize(13f);
-        subView.setTextColor(isNeu ? 0xFF4A525D : (isDark ? 0xFF00F0FF : 0xE6FFFFFF));
+        subView.setTextColor(isNeu ? ThemeManager.neu(0xFF4A525D) : (isDark ? 0xFF00F0FF : 0xE6FFFFFF));
         subView.setTypeface(outfit, Typeface.BOLD);
         subView.setFontVariationSettings("'wght' 600");
         if (!isNeu) subView.setShadowLayer(3 * density, 0, 1 * density, 0xCC000000);
@@ -152,8 +152,8 @@ public final class CitySearchDialog {
 
         final EditText searchInput = new EditText(activity);
         searchInput.setHint("Ketik nama kota");
-        searchInput.setHintTextColor(isNeu ? 0xFF7A828E : 0x80FFFFFF);
-        searchInput.setTextColor(isNeu ? 0xFF1F2429 : 0xFFFFFFFF);
+        searchInput.setHintTextColor(isNeu ? ThemeManager.neu(0xFF7A828E) : 0x80FFFFFF);
+        searchInput.setTextColor(isNeu ? ThemeManager.neu(0xFF1F2429) : 0xFFFFFFFF);
         searchInput.setTextSize(15f);
         searchInput.setTypeface(outfit);
         searchInput.setFontVariationSettings("'wght' 500");
@@ -167,7 +167,7 @@ public final class CitySearchDialog {
         final TextView clearBtn = new TextView(activity);
         clearBtn.setText("✕");
         clearBtn.setTextSize(13f);
-        clearBtn.setTextColor(isNeu ? 0xFF2B3036 : 0xB3FFFFFF);
+        clearBtn.setTextColor(isNeu ? ThemeManager.neu(0xFF2B3036) : 0xB3FFFFFF);
         clearBtn.setPadding(dp(8, density), dp(2, density), dp(4, density), dp(2, density));
         clearBtn.setVisibility(View.GONE);
         clearBtn.setClickable(true);
@@ -226,7 +226,7 @@ public final class CitySearchDialog {
                 TextView emptyView = new TextView(activity);
                 emptyView.setText("Kota \"" + q + "\" tidak ditemukan");
                 emptyView.setTextSize(13.5f);
-                emptyView.setTextColor(isNeu ? 0xFF5A626E : 0x99FFFFFF);
+                emptyView.setTextColor(isNeu ? ThemeManager.neu(0xFF5A626E) : 0x99FFFFFF);
                 emptyView.setTypeface(outfit);
                 emptyView.setPadding(dp(8, density), dp(12, density), dp(8, density), dp(8, density));
                 resultsContainer.addView(emptyView);
@@ -247,7 +247,7 @@ public final class CitySearchDialog {
                 cityTitle.setTextSize(14.5f);
                 cityTitle.setTextColor(new ColorStateList(
                         new int[][]{{android.R.attr.state_focused}, {}},
-                        isNeu ? new int[]{0xFF1F2429, 0xFF2B3036}
+                        isNeu ? ThemeManager.neu(new int[]{0xFF1F2429, 0xFF2B3036})
                                 : (isDark ? new int[]{0xFF00F0FF, 0xFFFFFFFF} : new int[]{0xFFFFFFFF, 0xFFFFFFFF})));
                 cityTitle.setTypeface(outfit, Typeface.BOLD);
                 cityTitle.setFontVariationSettings("'wght' 600");
@@ -267,7 +267,7 @@ public final class CitySearchDialog {
                 citySub.setTextSize(12.5f);
                 citySub.setTextColor(new ColorStateList(
                         new int[][]{{android.R.attr.state_focused}, {}},
-                        isNeu ? new int[]{0xFF2B3036, 0xFF434B56}
+                        isNeu ? ThemeManager.neu(new int[]{0xFF2B3036, 0xFF434B56})
                                 : new int[]{0xFFFFFFFF, 0xE6FFFFFF}));
                 citySub.setTypeface(outfit, Typeface.BOLD);
                 citySub.setFontVariationSettings("'wght' 600");

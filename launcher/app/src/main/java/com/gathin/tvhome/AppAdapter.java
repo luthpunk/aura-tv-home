@@ -376,7 +376,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             return generateSolidBanner(ctx, icon, pkg, 0xFF0A0A0E);
         } else if (ThemeManager.isNeumorphism(ctx)) {
             // Neumorphism Light: Warm porcelain clay for sideloaded non-TV apps (matches reference)
-            return generateSolidBanner(ctx, icon, pkg, 0xFFEDEAE4);
+            return generateSolidBanner(ctx, icon, pkg, ThemeManager.neu(0xFFEDEAE4));
         } else {
             // Frosted Glass: Dominant solid color
             return generateSolidBanner(ctx, icon, pkg);
@@ -553,7 +553,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         boolean isNeu = ThemeManager.isNeumorphism(ctx);
 
         if (isNeu) {
-            h.name.setTextColor(0xFF2B3036);
+            h.name.setTextColor(ThemeManager.neu(0xFF2B3036));
             h.name.setShadowLayer(0, 0, 0, 0);
         } else {
             h.name.setTextColor(0xF2FFFFFF);
@@ -596,7 +596,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             h.icon.setVisibility(View.VISIBLE);
             h.label.setText(e.label);
             if (isNeu) {
-                h.label.setTextColor(0xFF1E242B);
+                h.label.setTextColor(ThemeManager.neu(0xFF1E242B));
                 h.label.setShadowLayer(0, 0, 0, 0);
             } else {
                 h.label.setTextColor(0xFFFFFFFF);
@@ -779,7 +779,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             c.drawLine(cx, cy - arm, cx, cy + arm, plusPaint);
         } else if (isNeu) {
             // Neumorphism Light: Warm porcelain canvas with 3D extruded Soft UI squircle & deep charcoal '+'
-            c.drawColor(0xFFEDEAE4);
+            c.drawColor(ThemeManager.neu(0xFFEDEAE4));
 
             NeumorphicDrawable.drawExtruded(c, rect, radius, 1.5f, 1.0f, true);
 
@@ -788,7 +788,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             plusPaint.setStyle(Paint.Style.STROKE);
             plusPaint.setStrokeWidth(5.5f);
             plusPaint.setStrokeCap(Paint.Cap.ROUND);
-            plusPaint.setColor(0xFF363B42);
+            plusPaint.setColor(ThemeManager.neu(0xFF363B42));
             c.drawLine(cx - arm, cy, cx + arm, cy, plusPaint);
             c.drawLine(cx, cy - arm, cx, cy + arm, plusPaint);
         } else {
@@ -894,16 +894,16 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             }
         } else if (isNeu) {
             // Neumorphism Light: Warm porcelain canvas with 3x3 extruded dark charcoal squircles (matches 1793633365104.jpg)
-            c.drawColor(0xFFEDEAE4);
+            c.drawColor(ThemeManager.neu(0xFFEDEAE4));
 
             Paint cellLightShadow = new Paint(Paint.ANTI_ALIAS_FLAG);
-            cellLightShadow.setColor(0xCCFFFFFF);
+            cellLightShadow.setColor(ThemeManager.neu(0xCCFFFFFF));
 
             Paint cellDarkShadow = new Paint(Paint.ANTI_ALIAS_FLAG);
-            cellDarkShadow.setColor(0x361A1610);
+            cellDarkShadow.setColor(ThemeManager.isNeuDarkCached() ? 0xA0000000 : 0x361A1610);
 
             Paint cellFill = new Paint(Paint.ANTI_ALIAS_FLAG);
-            cellFill.setColor(0xFF383E47);
+            cellFill.setColor(ThemeManager.neu(0xFF383E47));
 
             for (int row = 0; row < 3; row++) {
                 for (int col = 0; col < 3; col++) {

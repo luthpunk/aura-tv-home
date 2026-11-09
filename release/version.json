@@ -1,7 +1,7 @@
 {
-  "versionCode": 61,
-  "versionName": "3.7.0-id",
+  "versionCode": 62,
+  "versionName": "3.7.1-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "fix(now-playing): URI-first cover identity (Spotify alternates 640/160 bitmaps), no flicker, instant next, app-icon on app switch (v3.7.0-id)",
-  "releaseDate": "2026-11-08"
+  "changelog": "feat(theme): add Neumorphism Dark theme with tactile 3D Soft UI on deep charcoal-navy canvas (v3.7.1-id)",
+  "releaseDate": "2026-11-09"
 }

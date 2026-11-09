@@ -280,8 +280,8 @@ final class WeatherAirQuality {
         SpannableStringBuilder sb = new SpannableStringBuilder();
 
         // Weather: e.g. "⛅ 29° Cerah" — readable slate/silver-grey across all themes
-        int weatherColor = isNeu ? 0xFF3A414A : 0xFFD6DCE5;
-        int dotColor = isNeu ? 0xFF68707C : 0x99CBD5E1;
+        int weatherColor = isNeu ? ThemeManager.neu(0xFF3A414A) : 0xFFD6DCE5;
+        int dotColor = isNeu ? ThemeManager.neu(0xFF68707C) : 0x99CBD5E1;
 
         int startWeather = sb.length();
         sb.append(icon).append(" ").append(String.valueOf(temp)).append("° ").append(condition);
@@ -697,11 +697,11 @@ final class WeatherAirQuality {
 
     private static int getAqiColor(int aqi, boolean isNeu) {
         if (isNeu) {
-            if (aqi <= 50) return 0xFF15803D;  // Deep Emerald Green (Baik)
-            if (aqi <= 100) return 0xFF0284C7; // Deep Sky Blue (Sedang)
-            if (aqi <= 200) return 0xFFD97706; // Warm Amber-Orange (Tidak Sehat)
-            if (aqi <= 300) return 0xFFDC2626; // Crimson Red (Sangat Tidak Sehat)
-            return 0xFF7F1D1D;                 // Dark Maroon (Berbahaya)
+            if (aqi <= 50) return ThemeManager.neu(0xFF15803D);  // Deep Emerald Green (Baik)
+            if (aqi <= 100) return ThemeManager.neu(0xFF0284C7); // Deep Sky Blue (Sedang)
+            if (aqi <= 200) return ThemeManager.neu(0xFFD97706); // Warm Amber-Orange (Tidak Sehat)
+            if (aqi <= 300) return ThemeManager.neu(0xFFDC2626); // Crimson Red (Sangat Tidak Sehat)
+            return ThemeManager.neu(0xFF7F1D1D);                 // Dark Maroon (Berbahaya)
         }
         if (aqi <= 50) return 0xFF4ADE80;  // Green (Baik)
         if (aqi <= 100) return 0xFF38BDF8; // Sky Blue (Sederhana)

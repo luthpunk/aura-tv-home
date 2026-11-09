@@ -61,45 +61,61 @@ public final class NeumorphicDrawable extends Drawable {
     private static final Paint SHADOW_DARK_PAINT = new Paint(Paint.ANTI_ALIAS_FLAG);
     private static final Paint SHADOW_LIGHT_PAINT = new Paint(Paint.ANTI_ALIAS_FLAG);
 
-    // Normalized (0,0)->(1,1) unit gradients scaled via local Matrix
-    private static final LinearGradient EXTRUDED_FILL_GRAD = new LinearGradient(
-            0f, 0f, 1f, 1f,
-            new int[]{0xFFF6F4EF, 0xFFEDEAE4, 0xFFE3DFD7},
-            new float[]{0f, 0.52f, 1f},
-            Shader.TileMode.CLAMP);
+    // Normalized (0,0)->(1,1) unit gradients scaled via local Matrix.
+    // Rebuilt by setDarkPalette() when switching between Neumorphism Light and Dark.
+    private static LinearGradient EXTRUDED_FILL_GRAD, EXTRUDED_RIM_GRAD, RECESSED_FILL_GRAD,
+            RECESSED_RIM_GRAD, TILE_UNFOCUSED_RIM_GRAD, TILE_FOCUS_RIM_GRAD;
 
-    private static final LinearGradient EXTRUDED_RIM_GRAD = new LinearGradient(
-            0f, 0f, 1f, 1f,
-            new int[]{0xFFFFFFFF, 0x70FFFFFF, 0x321A1610},
-            new float[]{0f, 0.48f, 1f},
-            Shader.TileMode.CLAMP);
+    // Shadow palette (RGB only, alpha applied per feather pass) + per-pass alpha multipliers
+    private static int sLightRgb = 0xFFFFFF, sDarkRgb = 0x1A1610, sInnerDarkRgb = 0x18140E;
+    private static float sOuterLightK = 1f, sOuterDarkK = 1f, sInnerDarkK = 1f, sInnerLightK = 1f;
+    private static int sFocusCushion = 0x55FFFFFF;
+    private static boolean sDark = false;
 
-    private static final LinearGradient RECESSED_FILL_GRAD = new LinearGradient(
-            0f, 0f, 1f, 1f,
-            new int[]{0xFFD6D1C7, 0xFFE1DED6, 0xFFEAE7E0},
-            new float[]{0f, 0.5f, 1f},
-            Shader.TileMode.CLAMP);
+    private static LinearGradient unit(int[] colors) {
+        return new LinearGradient(0f, 0f, 1f, 1f, colors, new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP);
+    }
 
-    private static final LinearGradient RECESSED_RIM_GRAD = new LinearGradient(
-            0f, 0f, 1f, 1f,
-            new int[]{0x4E1A1610, 0x141A1610, 0xF8FFFFFF},
-            new float[]{0f, 0.48f, 1f},
-            Shader.TileMode.CLAMP);
+    private static void buildPalette(boolean dark) {
+        sDark = dark;
+        if (!dark) {
+            // Neumorphism Light: warm porcelain (reference 1793633365104.jpg)
+            EXTRUDED_FILL_GRAD = unit(new int[]{0xFFF6F4EF, 0xFFEDEAE4, 0xFFE3DFD7});
+            EXTRUDED_RIM_GRAD = unit(new int[]{0xFFFFFFFF, 0x70FFFFFF, 0x321A1610});
+            RECESSED_FILL_GRAD = unit(new int[]{0xFFD6D1C7, 0xFFE1DED6, 0xFFEAE7E0});
+            RECESSED_RIM_GRAD = unit(new int[]{0x4E1A1610, 0x141A1610, 0xF8FFFFFF});
+            TILE_UNFOCUSED_RIM_GRAD = unit(new int[]{0xD9FFFFFF, 0x33FFFFFF, 0x281A1610});
+            TILE_FOCUS_RIM_GRAD = unit(new int[]{0xFFFFFFFF, 0xB3FFFFFF, 0x451A1610});
+            sLightRgb = 0xFFFFFF; sDarkRgb = 0x1A1610; sInnerDarkRgb = 0x18140E;
+            sOuterLightK = 1f; sOuterDarkK = 1f; sInnerDarkK = 1f; sInnerLightK = 1f;
+            sFocusCushion = 0x55FFFFFF;
+        } else {
+            // Neumorphism Dark: charcoal-navy canvas (reference 1794194557112.jpg)
+            // base #171A22, raised highlight #242939, deep shadow #07080C
+            EXTRUDED_FILL_GRAD = unit(new int[]{0xFF1E212B, 0xFF191C24, 0xFF15171E});
+            EXTRUDED_RIM_GRAD = unit(new int[]{0xB3343A4D, 0x40282D3B, 0x8C05060A});
+            RECESSED_FILL_GRAD = unit(new int[]{0xFF0E0F15, 0xFF12141A, 0xFF171920});
+            RECESSED_RIM_GRAD = unit(new int[]{0xB305060A, 0x4005060A, 0x8C2F3546});
+            TILE_UNFOCUSED_RIM_GRAD = unit(new int[]{0x8C343A4D, 0x26282D3B, 0x8005060A});
+            TILE_FOCUS_RIM_GRAD = unit(new int[]{0xFF4C5570, 0xA6343A4D, 0xA605060A});
+            sLightRgb = 0x2A3042; sDarkRgb = 0x000000; sInnerDarkRgb = 0x000000;
+            sOuterLightK = 0.9f; sOuterDarkK = 3.2f; sInnerDarkK = 2.6f; sInnerLightK = 0.75f;
+            sFocusCushion = 0x404C5570;
+        }
+    }
 
-    private static final LinearGradient TILE_UNFOCUSED_RIM_GRAD = new LinearGradient(
-            0f, 0f, 1f, 1f,
-            new int[]{0xD9FFFFFF, 0x33FFFFFF, 0x281A1610},
-            new float[]{0f, 0.48f, 1f},
-            Shader.TileMode.CLAMP);
+    /** Called by ThemeManager when the Neumorphism variant changes. */
+    public static void setDarkPalette(boolean dark) {
+        if (dark != sDark || EXTRUDED_FILL_GRAD == null) buildPalette(dark);
+    }
 
-    private static final LinearGradient TILE_FOCUS_RIM_GRAD = new LinearGradient(
-            0f, 0f, 1f, 1f,
-            new int[]{0xFFFFFFFF, 0xB3FFFFFF, 0x451A1610},
-            new float[]{0f, 0.48f, 1f},
-            Shader.TileMode.CLAMP);
+    public static boolean isDarkPalette() {
+        return sDark;
+    }
 
     static {
         STROKE_PAINT.setStyle(Paint.Style.STROKE);
+        buildPalette(false);
     }
 
     public NeumorphicDrawable(float radius, float density, int mode) {
@@ -229,8 +245,8 @@ public final class NeumorphicDrawable extends Drawable {
                     bounds.top - shift - spread,
                     bounds.right - shift * 0.15f + spread * 0.25f,
                     bounds.bottom - shift * 0.15f + spread * 0.25f);
-            int passAlpha = Math.round(44 * alpha * ((6 - i) / 5f));
-            SHADOW_LIGHT_PAINT.setColor((passAlpha << 24) | 0x00FFFFFF);
+            int passAlpha = Math.min(255, Math.round(44 * sOuterLightK * alpha * ((6 - i) / 5f)));
+            SHADOW_LIGHT_PAINT.setColor((passAlpha << 24) | sLightRgb);
             float sr = r + spread;
             c.drawRoundRect(TMP_RECT, sr, sr, SHADOW_LIGHT_PAINT);
         }
@@ -246,8 +262,8 @@ public final class NeumorphicDrawable extends Drawable {
                     bounds.top + dy * 0.15f - spread * 0.25f,
                     bounds.right + dx + spread,
                     bounds.bottom + dy + spread);
-            int passAlpha = Math.round(28 * alpha * ((7 - i) / 6f));
-            SHADOW_DARK_PAINT.setColor((passAlpha << 24) | 0x001A1610);
+            int passAlpha = Math.min(255, Math.round(28 * sOuterDarkK * alpha * ((7 - i) / 6f)));
+            SHADOW_DARK_PAINT.setColor((passAlpha << 24) | sDarkRgb);
             float sr = r + spread;
             c.drawRoundRect(TMP_RECT, sr, sr, SHADOW_DARK_PAINT);
         }
@@ -290,8 +306,8 @@ public final class NeumorphicDrawable extends Drawable {
                     bounds.top + d * 0.55f,
                     bounds.right + d * 3.0f,
                     bounds.bottom + d * 3.0f);
-            int passAlpha = Math.round(36 * alpha * ((7 - i) / 6f));
-            SHADOW_DARK_PAINT.setColor((passAlpha << 24) | 0x0018140E);
+            int passAlpha = Math.min(255, Math.round(36 * sInnerDarkK * alpha * ((7 - i) / 6f)));
+            SHADOW_DARK_PAINT.setColor((passAlpha << 24) | sInnerDarkRgb);
             c.drawRoundRect(TMP_RECT, r, r, SHADOW_DARK_PAINT);
         }
 
@@ -306,8 +322,8 @@ public final class NeumorphicDrawable extends Drawable {
                     bounds.top - d * 3.0f,
                     bounds.right - d * 0.45f,
                     bounds.bottom - d * 0.55f);
-            int passAlpha = Math.round(64 * alpha * ((6 - i) / 5f));
-            SHADOW_LIGHT_PAINT.setColor((passAlpha << 24) | 0x00FFFFFF);
+            int passAlpha = Math.min(255, Math.round(64 * sInnerLightK * alpha * ((6 - i) / 5f)));
+            SHADOW_LIGHT_PAINT.setColor((passAlpha << 24) | sLightRgb);
             c.drawRoundRect(TMP_RECT, r, r, SHADOW_LIGHT_PAINT);
         }
 
@@ -365,7 +381,7 @@ public final class NeumorphicDrawable extends Drawable {
         TMP_RECT.set(bounds.left + innerInset, bounds.top + innerInset, bounds.right - innerInset, bounds.bottom - innerInset);
         STROKE_PAINT.setShader(null);
         STROKE_PAINT.setStrokeWidth(innerW);
-        STROKE_PAINT.setColor((Math.round(0x55 * alpha) << 24) | 0x00FFFFFF);
+        STROKE_PAINT.setColor((Math.round(((sFocusCushion >>> 24) & 0xFF) * alpha) << 24) | (sFocusCushion & 0x00FFFFFF));
         float rInner = Math.max(0f, r - innerInset);
         c.drawRoundRect(TMP_RECT, rInner, rInner, STROKE_PAINT);
 

@@ -143,7 +143,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
             float half = neuTrayRim.getStrokeWidth() / 2f;
             rect.inset(half, half);
             neuTrayRim.setShader(new LinearGradient(rect.left, rect.top, rect.right, rect.bottom,
-                    new int[]{0xFFFFFFFF, 0x70FFFFFF, 0x321A1610},
+                    ThemeManager.isNeuDarkCached() ? new int[]{0xB3343A4D, 0x40282D3B, 0x8C05060A} : new int[]{0xFFFFFFFF, 0x70FFFFFF, 0x321A1610},
                     new float[]{0f, 0.48f, 1f}, Shader.TileMode.CLAMP));
             c.drawRoundRect(rect, radius - half, radius - half, neuTrayRim);
 

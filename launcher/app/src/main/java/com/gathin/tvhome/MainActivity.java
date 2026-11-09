@@ -999,6 +999,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         if (ThemeManager.isDarkGlow(this)) {
             wallView.setColorFilter(0xFF222222, android.graphics.PorterDuff.Mode.MULTIPLY);
+        } else if (ThemeManager.isNeumorphismDark(this)) {
+            // Neumorphism Dark: near-solid charcoal-navy canvas (reference 1794194557112.jpg)
+            wallView.setColorFilter(new android.graphics.PorterDuffColorFilter(0xF2171A22, android.graphics.PorterDuff.Mode.SRC_ATOP));
         } else if (ThemeManager.isNeumorphism(this)) {
             wallView.setColorFilter(new android.graphics.PorterDuffColorFilter(0xEAEDEAE4, android.graphics.PorterDuff.Mode.SRC_ATOP));
         } else {
@@ -1009,6 +1012,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private int getWallpaperDimColor() {
         if (ThemeManager.isDarkGlow(this)) {
             return 0xFF222222; // Ultra-dark OLED dimming (~13% brightness, moody cyber dark contrast)
+        } else if (ThemeManager.isNeumorphismDark(this)) {
+            return 0xFF171A22; // Charcoal-navy Soft UI canvas matching 1794194557112.jpg
         } else if (ThemeManager.isNeumorphism(this)) {
             return 0xFFEDEAE4; // Warm porcelain light wash matching 1793633365104.jpg
         } else {
@@ -1654,8 +1659,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 pill.setBackground(sld);
             } else if (isNeu) {
                 // Neumorphism Light: Extruded ("timbul") porcelain pill when normal, recessed ("cekungan") when focused!
-                pill.setTextColor(0xFF2B3036);
-                pill.setCompoundDrawableTintList(android.content.res.ColorStateList.valueOf(0xFF2B3036));
+                pill.setTextColor(ThemeManager.neu(0xFF2B3036));
+                pill.setCompoundDrawableTintList(android.content.res.ColorStateList.valueOf(ThemeManager.neu(0xFF2B3036)));
                 pill.setShadowLayer(0, 0, 0, 0);
                 pill.setBackground(new NeumorphicDrawable(pill, radius, density, NeumorphicDrawable.MODE_EXTRUDED, true, glider, false));
             } else {
@@ -1686,25 +1691,25 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (clock != null) {
             clock.setFormat12Hour("HH:mm");
             clock.setFormat24Hour("HH:mm");
-            clock.setTextColor(isNeu ? 0xFF2B3036 : 0xFFFFFFFF);
+            clock.setTextColor(isNeu ? ThemeManager.neu(0xFF2B3036) : 0xFFFFFFFF);
             if (isNeu) clock.setShadowLayer(0, 0, 0, 0);
             else clock.setShadowLayer(4f, 0, 1f, 0x80000000);
         }
 
         if (ampmView != null) {
-            ampmView.setTextColor(isNeu ? 0xFF383E47 : 0xFFFFFFFF);
+            ampmView.setTextColor(isNeu ? ThemeManager.neu(0xFF383E47) : 0xFFFFFFFF);
             if (isNeu) ampmView.setShadowLayer(0, 0, 0, 0);
             else ampmView.setShadowLayer(3f, 0, 1f, 0x80000000);
         }
 
         if (dateView != null) {
-            dateView.setTextColor(isNeu ? 0xFF383E47 : 0xE6FFFFFF);
+            dateView.setTextColor(isNeu ? ThemeManager.neu(0xFF383E47) : 0xE6FFFFFF);
             if (isNeu) dateView.setShadowLayer(0, 0, 0, 0);
             else dateView.setShadowLayer(3f, 0, 1f, 0x80000000);
         }
 
         if (shamsiDate != null) {
-            shamsiDate.setTextColor(isNeu ? 0xFF383E47 : 0xE6FFFFFF);
+            shamsiDate.setTextColor(isNeu ? ThemeManager.neu(0xFF383E47) : 0xE6FFFFFF);
             if (isNeu) shamsiDate.setShadowLayer(0, 0, 0, 0);
             else shamsiDate.setShadowLayer(3f, 0, 1f, 0x80000000);
         }
@@ -1811,15 +1816,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 }
             }
 
-            int headerColor = isNeu ? 0xFF363E4A : 0xFFFFFFFF;
-            int bigTempColor = isNeu ? 0xFF636C78 : 0xFFFFFFFF;
-            int condColor = isNeu ? 0xFF363E4A : 0xFFFFFFFF;
-            int subColor = isNeu ? 0xFF4A5360 : 0xDCE2E8F0;
-            int hourTimeColor = isNeu ? 0xFF28303D : 0xCCFFFFFF;
-            int hourValColor = isNeu ? 0xFF1F2632 : 0xFFFFFFFF;
-            int pillTextColor = isNeu ? 0xFF222934 : 0xF2FFFFFF;
-            int iconTint = isNeu ? 0xFF636C78 : 0xFFFFFFFF;
-            int divColor = isNeu ? 0x1F000000 : (isDark ? 0x2E00F0FF : 0x28FFFFFF);
+            int headerColor = isNeu ? ThemeManager.neu(0xFF363E4A) : 0xFFFFFFFF;
+            int bigTempColor = isNeu ? ThemeManager.neu(0xFF636C78) : 0xFFFFFFFF;
+            int condColor = isNeu ? ThemeManager.neu(0xFF363E4A) : 0xFFFFFFFF;
+            int subColor = isNeu ? ThemeManager.neu(0xFF4A5360) : 0xDCE2E8F0;
+            int hourTimeColor = isNeu ? ThemeManager.neu(0xFF28303D) : 0xCCFFFFFF;
+            int hourValColor = isNeu ? ThemeManager.neu(0xFF1F2632) : 0xFFFFFFFF;
+            int pillTextColor = isNeu ? ThemeManager.neu(0xFF222934) : 0xF2FFFFFF;
+            int iconTint = isNeu ? ThemeManager.neu(0xFF636C78) : 0xFFFFFFFF;
+            int divColor = isNeu ? ThemeManager.neu(0x1F000000) : (isDark ? 0x2E00F0FF : 0x28FFFFFF);
 
             if (weaHeaderLoc != null) {
                 weaHeaderLoc.setTextColor(headerColor);
@@ -1869,7 +1874,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         // Focused Row-1 App Title (above dock left)
         if (heroName != null) {
-            heroName.setTextColor(isNeu ? 0xFF232830 : 0xFFFFFFFF);
+            heroName.setTextColor(isNeu ? ThemeManager.neu(0xFF232830) : 0xFFFFFFFF);
             if (isNeu) heroName.setShadowLayer(0, 0, 0, 0);
             else heroName.setShadowLayer(4f, 0, 1f, 0x99000000);
         }
@@ -1891,11 +1896,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 if (cardAlbumArt != null) cardAlbumArt.setBackground(null);
 
                 if (cardTitle != null) {
-                    cardTitle.setTextColor(0xFF222934);
+                    cardTitle.setTextColor(ThemeManager.neu(0xFF222934));
                     cardTitle.setShadowLayer(0, 0, 0, 0);
                 }
                 if (cardSubtitle != null) {
-                    cardSubtitle.setTextColor(0xFF5A626E);
+                    cardSubtitle.setTextColor(ThemeManager.neu(0xFF5A626E));
                     cardSubtitle.setShadowLayer(0, 0, 0, 0);
                 }
             } else if (isDark) {
@@ -2644,7 +2649,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (fw == null) return;
 
         boolean isNeu = ThemeManager.isNeumorphism(this);
-        int iconColor = isNeu ? 0xFF636C78 : 0xFFFFFFFF;
+        int iconColor = isNeu ? ThemeManager.neu(0xFF636C78) : 0xFFFFFFFF;
         int nowHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
 
         if (weaHeaderLoc != null) {
@@ -2973,7 +2978,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         TextView titleView = new TextView(ctx);
         titleView.setText(headerTitle);
         titleView.setTextSize(19);
-        titleView.setTextColor(isNeu ? 0xFF2B3036 : 0xFFFFFFFF);
+        titleView.setTextColor(isNeu ? ThemeManager.neu(0xFF2B3036) : 0xFFFFFFFF);
         titleView.setTypeface(outfit, Typeface.BOLD);
         titleView.setFontVariationSettings("'wght' 700");
         if (isNeu) titleView.setShadowLayer(0, 0, 0, 0);
@@ -2984,7 +2989,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             TextView subView = new TextView(ctx);
             subView.setText(headerSubtitle);
             subView.setTextSize(13.5f);
-            subView.setTextColor(isNeu ? 0xFF434B56 : (isDark ? 0xFF00F0FF : 0xF0FFFFFF));
+            subView.setTextColor(isNeu ? ThemeManager.neu(0xFF434B56) : (isDark ? 0xFF00F0FF : 0xF0FFFFFF));
             subView.setTypeface(outfit, Typeface.BOLD);
             subView.setFontVariationSettings("'wght' 650");
             if (isNeu) subView.setShadowLayer(0, 0, 0, 0);
@@ -3056,7 +3061,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             rowTitle.setText(opt.title);
             rowTitle.setTextSize(15.5f);
             if (isNeu) {
-                rowTitle.setTextColor(new ColorStateList(new int[][]{{android.R.attr.state_focused}, {}}, new int[]{0xFF1F2429, 0xFF2B3036}));
+                rowTitle.setTextColor(new ColorStateList(new int[][]{{android.R.attr.state_focused}, {}}, new int[]{ThemeManager.neu(0xFF1F2429), ThemeManager.neu(0xFF2B3036)}));
                 rowTitle.setShadowLayer(0, 0, 0, 0);
             } else if (isDark) {
                 rowTitle.setTextColor(new ColorStateList(new int[][]{{android.R.attr.state_focused}, {}}, new int[]{0xFF00F0FF, 0xFFFFFFFF}));
@@ -3076,13 +3081,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 activeTag.setText(badge);
                 activeTag.setTextSize(11);
                 activeTag.setTextColor(new ColorStateList(new int[][]{{android.R.attr.state_focused}, {}},
-                        isNeu ? new int[]{0xFF2B3036, 0xFF2B3036}
+                        isNeu ? ThemeManager.neu(new int[]{0xFF2B3036, 0xFF2B3036})
                                 : (isDark ? new int[]{0xFF00F0FF, 0xFF00F0FF} : new int[]{0xFFFFFFFF, 0xFFFFFFFF})));
                 activeTag.setTypeface(outfit, Typeface.BOLD);
                 activeTag.setFontVariationSettings("'wght' 800");
                 activeTag.setPadding((int) (8 * density), (int) (2 * density), (int) (8 * density), (int) (2 * density));
                 GradientDrawable tagBg = new GradientDrawable();
-                tagBg.setColor(isNeu ? 0x16000000 : (isDark ? 0x2600F0FF : 0x36FFFFFF));
+                tagBg.setColor(isNeu ? ThemeManager.neu(0x16000000) : (isDark ? 0x2600F0FF : 0x36FFFFFF));
                 if (!isNeu && !isDark) {
                     tagBg.setStroke(Math.max(1, Math.round(1.0f * density)), 0x73FFFFFF);
                 }
@@ -3098,7 +3103,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 rowSub.setText(opt.subtitle);
                 rowSub.setTextSize(13.2f);
                 if (isNeu) {
-                    rowSub.setTextColor(new ColorStateList(new int[][]{{android.R.attr.state_focused}, {}}, new int[]{0xFF2B3036, 0xFF434B56}));
+                    rowSub.setTextColor(new ColorStateList(new int[][]{{android.R.attr.state_focused}, {}}, new int[]{ThemeManager.neu(0xFF2B3036), ThemeManager.neu(0xFF434B56)}));
                     rowSub.setShadowLayer(0, 0, 0, 0);
                 } else if (isDark) {
                     rowSub.setTextColor(new ColorStateList(new int[][]{{android.R.attr.state_focused}, {}}, new int[]{0xFFFFFFFF, 0xD9FFFFFF}));
@@ -3242,7 +3247,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         TextView titleView = new TextView(this);
         titleView.setText("🕌 Tetapan & Pilihan Azan");
         titleView.setTextSize(19);
-        titleView.setTextColor(isNeu ? 0xFF2B3036 : 0xFFFFFFFF);
+        titleView.setTextColor(isNeu ? ThemeManager.neu(0xFF2B3036) : 0xFFFFFFFF);
         titleView.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
         titleView.setFontVariationSettings("'wght' 700");
         if (isNeu) titleView.setShadowLayer(0, 0, 0, 0);
@@ -3252,7 +3257,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         TextView subView = new TextView(this);
         subView.setText("Notifikasi popup kad kaca terapung di atas semua aplikasi & tetapan audio azan");
         subView.setTextSize(12.5f);
-        subView.setTextColor(isNeu ? 0xFF5A626E : 0xD9FFFFFF);
+        subView.setTextColor(isNeu ? ThemeManager.neu(0xFF5A626E) : 0xD9FFFFFF);
         subView.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
         subView.setFontVariationSettings("'wght' 600");
         if (isNeu) subView.setShadowLayer(0, 0, 0, 0);
@@ -3265,7 +3270,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         // Gap below header
         View headerDivider = new View(this);
-        headerDivider.setBackgroundColor(isNeu ? 0x1F000000 : 0x22FFFFFF);
+        headerDivider.setBackgroundColor(isNeu ? ThemeManager.neu(0x1F000000) : 0x22FFFFFF);
         LinearLayout.LayoutParams divLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.max(1, (int) (1 * density)));
         divLp.topMargin = (int) (8 * density);
         divLp.bottomMargin = (int) (8 * density);
@@ -3341,7 +3346,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         // Subtle vertical divider between columns
         View colDivider = new View(this);
-        colDivider.setBackgroundColor(isNeu ? 0x1A000000 : 0x1FFFFFFF);
+        colDivider.setBackgroundColor(isNeu ? ThemeManager.neu(0x1A000000) : 0x1FFFFFFF);
         LinearLayout.LayoutParams colDivLp = new LinearLayout.LayoutParams(Math.max(1, (int) (1 * density)), ViewGroup.LayoutParams.MATCH_PARENT);
         colDivLp.leftMargin = (int) (4 * density);
         colDivLp.rightMargin = (int) (12 * density);
@@ -3376,7 +3381,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         soundTag.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
         soundTag.setFontVariationSettings("'wght' 700");
         soundTag.setTextColor(new ColorStateList(new int[][]{{android.R.attr.state_focused}, {}},
-                isNeu ? new int[]{0xFF1F2429, 0xFF0284C7}
+                isNeu ? ThemeManager.neu(new int[]{0xFF1F2429, 0xFF0284C7})
                         : (isDark ? new int[]{0xFF00F0FF, 0xFF00F0FF} : new int[]{0xFF000000, 0xFF38BDF8})));
         rightCol.addView(soundRow);
 
@@ -3402,7 +3407,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         testTag.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
         testTag.setFontVariationSettings("'wght' 700");
         testTag.setTextColor(new ColorStateList(new int[][]{{android.R.attr.state_focused}, {}},
-                isNeu ? new int[]{0xFF1F2429, 0xFF0284C7}
+                isNeu ? ThemeManager.neu(new int[]{0xFF1F2429, 0xFF0284C7})
                         : (isDark ? new int[]{0xFF00F0FF, 0xFF00F0FF} : new int[]{0xFF000000, 0xFF38BDF8})));
         rightCol.addView(testRow);
 
@@ -3423,7 +3428,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         TextView infoText = new TextView(this);
         infoText.setText("💡 Waktu solat diselaraskan secara automatik mengikut zon JAKIM. Kad azan tetap muncul di atas Netflix, YouTube & Perfect TV.");
         infoText.setTextSize(11f);
-        infoText.setTextColor(isNeu ? 0xFF4A5568 : 0xB3FFFFFF);
+        infoText.setTextColor(isNeu ? ThemeManager.neu(0xFF4A5568) : 0xB3FFFFFF);
         infoText.setTypeface(getResources().getFont(R.font.outfit), Typeface.NORMAL);
         infoText.setFontVariationSettings("'wght' 500");
         infoText.setLineSpacing(0, 1.25f);
@@ -3452,7 +3457,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         closeTag.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
         closeTag.setFontVariationSettings("'wght' 700");
         closeTag.setTextColor(new ColorStateList(new int[][]{{android.R.attr.state_focused}, {}},
-                isNeu ? new int[]{0xFF1F2429, 0xFF5A626E}
+                isNeu ? ThemeManager.neu(new int[]{0xFF1F2429, 0xFF5A626E})
                         : (isDark ? new int[]{0xFF00F0FF, 0x88FFFFFF} : new int[]{0xFF000000, 0x88FFFFFF})));
         rightCol.addView(closeRow);
 
@@ -3536,8 +3541,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         tag.setTextSize(13);
         tag.setTypeface(getResources().getFont(R.font.outfit), Typeface.NORMAL);
         tag.setFontVariationSettings(on ? "'wght' 700" : "'wght' 600");
-        int color = isNeu ? (on ? 0xFF0284C7 : 0xFF5A626E) : (on ? (isDark ? 0xFF00F0FF : 0xFFFFFFFF) : 0x99FFFFFF);
-        int focusedColor = isNeu ? 0xFF1F2429 : (isDark ? 0xFF00F0FF : 0xFFFFFFFF);
+        int color = isNeu ? (ThemeManager.neu(on ? 0xFF0284C7 : 0xFF5A626E)) : (on ? (isDark ? 0xFF00F0FF : 0xFFFFFFFF) : 0x99FFFFFF);
+        int focusedColor = isNeu ? ThemeManager.neu(0xFF1F2429) : (isDark ? 0xFF00F0FF : 0xFFFFFFFF);
         tag.setTextColor(new ColorStateList(new int[][]{{android.R.attr.state_focused}, {}}, new int[]{focusedColor, color}));
     }
 
@@ -3548,8 +3553,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         tag.setTextSize(13);
         tag.setTypeface(getResources().getFont(R.font.outfit), Typeface.NORMAL);
         tag.setFontVariationSettings(on ? "'wght' 700" : "'wght' 600");
-        int color = isNeu ? (on ? 0xFF0284C7 : 0xFF5A626E) : (on ? (isDark ? 0xFF00F0FF : 0xFFFFFFFF) : 0x99FFFFFF);
-        int focusedColor = isNeu ? 0xFF1F2429 : (isDark ? 0xFF00F0FF : 0xFFFFFFFF);
+        int color = isNeu ? (ThemeManager.neu(on ? 0xFF0284C7 : 0xFF5A626E)) : (on ? (isDark ? 0xFF00F0FF : 0xFFFFFFFF) : 0x99FFFFFF);
+        int focusedColor = isNeu ? ThemeManager.neu(0xFF1F2429) : (isDark ? 0xFF00F0FF : 0xFFFFFFFF);
         tag.setTextColor(new ColorStateList(new int[][]{{android.R.attr.state_focused}, {}}, new int[]{focusedColor, color}));
     }
 
@@ -3559,7 +3564,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         TextView tv = new TextView(this);
         tv.setText(title);
         tv.setTextSize(11.5f);
-        tv.setTextColor(isNeu ? 0xFF4A5568 : (isDark ? 0xFF00F0FF : 0xE6FFFFFF));
+        tv.setTextColor(isNeu ? ThemeManager.neu(0xFF4A5568) : (isDark ? 0xFF00F0FF : 0xE6FFFFFF));
         tv.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
         tv.setFontVariationSettings("'wght' 700");
         tv.setLetterSpacing(0.08f);
@@ -3618,7 +3623,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         rowTitle.setText(title);
         rowTitle.setTextSize(15);
         rowTitle.setTextColor(new ColorStateList(new int[][]{{android.R.attr.state_focused}, {}},
-                isNeu ? new int[]{0xFF1F2429, 0xFF2B3036}
+                isNeu ? ThemeManager.neu(new int[]{0xFF1F2429, 0xFF2B3036})
                         : (isDark ? new int[]{0xFF00F0FF, 0xFFFFFFFF} : new int[]{0xFFFFFFFF, 0xFFFFFFFF})));
         rowTitle.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
         rowTitle.setFontVariationSettings("'wght' 700");
@@ -3639,7 +3644,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             rowSub.setText(subtitle);
             rowSub.setTextSize(12.5f);
             rowSub.setTextColor(new ColorStateList(new int[][]{{android.R.attr.state_focused}, {}},
-                    isNeu ? new int[]{0xFF2B3036, 0xFF434B56}
+                    isNeu ? ThemeManager.neu(new int[]{0xFF2B3036, 0xFF434B56})
                             : (isDark ? new int[]{0xFFFFFFFF, 0xD9FFFFFF} : new int[]{0xFFFFFFFF, 0xE6FFFFFF})));
             rowSub.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
             rowSub.setFontVariationSettings("'wght' 600");
@@ -4136,7 +4141,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (cardEqualizerView != null) {
             cardEqualizerView.setPlaying(info.isPlaying);
             if (ThemeManager.isNeumorphism(this)) {
-                cardEqualizerView.setWaveColor(0xFF222934);
+                cardEqualizerView.setWaveColor(ThemeManager.neu(0xFF222934));
             } else if (ThemeManager.isDarkGlow(this)) {
                 cardEqualizerView.setWaveColor(0xFF00F0FF);
             } else {
@@ -4261,15 +4266,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (isNeu) {
             panel.setBackground(new NeumorphicDrawable(22 * density, density, NeumorphicDrawable.MODE_EXTRUDED, false));
             if (headerTitle != null) {
-                headerTitle.setTextColor(0xFF1F2429);
+                headerTitle.setTextColor(ThemeManager.neu(0xFF1F2429));
                 headerTitle.setShadowLayer(0, 0, 0, 0);
             }
             if (txtTrackTitle != null) {
-                txtTrackTitle.setTextColor(0xFF1F2429);
+                txtTrackTitle.setTextColor(ThemeManager.neu(0xFF1F2429));
                 txtTrackTitle.setShadowLayer(0, 0, 0, 0);
             }
             if (txtTrackArtist != null) {
-                txtTrackArtist.setTextColor(0xFF5A626E);
+                txtTrackArtist.setTextColor(ThemeManager.neu(0xFF5A626E));
                 txtTrackArtist.setShadowLayer(0, 0, 0, 0);
             }
             if (badgeSource != null) {
@@ -4285,7 +4290,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 sld.addState(new int[]{},
                         new NeumorphicDrawable(r, density, NeumorphicDrawable.MODE_EXTRUDED, false));
                 btn.setBackground(sld);
-                btn.setImageTintList(android.content.res.ColorStateList.valueOf(0xFF1F2429));
+                btn.setImageTintList(android.content.res.ColorStateList.valueOf(ThemeManager.neu(0xFF1F2429)));
             }
 
             for (TextView btn : new TextView[]{btnOpenApp, btnCloseDialog}) {
@@ -4296,7 +4301,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 sld.addState(new int[]{},
                         new NeumorphicDrawable(12 * density, density, NeumorphicDrawable.MODE_EXTRUDED, false));
                 btn.setBackground(sld);
-                btn.setTextColor(0xFF1F2429);
+                btn.setTextColor(ThemeManager.neu(0xFF1F2429));
             }
         } else if (isDark) {
             GradientDrawable panelBg = new GradientDrawable();
@@ -4712,6 +4717,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         options.add(new ThemeOption(ThemeManager.THEME_NEUMORPHISM,
                 "⚪ Neumorphism",
                 "Tampilan cerah Soft UI taktil dengan bayangan lembut dan kanvas porselen elegan"));
+        options.add(new ThemeOption(ThemeManager.THEME_NEUMORPHISM_DARK,
+                "⚫ Neumorphism Dark",
+                "Soft UI taktil versi gelap: kanvas arang-navy, tombol timbul dengan bayangan pekat"));
         options.add(new ThemeOption(ThemeManager.THEME_DARK_GLOW,
                 "⚡ Dark Glow",
                 "Semua banner hitam pekat OLED dengan pendaran cahaya neon tegas"));
@@ -4918,7 +4926,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 titleView.setTypeface(outfit, Typeface.BOLD);
                 titleView.setFontVariationSettings("'wght' 700");
                 titleView.setTextSize(20f);
-                titleView.setTextColor(isNeu ? 0xFF2B3036 : 0xFFFFFFFF);
+                titleView.setTextColor(isNeu ? ThemeManager.neu(0xFF2B3036) : 0xFFFFFFFF);
                 if (isNeu) titleView.setShadowLayer(0, 0, 0, 0);
                 else titleView.setShadowLayer(4 * d, 0, 1 * d, 0xDD000000);
             }
@@ -4927,7 +4935,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 msgView.setTypeface(outfit, Typeface.BOLD);
                 msgView.setFontVariationSettings("'wght' 600");
                 msgView.setTextSize(15f);
-                msgView.setTextColor(isNeu ? 0xFF3A414A : 0xF0FFFFFF);
+                msgView.setTextColor(isNeu ? ThemeManager.neu(0xFF3A414A) : 0xF0FFFFFF);
                 msgView.setLineSpacing(0, 1.35f);
                 if (isNeu) msgView.setShadowLayer(0, 0, 0, 0);
                 else msgView.setShadowLayer(3 * d, 0, 1 * d, 0xCC000000);
@@ -4962,7 +4970,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     btnBg.addState(new int[]{}, offNeu);
                     btn.setTextColor(new ColorStateList(
                             new int[][]{{android.R.attr.state_focused}, {}},
-                            new int[]{0xFF1F2429, isPrimary ? 0xFF2B3036 : 0xFF4A5568}
+                            new int[]{ThemeManager.neu(0xFF1F2429), isPrimary ? ThemeManager.neu(0xFF2B3036) : ThemeManager.neu(0xFF4A5568)}
                     ));
                 } else if (isDark) {
                     GradientDrawable on = new GradientDrawable();
@@ -5007,7 +5015,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                             tv.setTypeface(outfit, Typeface.BOLD);
                             tv.setFontVariationSettings("'wght' 650");
                             tv.setTextSize(15.5f);
-                            tv.setTextColor(isNeu ? 0xFF1E242B : 0xFFFFFFFF);
+                            tv.setTextColor(isNeu ? ThemeManager.neu(0xFF1E242B) : 0xFFFFFFFF);
                             if (isNeu) tv.setShadowLayer(0, 0, 0, 0);
                             else tv.setShadowLayer(3 * d, 0, 1 * d, 0xAA000000);
                             tv.setPadding((int) (18 * d), (int) (12 * d), (int) (18 * d), (int) (12 * d));
@@ -5130,7 +5138,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Title
         TextView title = new TextView(this);
         title.setText("📲 Unggah Wallpaper Dari HP");
-        title.setTextColor(isNeu ? 0xFF2B3036 : 0xFFFFFFFF);
+        title.setTextColor(isNeu ? ThemeManager.neu(0xFF2B3036) : 0xFFFFFFFF);
         title.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
         title.setFontVariationSettings("'wght' 700");
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 21);
@@ -5142,7 +5150,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Subtitle instructions
         TextView sub = new TextView(this);
         sub.setText("Hubungkan HP ke Wi-Fi yang sama, lalu pindai kode QR di bawah:");
-        sub.setTextColor(isNeu ? 0xFF5A626E : 0xFFE2E8F0);
+        sub.setTextColor(isNeu ? ThemeManager.neu(0xFF5A626E) : 0xFFE2E8F0);
         sub.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
         sub.setFontVariationSettings("'wght' 600");
         sub.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14.5f);
@@ -5158,7 +5166,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         qrCardBg.setColor(0xFFFFFFFF);
         qrCardBg.setCornerRadius(14 * density);
         if (isNeu) {
-            qrCardBg.setStroke(Math.max(1, Math.round(1.0f * density)), 0x22000000);
+            qrCardBg.setStroke(Math.max(1, Math.round(1.0f * density)), ThemeManager.neu(0x22000000));
         } else if (isDark) {
             qrCardBg.setStroke(Math.max(1, Math.round(1.2f * density)), 0x8800F0FF);
         }
@@ -5184,7 +5192,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Web URL pill
         qrUrlText = new TextView(this);
         qrUrlText.setText("🌐 " + uploadUrl);
-        qrUrlText.setTextColor(isNeu ? 0xFF0284C7 : (isDark ? 0xFF00F0FF : 0xFF38BDF8));
+        qrUrlText.setTextColor(isNeu ? ThemeManager.neu(0xFF0284C7) : (isDark ? 0xFF00F0FF : 0xFF38BDF8));
         qrUrlText.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
         qrUrlText.setFontVariationSettings("'wght' 700");
         qrUrlText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
@@ -5197,7 +5205,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Status text
         qrStatusText = new TextView(this);
         qrStatusText.setText("📡 Menunggu pindaian kamera atau foto dari HP...");
-        qrStatusText.setTextColor(isNeu ? 0xFF3A414A : 0xFFF1F5F9);
+        qrStatusText.setTextColor(isNeu ? ThemeManager.neu(0xFF3A414A) : 0xFFF1F5F9);
         qrStatusText.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
         qrStatusText.setFontVariationSettings("'wght' 600");
         qrStatusText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
@@ -5219,7 +5227,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     new NeumorphicDrawable(12 * density, density, NeumorphicDrawable.MODE_EXTRUDED, false));
             btnClose.setTextColor(new ColorStateList(
                     new int[][]{{android.R.attr.state_focused}, {}},
-                    new int[]{0xFF1F2429, 0xFF2B3036}));
+                    new int[]{ThemeManager.neu(0xFF1F2429), ThemeManager.neu(0xFF2B3036)}));
         } else if (isDark) {
             GradientDrawable on = new GradientDrawable();
             on.setColor(0xFF05070B);
@@ -5264,7 +5272,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Watermark credit
         TextView credit = new TextView(this);
         credit.setText("✨ Aura TV Home • Edisi Indonesia");
-        credit.setTextColor(isNeu ? 0xFF5A626E : 0xFFCBD5E1);
+        credit.setTextColor(isNeu ? ThemeManager.neu(0xFF5A626E) : 0xFFCBD5E1);
         credit.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
         credit.setFontVariationSettings("'wght' 600");
         credit.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
@@ -5992,7 +6000,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         boolean isNeu = ThemeManager.isNeumorphism(this);
 
         FrameLayout overlay = new FrameLayout(this);
-        overlay.setBackgroundColor(isDark ? 0xDD000000 : (isNeu ? 0x99EDEAE4 : 0x78050912));
+        overlay.setBackgroundColor(isDark ? 0xDD000000 : (isNeu ? ThemeManager.neu(0x99EDEAE4) : 0x78050912));
         overlay.setClickable(true);
         overlay.setFocusable(false);
         overlay.setOnClickListener(v -> closeAppDrawer(true));
@@ -6035,7 +6043,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         TextView titleView = new TextView(this);
         titleView.setText("Semua Aplikasi");
         titleView.setTextSize(18.5f);
-        titleView.setTextColor(isNeu ? 0xFF2B3036 : 0xFFFFFFFF);
+        titleView.setTextColor(isNeu ? ThemeManager.neu(0xFF2B3036) : 0xFFFFFFFF);
         titleView.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
         titleView.setFontVariationSettings("'wght' 700");
         if (isNeu) titleView.setShadowLayer(0, 0, 0, 0);
@@ -6045,7 +6053,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         TextView subView = new TextView(this);
         subView.setText(appList.size() + " Aplikasi  •  Tahan OK untuk Info / Uninstall");
         subView.setTextSize(12f);
-        subView.setTextColor(isDark ? 0xFF00F0FF : (isNeu ? 0xFF5A626E : 0xCCFFFFFF));
+        subView.setTextColor(isDark ? 0xFF00F0FF : (isNeu ? ThemeManager.neu(0xFF5A626E) : 0xCCFFFFFF));
         subView.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
         subView.setFontVariationSettings("'wght' 600");
         if (isNeu) subView.setShadowLayer(0, 0, 0, 0);
@@ -6055,7 +6063,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         panel.addView(header);
 
         View divider = new View(this);
-        divider.setBackgroundColor(isDark ? 0x2E00F0FF : (isNeu ? 0x16000000 : 0x24FFFFFF));
+        divider.setBackgroundColor(isDark ? 0x2E00F0FF : (isNeu ? ThemeManager.neu(0x16000000) : 0x24FFFFFF));
         LinearLayout.LayoutParams divLp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, Math.max(1, Math.round(1 * density)));
         divLp.topMargin = Math.round(10 * density);
@@ -6188,7 +6196,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 TextView nameView = new TextView(this);
                 nameView.setText(item.label);
                 nameView.setTextSize(11.5f);
-                nameView.setTextColor(isNeu ? 0xFF3A414A : 0xB3FFFFFF);
+                nameView.setTextColor(isNeu ? ThemeManager.neu(0xFF3A414A) : 0xB3FFFFFF);
                 nameView.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
                 nameView.setFontVariationSettings("'wght' 650");
                 nameView.setSingleLine(true);
@@ -6204,7 +6212,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 cell.setOnFocusChangeListener((v, hasFocus) -> {
                     if (hasFocus) SoundEffects.playNav();
                     focusRim.animate().alpha(hasFocus ? 1f : 0f).setDuration(140).start();
-                    nameView.setTextColor(hasFocus ? (isNeu ? 0xFF1F2429 : 0xFFFFFFFF) : (isNeu ? 0xFF3A414A : 0xB3FFFFFF));
+                    nameView.setTextColor(hasFocus ? (isNeu ? ThemeManager.neu(0xFF1F2429) : 0xFFFFFFFF) : (isNeu ? ThemeManager.neu(0xFF3A414A) : 0xB3FFFFFF));
                     float s = hasFocus ? 1.08f : 1.0f;
                     cardBox.animate().scaleX(s).scaleY(s).translationZ(hasFocus ? 8 * density : 0f)
                             .setDuration(160).setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
@@ -6379,7 +6387,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         boolean isNeu = ThemeManager.isNeumorphism(this);
 
         FrameLayout overlay = new FrameLayout(this);
-        overlay.setBackgroundColor(isDark ? 0xCC000000 : (isNeu ? 0x88F0F2F5 : 0x4D050912));
+        overlay.setBackgroundColor(isDark ? 0xCC000000 : (isNeu ? ThemeManager.neu(0x88F0F2F5) : 0x4D050912));
         overlay.setClickable(true);
         overlay.setFocusable(false);
         overlay.setOnClickListener(v -> closeAddAppSheet(true));
@@ -6420,7 +6428,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         TextView titleView = new TextView(this);
         titleView.setText("Tambah ke Beranda");
         titleView.setTextSize(17.5f);
-        titleView.setTextColor(isNeu ? 0xFF2B3036 : 0xFFFFFFFF);
+        titleView.setTextColor(isNeu ? ThemeManager.neu(0xFF2B3036) : 0xFFFFFFFF);
         titleView.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
         titleView.setFontVariationSettings("'wght' 700");
         if (isNeu) titleView.setShadowLayer(0, 0, 0, 0);
@@ -6432,7 +6440,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 ? "Semua aplikasi sudah tampil di beranda"
                 : (appList.size() + " Aplikasi tersedia  •  Klik OK untuk tambah"));
         subView.setTextSize(11.5f);
-        subView.setTextColor(isDark ? 0xFF00F0FF : (isNeu ? 0xFF5A626E : 0xBFFFFFFF));
+        subView.setTextColor(isDark ? 0xFF00F0FF : (isNeu ? ThemeManager.neu(0xFF5A626E) : 0xBFFFFFFF));
         subView.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
         subView.setFontVariationSettings("'wght' 550");
         if (isNeu) subView.setShadowLayer(0, 0, 0, 0);
@@ -6443,7 +6451,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         panel.addView(subView, subLp);
 
         View divider = new View(this);
-        divider.setBackgroundColor(isDark ? 0x2E00F0FF : (isNeu ? 0x16000000 : 0x24FFFFFF));
+        divider.setBackgroundColor(isDark ? 0x2E00F0FF : (isNeu ? ThemeManager.neu(0x16000000) : 0x24FFFFFF));
         LinearLayout.LayoutParams divLp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, Math.max(1, Math.round(1 * density)));
         divLp.topMargin = Math.round(10 * density);
@@ -6567,7 +6575,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 final TextView nameTv = new TextView(this);
                 nameTv.setText(item.label);
                 nameTv.setTextSize(13.5f);
-                nameTv.setTextColor(isNeu ? 0xFF2B3036 : 0xD9FFFFFF);
+                nameTv.setTextColor(isNeu ? ThemeManager.neu(0xFF2B3036) : 0xD9FFFFFF);
                 nameTv.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
                 nameTv.setFontVariationSettings("'wght' 650");
                 nameTv.setSingleLine(true);
@@ -6590,7 +6598,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     plusBadge.setTextColor(0xFF00F0FF);
                     plusBadge.setBackground(badgeBg);
                 } else if (isNeu) {
-                    plusBadge.setTextColor(0xFF2B3036);
+                    plusBadge.setTextColor(ThemeManager.neu(0xFF2B3036));
                     plusBadge.setBackground(new NeumorphicDrawable(14 * density, density, NeumorphicDrawable.MODE_EXTRUDED, false));
                 } else {
                     badgeBg.setColor(0x22FFFFFF);
@@ -6616,8 +6624,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                                 hasFocus ? NeumorphicDrawable.MODE_RECESSED : NeumorphicDrawable.MODE_EXTRUDED, false));
                         plusBadge.setBackground(new NeumorphicDrawable(14 * density, density,
                                 hasFocus ? NeumorphicDrawable.MODE_RECESSED : NeumorphicDrawable.MODE_EXTRUDED, false));
-                        plusBadge.setTextColor(hasFocus ? 0xFF1F2429 : 0xFF2B3036);
-                        nameTv.setTextColor(hasFocus ? 0xFF1F2429 : 0xFF2B3036);
+                        plusBadge.setTextColor(hasFocus ? ThemeManager.neu(0xFF1F2429) : ThemeManager.neu(0xFF2B3036));
+                        nameTv.setTextColor(hasFocus ? ThemeManager.neu(0xFF1F2429) : ThemeManager.neu(0xFF2B3036));
                     } else {
                         rowBg.setColor(hasFocus ? 0x3DFFFFFF : 0x18FFFFFF);
                         rowBg.setStroke(Math.max(1, Math.round((hasFocus ? 1.6f : 1.2f) * density)),
@@ -7074,7 +7082,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void addSeparator(LinearLayout rows) {
         View line = new View(this);
         boolean isNeu = ThemeManager.isNeumorphism(this);
-        line.setBackgroundColor(isNeu ? 0x16000000 : 0x1FFFFFFF);
+        line.setBackgroundColor(isNeu ? ThemeManager.neu(0x16000000) : 0x1FFFFFFF);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (int) density);
         int m = (int) (6 * density), h = (int) (12 * density);
         lp.setMargins(h, m, h, m);
@@ -7092,11 +7100,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         View dot = row.findViewById(R.id.dot);
 
         if (isNeu) {
-            iconView.setColorFilter(0xFF2B3036);
-            titleView.setTextColor(0xFF2B3036);
+            iconView.setColorFilter(ThemeManager.neu(0xFF2B3036));
+            titleView.setTextColor(ThemeManager.neu(0xFF2B3036));
             titleView.setShadowLayer(0, 0, 0, 0);
             if (status != null) {
-                status.setTextColor(0xFF5A626E);
+                status.setTextColor(ThemeManager.neu(0xFF5A626E));
                 status.setShadowLayer(0, 0, 0, 0);
             }
         }
