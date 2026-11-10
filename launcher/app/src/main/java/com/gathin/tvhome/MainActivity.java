@@ -4029,10 +4029,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 activeTag.setText(badge);
                 activeTag.setTextSize(11);
                 activeTag.setTextColor(new ColorStateList(new int[][]{{android.R.attr.state_focused}, {}},
-                        isNeu ? ThemeManager.neu(new int[]{0xFF2B3036, 0xFF2B3036})
+                        isNeu ? (ThemeManager.isNeuDarkCached() ? new int[]{0xFFFFFFFF, 0xFFFFFFFF} : new int[]{0xFF000000, 0xFF000000})
                                 : (isDark ? new int[]{0xFF00F0FF, 0xFF00F0FF} : new int[]{0xFFFFFFFF, 0xFFFFFFFF})));
                 activeTag.setTypeface(outfit, Typeface.BOLD);
                 activeTag.setFontVariationSettings("'wght' 800");
+                activeTag.getPaint().setFakeBoldText(true);
                 activeTag.setPadding((int) (8 * density), (int) (2 * density), (int) (8 * density), (int) (2 * density));
                 GradientDrawable tagBg = new GradientDrawable();
                 tagBg.setColor(isNeu ? ThemeManager.neu(0x16000000) : (isDark ? 0x2600F0FF : 0x36FFFFFF));
@@ -6628,6 +6629,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         status.setVisibility(View.VISIBLE);
         status.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
         status.setFontVariationSettings(isNext ? "'wght' 700" : "'wght' 600");
+        status.getPaint().setFakeBoldText(true);
         status.setShadowLayer(3 * density, 0, 1 * density, 0xCC000000);
 
         if (isNext) {
@@ -8121,6 +8123,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             status.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f);
             status.setTypeface(outfit, Typeface.BOLD);
             status.setFontVariationSettings("'wght' 700");
+            status.getPaint().setFakeBoldText(true);
             dot.setVisibility(View.GONE);
         } else if (state == TvInputManager.INPUT_STATE_CONNECTED) {
             status.setVisibility(View.GONE);
@@ -8145,17 +8148,20 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             iconView.setColorFilter(ThemeManager.neu(0xFF2B3036));
             titleView.setTextColor(ThemeManager.neu(0xFF2B3036));
             titleView.setShadowLayer(0, 0, 0, 0);
+            titleView.getPaint().setFakeBoldText(true);
             if (status != null) {
                 boolean isDarkNeu = ThemeManager.isNeuDarkCached();
                 status.setTextColor(isDarkNeu ? 0xFFFFFFFF : 0xFF000000);
                 status.setShadowLayer(0, 0, 0, 0);
                 status.setAlpha(1.0f);
+                status.getPaint().setFakeBoldText(true);
             }
         } else {
             if (status != null) {
                 status.setTextColor(0xFFFFFFFF);
                 status.setShadowLayer(3f, 0, 1f, 0xCC000000);
                 status.setAlpha(1.0f);
+                status.getPaint().setFakeBoldText(true);
             }
         }
 
@@ -8194,6 +8200,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 Typeface outfit = getResources().getFont(R.font.outfit);
                 status.setTypeface(outfit, Typeface.BOLD);
                 status.setFontVariationSettings("'wght' 700");
+                status.getPaint().setFakeBoldText(true);
             } catch (Exception ignored) {}
         }
     }
