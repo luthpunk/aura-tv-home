@@ -3218,7 +3218,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 isNeu, isDark, outfit
         );
         LinearLayout.LayoutParams ramLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        ramLp.marginEnd = (int) (8 * density);
+        ramLp.setMarginEnd((int) (8 * density));
+        ramLp.rightMargin = (int) (8 * density);
         metricsGrid.addView(ramCard, ramLp);
 
         // Storage Card
@@ -3230,7 +3231,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 isNeu, isDark, outfit
         );
         LinearLayout.LayoutParams storageLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        storageLp.marginStart = (int) (8 * density);
+        storageLp.setMarginStart((int) (8 * density));
+        storageLp.leftMargin = (int) (8 * density);
         metricsGrid.addView(storageCard, storageLp);
 
         rootLayout.addView(metricsGrid);
