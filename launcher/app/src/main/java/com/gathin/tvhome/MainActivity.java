@@ -3254,11 +3254,36 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             String title = name + (isActive ? " : AKTIF" : "");
             addInputRow(rows, null, 0, title, -1, () -> {
                 SoundEffects.playSelect();
-                ThemeManager.setActiveTheme(MainActivity.this, key);
+                applyActiveTheme(key);
                 closeMenuAndFocusApp();
-                recreate();
             });
         }
+    }
+
+    private void applyActiveTheme(String key) {
+        ThemeManager.setActiveTheme(MainActivity.this, key);
+        applyHomeScreenTheme();
+        if (wallBitmap != null) {
+            blurBackdrop(wallBitmap);
+        }
+        if (adapter != null) {
+            adapter.invalidateTheme();
+        }
+        reloadTiles();
+        if (grid != null) {
+            for (int cIdx = 0; cIdx < grid.getChildCount(); cIdx++) {
+                View child = grid.getChildAt(cIdx);
+                RecyclerView.ViewHolder vh = grid.getChildViewHolder(child);
+                if (vh instanceof AppAdapter.Holder) {
+                    AppAdapter.Holder holder = (AppAdapter.Holder) vh;
+                    holder.syncFocusRim(holder.card.isFocused(), true);
+                }
+            }
+            grid.invalidateItemDecorations();
+            grid.invalidate();
+        }
+        if (glider != null) glider.invalidate();
+        if (glass != null) glass.invalidate();
     }
 
     private void buildWidgetManagerSubMenu(FrameLayout panel, LinearLayout rows) {
@@ -8072,9 +8097,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (subValue != null) {
             status.setVisibility(View.VISIBLE);
             status.setText(subValue);
-            status.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
-            status.setTypeface(outfit, Typeface.NORMAL);
-            status.setFontVariationSettings("'wght' 450");
+            status.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f);
+            status.setTypeface(outfit, Typeface.BOLD);
+            status.setFontVariationSettings("'wght' 600");
             dot.setVisibility(View.GONE);
         } else if (state == TvInputManager.INPUT_STATE_CONNECTED) {
             status.setVisibility(View.GONE);
@@ -8100,16 +8125,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             titleView.setTextColor(ThemeManager.neu(0xFF2B3036));
             titleView.setShadowLayer(0, 0, 0, 0);
             if (status != null) {
-                status.setTextColor(ThemeManager.neu(0xFF5A626E));
+                status.setTextColor(ThemeManager.neu(0xFF1F2429));
                 status.setShadowLayer(0, 0, 0, 0);
-            }
-        } else if (isDark) {
-            if (status != null) {
-                status.setTextColor(0xB3FFFFFF);
             }
         } else {
             if (status != null) {
-                status.setTextColor(0xCCFFFFFF);
+                status.setTextColor(0xFFFFFFFF);
+                status.setShadowLayer(3f, 0, 1f, 0xCC000000);
             }
         }
 
@@ -8124,9 +8146,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             row.setFocusable(false);
             row.setClickable(false);
             row.setOnClickListener(null);
-            titleView.setAlpha(0.7f);
-            iconView.setAlpha(0.7f);
-            if (status != null) status.setAlpha(0.7f);
+            titleView.setAlpha(0.85f);
+            iconView.setAlpha(0.85f);
+            if (status != null) status.setAlpha(1.0f);
         }
         rows.addView(row);
         return row;
@@ -8138,6 +8160,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (status != null) {
             status.setVisibility(View.VISIBLE);
             status.setText(text);
+            boolean isNeu = ThemeManager.isNeumorphism(this);
+            status.setTextColor(isNeu ? ThemeManager.neu(0xFF1F2429) : 0xFFFFFFFF);
+            try {
+                Typeface outfit = getResources().getFont(R.font.outfit);
+                status.setTypeface(outfit, Typeface.BOLD);
+                status.setFontVariationSettings("'wght' 600");
+            } catch (Exception ignored) {}
         }
     }
 
