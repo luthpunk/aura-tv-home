@@ -922,6 +922,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         return true;
                     }
                 }
+                if (v.getId() == R.id.btnWifi) {
+                    if (btnInputs != null && btnInputs.getVisibility() == View.VISIBLE) {
+                        btnInputs.requestFocus();
+                        return true;
+                    }
+                }
                 if (v.getId() == R.id.btnInputs || (v.getId() == R.id.btnWifi && (btnInputs == null || btnInputs.getVisibility() != View.VISIBLE))) {
                     if (nowPlayingCard != null && nowPlayingCard.getVisibility() == View.VISIBLE) {
                         nowPlayingCard.requestFocus();
@@ -929,6 +935,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     }
                     if (weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE) {
                         weatherAirQualityView.requestFocus();
+                        return true;
+                    } else if (weatherPillMinimalView != null && weatherPillMinimalView.getVisibility() == View.VISIBLE) {
+                        weatherPillMinimalView.requestFocus();
                         return true;
                     }
                 }
