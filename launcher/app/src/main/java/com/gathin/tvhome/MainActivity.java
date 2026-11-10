@@ -3039,7 +3039,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         showThemedListDialog(
                 "🧩 Kelola Widget Beranda",
-                "Pilih widget yang ingin ditampilkan di layar utama",
+                "Pilih widget cuaca atau matikan keduanya agar beranda bersih",
                 items,
                 "Tutup",
                 null
@@ -3070,14 +3070,20 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             showThemeDialog();
         });
 
-        // Row 3: Lokasi Cuaca (hanya nama kota tanpa zona waktu)
+        // Row 3: Kelola Widget Beranda (tepat di bawah menu Tema)
+        addInputRow(rows, close, R.drawable.ic_candy_box, "Kelola Widget", -1, () -> {
+            SoundEffects.playSelect();
+            showWidgetManagerDialog();
+        });
+
+        // Row 4: Lokasi Cuaca (hanya nama kota tanpa zona waktu)
         String locName = AppLocationManager.getLocationName(this);
         addInputRow(rows, close, R.drawable.ic_location, "Lokasi: " + locName, -1, () -> {
             SoundEffects.playSelect();
             showAsiaCountryDialog();
         });
 
-        // Row 4: Efek Suara
+        // Row 5: Efek Suara
         String currentSoundTheme = SoundEffects.getActiveTheme(this);
         String soundLabel = "Suara: " + SoundEffects.getThemeDisplayName(currentSoundTheme);
         addInputRow(rows, close, R.drawable.ic_sound, soundLabel, -1, () -> {
@@ -3085,16 +3091,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             showSoundEffectsDialog();
         });
 
-        // Row 5: Nightstand / Screensaver
+        // Row 6: Nightstand / Screensaver
         addInputRow(rows, close, R.drawable.ic_weather_sun, "Screensaver Jam Meja", -1, () -> {
             SoundEffects.playSelect();
             showNightstandScreensaver();
-        });
-
-        // Row 6: Kelola Widget Beranda
-        addInputRow(rows, close, R.drawable.ic_candy_box, "Kelola Widget", -1, () -> {
-            SoundEffects.playSelect();
-            showWidgetManagerDialog();
         });
 
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
@@ -3213,61 +3213,342 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
         } catch (Exception ignored) {}
 
-        List<ThemedDialogItem> items = new ArrayList<>();
+        boolean isNeu = ThemeManager.isNeumorphism(this);
+        boolean isDark = ThemeManager.isDarkGlow(this);
+        Typeface outfit = getResources().getFont(R.font.outfit);
 
-        // Item 1: RAM
-        String ramSub = Formatter.formatFileSize(this, usedMem) + " digunakan dari "
-                + Formatter.formatFileSize(this, totalMem)
-                + " (" + (totalMem > 0 ? (100 - ramPercent) : 0) + "% bebas)";
-        items.add(new ThemedDialogItem(
+        LinearLayout rootLayout = new LinearLayout(this);
+        rootLayout.setOrientation(LinearLayout.VERTICAL);
+        rootLayout.setPadding((int) (22 * density), (int) (18 * density), (int) (22 * density), (int) (18 * density));
+
+        // 1. Header (Title & Subtitle)
+        TextView titleView = new TextView(this);
+        titleView.setText("ℹ️ Info Sistem TV");
+        titleView.setTextSize(19.5f);
+        titleView.setTextColor(isNeu ? ThemeManager.neu(0xFF2B3036) : 0xFFFFFFFF);
+        titleView.setTypeface(outfit, Typeface.BOLD);
+        titleView.setFontVariationSettings("'wght' 700");
+        if (isNeu) titleView.setShadowLayer(0, 0, 0, 0);
+        else titleView.setShadowLayer(4 * density, 0, 1 * density, 0xDD000000);
+        rootLayout.addView(titleView);
+
+        TextView subView = new TextView(this);
+        subView.setText("Dashboard performa memori dan rincian perangkat");
+        subView.setTextSize(13f);
+        subView.setTextColor(isNeu ? ThemeManager.neu(0xFF5A626E) : (isDark ? 0xFF00F0FF : 0xCCFFFFFF));
+        subView.setTypeface(outfit, Typeface.NORMAL);
+        subView.setFontVariationSettings("'wght' 500");
+        subView.setPadding(0, (int) (3 * density), 0, (int) (14 * density));
+        rootLayout.addView(subView);
+
+        // 2. Side-by-Side Metrics Grid (RAM Card & Storage Card)
+        LinearLayout metricsGrid = new LinearLayout(this);
+        metricsGrid.setOrientation(LinearLayout.HORIZONTAL);
+        metricsGrid.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        // RAM Card
+        LinearLayout ramCard = createDashboardMetricCard(
                 "⚡ Memori RAM",
-                ramSub,
-                false,
-                ramPercent + "% DIGUNAKAN",
-                null
-        ));
-
-        // Item 2: Internal Storage
-        String storageSub = Formatter.formatFileSize(this, availStorage) + " bebas dari "
-                + Formatter.formatFileSize(this, totalStorage) + " total internal";
-        items.add(new ThemedDialogItem(
-                "💾 Penyimpanan TV",
-                storageSub,
-                false,
-                storagePercent + "% DIGUNAKAN",
-                null
-        ));
-
-        // Item 3: Device Model & OS
-        String deviceName = Build.MANUFACTURER.toUpperCase(Locale.ROOT) + " " + Build.MODEL;
-        String osVersion = "Android " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")";
-        items.add(new ThemedDialogItem(
-                "📺 Perangkat & Sistem",
-                deviceName + " • " + osVersion,
-                false,
-                "SISTEM",
-                null
-        ));
-
-        // Item 4: Optimalkan & Bersihkan TV
-        items.add(new ThemedDialogItem(
-                "🧹 Optimalkan & Bersihkan TV",
-                "Bersihkan cache aplikasi & optimalkan memori RAM perangkat",
-                true,
-                "BERSIHKAN",
-                () -> {
-                    SoundEffects.playSelect();
-                    smartBoostTv();
-                }
-        ));
-
-        showThemedListDialog(
-                "ℹ️ Info Sistem TV",
-                "Ringkasan performa perangkat, memori, dan informasi sistem",
-                items,
-                "Tutup",
-                null
+                ramPercent,
+                Formatter.formatFileSize(this, usedMem) + " / " + Formatter.formatFileSize(this, totalMem),
+                (totalMem > 0 ? (100 - ramPercent) : 0) + "% Bebas",
+                isNeu, isDark, outfit
         );
+        LinearLayout.LayoutParams ramLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        ramLp.marginEnd = (int) (8 * density);
+        metricsGrid.addView(ramCard, ramLp);
+
+        // Storage Card
+        LinearLayout storageCard = createDashboardMetricCard(
+                "💾 Penyimpanan TV",
+                storagePercent,
+                Formatter.formatFileSize(this, availStorage) + " bebas",
+                Formatter.formatFileSize(this, totalStorage) + " total internal",
+                isNeu, isDark, outfit
+        );
+        LinearLayout.LayoutParams storageLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        storageLp.marginStart = (int) (8 * density);
+        metricsGrid.addView(storageCard, storageLp);
+
+        rootLayout.addView(metricsGrid);
+
+        // 3. Device & System Specs Card (Full Width)
+        LinearLayout specsCard = new LinearLayout(this);
+        specsCard.setOrientation(LinearLayout.VERTICAL);
+        specsCard.setPadding((int) (14 * density), (int) (10 * density), (int) (14 * density), (int) (10 * density));
+        LinearLayout.LayoutParams specsLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        specsLp.topMargin = (int) (12 * density);
+        specsCard.setLayoutParams(specsLp);
+
+        if (isNeu) {
+            specsCard.setBackground(new NeumorphicDrawable(12 * density, density, NeumorphicDrawable.MODE_EXTRUDED, false));
+        } else if (isDark) {
+            GradientDrawable sBg = new GradientDrawable();
+            sBg.setColor(0xFF101420);
+            sBg.setCornerRadius(12 * density);
+            sBg.setStroke(Math.max(1, Math.round(1f * density)), 0x3300F0FF);
+            specsCard.setBackground(sBg);
+        } else {
+            GradientDrawable sBg = new GradientDrawable();
+            sBg.setColor(0x1FFFFFFF);
+            sBg.setCornerRadius(12 * density);
+            sBg.setStroke(Math.max(1, Math.round(1f * density)), 0x33FFFFFF);
+            specsCard.setBackground(sBg);
+        }
+
+        LinearLayout specsHeader = new LinearLayout(this);
+        specsHeader.setOrientation(LinearLayout.HORIZONTAL);
+        specsHeader.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView specTitle = new TextView(this);
+        String deviceName = Build.MANUFACTURER.toUpperCase(Locale.ROOT) + " " + Build.MODEL;
+        specTitle.setText("📺 " + deviceName);
+        specTitle.setTextSize(13.5f);
+        specTitle.setTextColor(isNeu ? ThemeManager.neu(0xFF222934) : 0xFFFFFFFF);
+        specTitle.setTypeface(outfit, Typeface.BOLD);
+        specTitle.setFontVariationSettings("'wght' 700");
+        LinearLayout.LayoutParams stLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        specsHeader.addView(specTitle, stLp);
+
+        TextView sysBadge = new TextView(this);
+        sysBadge.setText("SISTEM TV");
+        sysBadge.setTextSize(10.5f);
+        sysBadge.setTypeface(outfit, Typeface.BOLD);
+        sysBadge.setFontVariationSettings("'wght' 700");
+        sysBadge.setTextColor(isNeu ? ThemeManager.neu(0xFF333E4D) : (isDark ? 0xFF00F0FF : 0xE6FFFFFF));
+        sysBadge.setPadding((int) (7 * density), (int) (2.5f * density), (int) (7 * density), (int) (2.5f * density));
+        GradientDrawable sysBadgeBg = new GradientDrawable();
+        sysBadgeBg.setColor(isNeu ? ThemeManager.neu(0x18000000) : (isDark ? 0x2200F0FF : 0x26FFFFFF));
+        sysBadgeBg.setCornerRadius(6 * density);
+        sysBadge.setBackground(sysBadgeBg);
+        specsHeader.addView(sysBadge);
+        specsCard.addView(specsHeader);
+
+        TextView specSub = new TextView(this);
+        String osVersion = "Android " + Build.VERSION.RELEASE + " • Level API " + Build.VERSION.SDK_INT;
+        specSub.setText(osVersion);
+        specSub.setTextSize(11.5f);
+        specSub.setTextColor(isNeu ? ThemeManager.neu(0xFF5A626E) : (isDark ? 0x9900F0FF : 0xB3FFFFFF));
+        specSub.setTypeface(outfit, Typeface.NORMAL);
+        specSub.setFontVariationSettings("'wght' 500");
+        specSub.setPadding(0, (int) (3 * density), 0, 0);
+        specsCard.addView(specSub);
+
+        rootLayout.addView(specsCard);
+
+        // 4. Prominent Clean & Optimize Button (Tombol Aksi Modern dengan Ikon Sampah Modern)
+        LinearLayout cleanBtn = new LinearLayout(this);
+        cleanBtn.setOrientation(LinearLayout.HORIZONTAL);
+        cleanBtn.setGravity(Gravity.CENTER_VERTICAL);
+        cleanBtn.setFocusable(true);
+        cleanBtn.setClickable(true);
+        cleanBtn.setPadding((int) (16 * density), (int) (12 * density), (int) (16 * density), (int) (12 * density));
+        LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        btnLp.topMargin = (int) (14 * density);
+        cleanBtn.setLayoutParams(btnLp);
+
+        StateListDrawable btnSld = new StateListDrawable();
+        if (isNeu) {
+            btnSld.addState(new int[]{android.R.attr.state_focused},
+                    new NeumorphicDrawable(12 * density, density, NeumorphicDrawable.MODE_RECESSED, false));
+            btnSld.addState(new int[]{},
+                    new NeumorphicDrawable(12 * density, density, NeumorphicDrawable.MODE_EXTRUDED, true));
+        } else if (isDark) {
+            GradientDrawable foc = new GradientDrawable();
+            foc.setColor(0xFF162032);
+            foc.setCornerRadius(12 * density);
+            foc.setStroke(Math.max(2, Math.round(1.5f * density)), 0xFF00F0FF);
+            GradientDrawable norm = new GradientDrawable();
+            norm.setColor(0xFF101420);
+            norm.setCornerRadius(12 * density);
+            norm.setStroke(Math.max(1, Math.round(1.0f * density)), 0x4D00F0FF);
+            btnSld.addState(new int[]{android.R.attr.state_focused}, foc);
+            btnSld.addState(new int[]{}, norm);
+        } else {
+            GradientDrawable foc = new GradientDrawable();
+            foc.setColor(0x42FFFFFF);
+            foc.setCornerRadius(12 * density);
+            foc.setStroke(Math.max(2, Math.round(1.5f * density)), 0xF2FFFFFF);
+            GradientDrawable norm = new GradientDrawable();
+            norm.setColor(0x24FFFFFF);
+            norm.setCornerRadius(12 * density);
+            norm.setStroke(Math.max(1, Math.round(1.0f * density)), 0x4DFFFFFF);
+            btnSld.addState(new int[]{android.R.attr.state_focused}, foc);
+            btnSld.addState(new int[]{}, norm);
+        }
+        cleanBtn.setBackground(btnSld);
+
+        // Icon Modern Trash
+        ImageView cleanIcon = new ImageView(this);
+        cleanIcon.setImageResource(R.drawable.ic_trash);
+        cleanIcon.setLayoutParams(new LinearLayout.LayoutParams((int) (24 * density), (int) (24 * density)));
+        cleanIcon.setImageTintList(ColorStateList.valueOf(isNeu ? ThemeManager.neu(0xFF222934) : (isDark ? 0xFF00F0FF : 0xFFFFFFFF)));
+        cleanBtn.addView(cleanIcon);
+
+        LinearLayout textCol = new LinearLayout(this);
+        textCol.setOrientation(LinearLayout.VERTICAL);
+        textCol.setPadding((int) (12 * density), 0, (int) (8 * density), 0);
+        LinearLayout.LayoutParams tcLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        textCol.setLayoutParams(tcLp);
+
+        TextView btnTitle = new TextView(this);
+        btnTitle.setText("Bersihkan & Optimalkan TV");
+        btnTitle.setTextSize(14f);
+        btnTitle.setTextColor(isNeu ? ThemeManager.neu(0xFF1F2429) : 0xFFFFFFFF);
+        btnTitle.setTypeface(outfit, Typeface.BOLD);
+        btnTitle.setFontVariationSettings("'wght' 700");
+        textCol.addView(btnTitle);
+
+        TextView btnSub = new TextView(this);
+        btnSub.setText("Kosongkan cache sistem & bebaskan memori RAM perangkat");
+        btnSub.setTextSize(11f);
+        btnSub.setTextColor(isNeu ? ThemeManager.neu(0xFF5A626E) : (isDark ? 0x9900F0FF : 0xB3FFFFFF));
+        btnSub.setTypeface(outfit, Typeface.NORMAL);
+        btnSub.setFontVariationSettings("'wght' 500");
+        textCol.addView(btnSub);
+
+        cleanBtn.addView(textCol);
+
+        TextView actionBadge = new TextView(this);
+        actionBadge.setText("BERSIHKAN");
+        actionBadge.setTextSize(11f);
+        actionBadge.setTypeface(outfit, Typeface.BOLD);
+        actionBadge.setFontVariationSettings("'wght' 700");
+        actionBadge.setTextColor(isNeu ? ThemeManager.neu(0xFF1F2429) : (isDark ? 0xFF00F0FF : 0xFFFFFFFF));
+        actionBadge.setPadding((int) (9 * density), (int) (4 * density), (int) (9 * density), (int) (4 * density));
+        GradientDrawable actBg = new GradientDrawable();
+        actBg.setColor(isNeu ? ThemeManager.neu(0x22000000) : (isDark ? 0x3300F0FF : 0x33FFFFFF));
+        actBg.setCornerRadius(7 * density);
+        actionBadge.setBackground(actBg);
+        cleanBtn.addView(actionBadge);
+
+        rootLayout.addView(cleanBtn);
+
+        AlertDialog[] dialogHolder = new AlertDialog[1];
+        cleanBtn.setOnClickListener(v -> {
+            SoundEffects.playSelect();
+            if (dialogHolder[0] != null) dialogHolder[0].dismiss();
+            smartBoostTv();
+        });
+        cleanBtn.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) SoundEffects.playNav();
+        });
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this, R.style.Theme_TvHome_GlassDialog);
+        builder.setView(rootLayout);
+        builder.setNegativeButton("Tutup", (d, w) -> d.dismiss());
+        AlertDialog dialog = builder.create();
+        dialogHolder[0] = dialog;
+        dialog.show();
+        styleGlassDialog(dialog);
+
+        if (dialog.getWindow() != null) {
+            int w = Math.min((int) (500 * density), getResources().getDisplayMetrics().widthPixels - (int) (120 * density));
+            dialog.getWindow().setLayout(w, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+
+        cleanBtn.requestFocus();
+    }
+
+    private LinearLayout createDashboardMetricCard(String title, int percent, String statMain, String statSub,
+                                                   boolean isNeu, boolean isDark, Typeface outfit) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding((int) (14 * density), (int) (12 * density), (int) (14 * density), (int) (12 * density));
+
+        if (isNeu) {
+            card.setBackground(new NeumorphicDrawable(12 * density, density, NeumorphicDrawable.MODE_EXTRUDED, false));
+        } else if (isDark) {
+            GradientDrawable cBg = new GradientDrawable();
+            cBg.setColor(0xFF101420);
+            cBg.setCornerRadius(12 * density);
+            cBg.setStroke(Math.max(1, Math.round(1f * density)), 0x3300F0FF);
+            card.setBackground(cBg);
+        } else {
+            GradientDrawable cBg = new GradientDrawable();
+            cBg.setColor(0x1FFFFFFF);
+            cBg.setCornerRadius(12 * density);
+            cBg.setStroke(Math.max(1, Math.round(1f * density)), 0x33FFFFFF);
+            card.setBackground(cBg);
+        }
+
+        // Top Row: Title + Percentage Badge
+        LinearLayout topRow = new LinearLayout(this);
+        topRow.setOrientation(LinearLayout.HORIZONTAL);
+        topRow.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView tView = new TextView(this);
+        tView.setText(title);
+        tView.setTextSize(12.5f);
+        tView.setTextColor(isNeu ? ThemeManager.neu(0xFF333E4D) : 0xFFFFFFFF);
+        tView.setTypeface(outfit, Typeface.BOLD);
+        tView.setFontVariationSettings("'wght' 650");
+        LinearLayout.LayoutParams tLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        topRow.addView(tView, tLp);
+
+        TextView pBadge = new TextView(this);
+        pBadge.setText(percent + "%");
+        pBadge.setTextSize(11f);
+        pBadge.setTypeface(outfit, Typeface.BOLD);
+        pBadge.setFontVariationSettings("'wght' 700");
+        pBadge.setTextColor(isNeu ? ThemeManager.neu(0xFF222934) : (isDark ? 0xFF00F0FF : 0xFFFFFFFF));
+        pBadge.setPadding((int) (6 * density), (int) (2 * density), (int) (6 * density), (int) (2 * density));
+        GradientDrawable pBg = new GradientDrawable();
+        pBg.setColor(isNeu ? ThemeManager.neu(0x18000000) : (isDark ? 0x2200F0FF : 0x26FFFFFF));
+        pBg.setCornerRadius(5 * density);
+        pBadge.setBackground(pBg);
+        topRow.addView(pBadge);
+
+        card.addView(topRow);
+
+        // Visual Progress Bar (Track & Fill)
+        LinearLayout progressTrack = new LinearLayout(this);
+        progressTrack.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams ptLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (int) (6 * density));
+        ptLp.topMargin = (int) (10 * density);
+        ptLp.bottomMargin = (int) (8 * density);
+        progressTrack.setLayoutParams(ptLp);
+
+        GradientDrawable trackBg = new GradientDrawable();
+        trackBg.setColor(isNeu ? ThemeManager.neu(0x18000000) : (isDark ? 0x2600F0FF : 0x26FFFFFF));
+        trackBg.setCornerRadius(3 * density);
+        progressTrack.setBackground(trackBg);
+
+        int clampedPercent = Math.max(1, Math.min(100, percent));
+        View fillView = new View(this);
+        GradientDrawable fillBg = new GradientDrawable();
+        int fillColor = isNeu ? ThemeManager.neu(0xFF3B6FE8) : (isDark ? 0xFF00F0FF : 0xFFFFFFFF);
+        fillBg.setColor(fillColor);
+        fillBg.setCornerRadius(3 * density);
+        fillView.setBackground(fillBg);
+        progressTrack.addView(fillView, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, clampedPercent));
+
+        if (clampedPercent < 100) {
+            View emptyView = new View(this);
+            progressTrack.addView(emptyView, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 100 - clampedPercent));
+        }
+
+        card.addView(progressTrack);
+
+        // Stats detail texts
+        TextView statMainView = new TextView(this);
+        statMainView.setText(statMain);
+        statMainView.setTextSize(12f);
+        statMainView.setTextColor(isNeu ? ThemeManager.neu(0xFF1F2429) : 0xFFFFFFFF);
+        statMainView.setTypeface(outfit, Typeface.BOLD);
+        statMainView.setFontVariationSettings("'wght' 600");
+        card.addView(statMainView);
+
+        TextView statSubView = new TextView(this);
+        statSubView.setText(statSub);
+        statSubView.setTextSize(11f);
+        statSubView.setTextColor(isNeu ? ThemeManager.neu(0xFF5A626E) : (isDark ? 0x9900F0FF : 0xB3FFFFFF));
+        statSubView.setTypeface(outfit, Typeface.NORMAL);
+        statSubView.setFontVariationSettings("'wght' 500");
+        statSubView.setPadding(0, (int) (2 * density), 0, 0);
+        card.addView(statSubView);
+
+        return card;
     }
 
     public static final class ThemedDialogItem {
