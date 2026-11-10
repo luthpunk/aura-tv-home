@@ -2869,44 +2869,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** Shows the Wi-Fi network name on the button when we can read it, otherwise the connection type. */
     private void updateWifiLabel() {
         if (btnWifi.getVisibility() == View.GONE) return;   // show_network_pill off
-        String text = getString(R.string.wifi);
-        boolean vpn = false, online = false;
-        int icon = R.drawable.ic_wifi;
-        try {
-            ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-            boolean wifi = false, ethernet = false;
-            // All networks, not just the active one: with a VPN up the active network is the VPN itself.
-            for (Network net : cm != null ? cm.getAllNetworks() : new Network[0]) {
-                NetworkCapabilities caps = cm.getNetworkCapabilities(net);
-                if (caps == null) continue;
-                if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
-                    vpn = true;
-                    continue;
-                }
-                if (!caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) continue;
-                online = true;
-                if (caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) ethernet = true;
-                if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) wifi = true;
-            }
-            if (!online) {
-                text = getString(R.string.offline);
-                vpn = false;
-            } else if (ethernet) {
-                text = getString(R.string.ethernet);
-                icon = R.drawable.ic_ethernet;
-            } else if (wifi) {
-                WifiManager wm = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-                WifiInfo info = wm != null ? wm.getConnectionInfo() : null;
-                String ssid = info != null ? info.getSSID() : null;
-                if (ssid != null) {
-                    ssid = ssid.replace("\"", "").trim();
-                    if (!ssid.isEmpty() && !ssid.contains("unknown") && !ssid.equals("0x")) text = ssid;
-                }
-            }
-        } catch (Exception ignored) {
-        }
-        btnWifi.setText(text);
-        btnWifi.setCompoundDrawablesRelativeWithIntrinsicBounds(icon, 0, 0, 0);
+        btnWifi.setText(getString(R.string.wifi));
+        btnWifi.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_wifi, 0, 0, 0);
     }
 
     /** Shows an Apple TV-style frosted glass Wi-Fi control center popup. */
@@ -2950,17 +2914,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         int width = (int) (240 * density);
 
-        // Row 1: Current Wi-Fi status & SSID
-        addInputRow(rows, close, R.drawable.ic_wifi, ssid, isConnected ? TvInputManager.INPUT_STATE_CONNECTED : TvInputManager.INPUT_STATE_DISCONNECTED, () -> {
+        // Row 1: Wi-Fi status & SSID (dot hijau jika terhubung, dot merah jika tidak terhubung)
+        String wifiTitle = isConnected ? ssid : "Tidak Terhubung";
+        addInputRow(rows, close, R.drawable.ic_wifi, wifiTitle, isConnected ? TvInputManager.INPUT_STATE_CONNECTED : TvInputManager.INPUT_STATE_DISCONNECTED, () -> {
             SoundEffects.playSelect();
             open(systemIntent(Settings.ACTION_WIFI_SETTINGS));
         });
 
-        // Row 2: Pengaturan Wi-Fi
-        addInputRow(rows, close, R.drawable.ic_settings, "Pengaturan Wi-Fi", -1, () -> {
-            SoundEffects.playSelect();
-            open(systemIntent(Settings.ACTION_WIFI_SETTINGS));
-        });
+        // Row 2: Alamat IP Wi-Fi (read-only keterangan info, tidak bisa di-klik)
+        String ipLabel = (ip != null && !ip.isEmpty()) ? ("IP : " + ip) : (isConnected ? "IP : Memperoleh..." : "IP : Tidak Tersedia");
+        addInputRow(rows, close, R.drawable.ic_info, ipLabel, -1, null);
 
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         width = Math.max(width, panel.getMeasuredWidth());
@@ -7684,17 +7647,35 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (state == TvInputManager.INPUT_STATE_CONNECTED) {
             status.setText(R.string.connected);
             dot.setVisibility(View.VISIBLE);
+            GradientDrawable d = new GradientDrawable();
+            d.setShape(GradientDrawable.OVAL);
+            d.setColor(0xFF34C759);
+            dot.setBackground(d);
         } else if (state == TvInputManager.INPUT_STATE_DISCONNECTED) {
             status.setText(R.string.not_connected);
-            dot.setVisibility(View.GONE);
+            dot.setVisibility(View.VISIBLE);
+            GradientDrawable d = new GradientDrawable();
+            d.setShape(GradientDrawable.OVAL);
+            d.setColor(0xFFFF453A);
+            dot.setBackground(d);
         } else {
             status.setVisibility(View.GONE);
             dot.setVisibility(View.GONE);
         }
-        row.setOnClickListener(v -> {
-            close.run();
-            action.run();
-        });
+        if (action != null) {
+            row.setFocusable(true);
+            row.setClickable(true);
+            row.setOnClickListener(v -> {
+                close.run();
+                action.run();
+            });
+        } else {
+            row.setFocusable(false);
+            row.setClickable(false);
+            row.setOnClickListener(null);
+            titleView.setAlpha(0.7f);
+            iconView.setAlpha(0.7f);
+        }
         rows.addView(row);
     }
 
