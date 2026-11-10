@@ -2,6 +2,6 @@
   "versionCode": 64,
   "versionName": "3.7.3-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "perf(neumorphism): 60fps optimization, simplified OTA label, reordered settings menu (v3.7.3-id)",
+  "changelog": "• Navigasi Lebih Halus: Transisi menu drop-down dan fokus remote ultra-smooth tanpa glitch\n• Pemantauan RAM Real-time: Info penggunaan memori TV langsung di baris menu sistem\n• Menu Terintegrasi: Pengaturan terpusat dengan akses cepat koleksi Wallpaper 4K & Gaya Tema\n• Panel Wi-Fi Modern: Tampilan nama jaringan (SSID) dan IP address yang akurat dan bersih\n• Kontrol Widget & Sistem Instan: Toggle widget dan pembaruan sistem cepat tanpa jeda",
   "releaseDate": "2026-11-10"
 }

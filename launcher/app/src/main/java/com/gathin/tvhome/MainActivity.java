@@ -3264,28 +3264,27 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void buildWidgetManagerSubMenu(FrameLayout panel, LinearLayout rows) {
         addInputRow(rows, null, R.drawable.ic_back, "Kembali", -1, () -> popMenuSubPage(panel, rows));
 
-        String curMode = getWeatherWidgetMode();
-        boolean isMinimal = WIDGET_MODE_MINIMAL.equals(curMode);
-        boolean isLarge = WIDGET_MODE_LARGE.equals(curMode);
+        final View[] rowMinimalHolder = new View[1];
+        final View[] rowLargeHolder = new View[1];
 
-        addInputRow(rows, null, R.drawable.ic_weather_sun, "Cuaca Kecil : " + (isMinimal ? "ON" : "OFF"), -1, () -> {
+        rowMinimalHolder[0] = addInputRow(rows, null, R.drawable.ic_weather_sun, "Cuaca Kecil : " + (WIDGET_MODE_MINIMAL.equals(getWeatherWidgetMode()) ? "ON" : "OFF"), -1, () -> {
             SoundEffects.playSelect();
-            String next = isMinimal ? WIDGET_MODE_NONE : WIDGET_MODE_MINIMAL;
+            boolean curMin = WIDGET_MODE_MINIMAL.equals(getWeatherWidgetMode());
+            String next = curMin ? WIDGET_MODE_NONE : WIDGET_MODE_MINIMAL;
             setWeatherWidgetMode(next);
             applyWeatherWidgetMode();
-            rows.removeAllViews();
-            buildWidgetManagerSubMenu(panel, rows);
-            bindMenuKeyListeners(panel, rows, false);
+            updateRowStatus(rowMinimalHolder[0], !curMin ? "ON" : "OFF");
+            updateRowStatus(rowLargeHolder[0], "OFF");
         });
 
-        addInputRow(rows, null, R.drawable.ic_weather_cloud, "Cuaca Besar : " + (isLarge ? "ON" : "OFF"), -1, () -> {
+        rowLargeHolder[0] = addInputRow(rows, null, R.drawable.ic_weather_cloud, "Cuaca Besar : " + (WIDGET_MODE_LARGE.equals(getWeatherWidgetMode()) ? "ON" : "OFF"), -1, () -> {
             SoundEffects.playSelect();
-            String next = isLarge ? WIDGET_MODE_NONE : WIDGET_MODE_LARGE;
+            boolean curLarge = WIDGET_MODE_LARGE.equals(getWeatherWidgetMode());
+            String next = curLarge ? WIDGET_MODE_NONE : WIDGET_MODE_LARGE;
             setWeatherWidgetMode(next);
             applyWeatherWidgetMode();
-            rows.removeAllViews();
-            buildWidgetManagerSubMenu(panel, rows);
-            bindMenuKeyListeners(panel, rows, false);
+            updateRowStatus(rowLargeHolder[0], !curLarge ? "ON" : "OFF");
+            updateRowStatus(rowMinimalHolder[0], "OFF");
         });
     }
 
@@ -3305,7 +3304,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             final String name = s[1];
             boolean isActive = key.equalsIgnoreCase(activeTheme);
             String title = name + (isActive ? " : AKTIF" : "");
-            addInputRow(rows, null, R.drawable.ic_sound, title, -1, () -> {
+            addInputRow(rows, null, 0, title, -1, () -> {
                 SoundEffects.playSelect();
                 SoundEffects.setTheme(MainActivity.this, key);
                 closeMenuAndFocusApp();
@@ -3400,13 +3399,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void buildOtaSubMenu(FrameLayout panel, LinearLayout rows) {
         addInputRow(rows, null, R.drawable.ic_back, "Kembali", -1, () -> popMenuSubPage(panel, rows));
 
+        final View[] rowAutoHolder = new View[1];
         boolean isAuto = AppUpdateManager.isAutoUpdateEnabled(this);
-        addInputRow(rows, null, R.drawable.ic_update, "Pembaruan Otomatis : " + (isAuto ? "ON" : "OFF"), -1, () -> {
+        rowAutoHolder[0] = addInputRow(rows, null, R.drawable.ic_update, "Pembaruan Otomatis : " + (isAuto ? "ON" : "OFF"), -1, () -> {
             SoundEffects.playSelect();
-            AppUpdateManager.setAutoUpdateEnabled(MainActivity.this, !isAuto);
-            rows.removeAllViews();
-            buildOtaSubMenu(panel, rows);
-            bindMenuKeyListeners(panel, rows, false);
+            boolean current = AppUpdateManager.isAutoUpdateEnabled(MainActivity.this);
+            boolean next = !current;
+            AppUpdateManager.setAutoUpdateEnabled(MainActivity.this, next);
+            updateRowStatus(rowAutoHolder[0], next ? "ON" : "OFF");
         });
 
         addInputRow(rows, null, R.drawable.ic_update, "Periksa Pembaruan Sekarang", -1, () -> {
@@ -3462,9 +3462,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             smartBoostTv();
             handler.postDelayed(() -> {
                 if (openMenu == panel) {
+                    panel.setFocusable(true);
+                    panel.setFocusableInTouchMode(true);
+                    panel.requestFocus();
                     rows.removeAllViews();
                     buildTvInfoSubMenu(panel, rows);
                     bindMenuKeyListeners(panel, rows, false);
+                    int count = rows.getChildCount();
+                    if (count > 0) {
+                        View last = rows.getChildAt(count - 1);
+                        if (last != null) last.requestFocus();
+                    }
+                    panel.setFocusable(false);
                 }
             }, 600);
         });
@@ -5999,7 +6008,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             } catch (Exception ignored) {}
             CacheCleaner.maybeRun(getApplicationContext(), 1);
             System.gc();
-            handler.post(() -> Toast.makeText(this, "🧹 Memori & cache TV berhasil dioptimalkan!", Toast.LENGTH_SHORT).show());
+            handler.post(() -> Toast.makeText(this, "🚀 Memori & cache TV berhasil dioptimalkan!", Toast.LENGTH_SHORT).show());
         }, "cache-boost").start();
     }
 
@@ -8034,7 +8043,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         rows.addView(line, lp);
     }
 
-    private void addInputRow(LinearLayout rows, Runnable close, int iconRes, String title, int state, Runnable action) {
+    private View addInputRow(LinearLayout rows, Runnable close, int iconRes, String title, int state, Runnable action) {
         View row = getLayoutInflater().inflate(R.layout.item_input, rows, false);
         boolean isNeu = ThemeManager.isNeumorphism(this);
         boolean isDark = ThemeManager.isDarkGlow(this);
@@ -8120,6 +8129,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (status != null) status.setAlpha(0.7f);
         }
         rows.addView(row);
+        return row;
+    }
+
+    private void updateRowStatus(View row, String text) {
+        if (row == null) return;
+        TextView status = row.findViewById(R.id.status);
+        if (status != null) {
+            status.setVisibility(View.VISIBLE);
+            status.setText(text);
+        }
     }
 
     // ---- module cards ----------------------------------------------------------------------------

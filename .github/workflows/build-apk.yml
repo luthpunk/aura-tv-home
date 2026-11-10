@@ -61,12 +61,20 @@ jobs:
           COMMIT_MSG=$(git log -1 --pretty=%s)
           DATE_STR=$(date -u +%Y-%m-%d)
 
+          if [ -f release/changelog.txt ]; then
+            CHANGELOG_NOTES=$(cat release/changelog.txt)
+            CHANGELOG_JSON=$(python3 -c "import json, sys; print(json.dumps(sys.stdin.read().strip()))" < release/changelog.txt)
+          else
+            CHANGELOG_NOTES="${COMMIT_MSG}"
+            CHANGELOG_JSON=$(python3 -c "import json, sys; print(json.dumps(sys.stdin.read().strip()))" <<< "${COMMIT_MSG}")
+          fi
+
           tag="build-${GITHUB_RUN_NUMBER}"
           for i in 1 2 3; do
             gh release delete "$tag" --cleanup-tag -y 2>/dev/null || true
             if gh release create "$tag" aura-tv-home.apk \
-              --title "Aura TV Home ${tag} (v${VNAME})" \
-              --notes "Built from ${GITHUB_SHA::7}. Unduh aura-tv-home.apk untuk Android TV / STB." \
+              --title "Aura TV Home (v${VNAME})" \
+              --notes "${CHANGELOG_NOTES}" \
               --latest; then
               break
             fi
@@ -76,17 +84,17 @@ jobs:
           mkdir -p release
           cat > release/version.json <<EOF
           {
-            "versionCode": ${VCODE:-31},
-            "versionName": "${VNAME:-3.4.0-id}",
+            "versionCode": ${VCODE:-64},
+            "versionName": "${VNAME:-3.7.3-id}",
             "apkUrl": "https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/aura-tv-home.apk",
-            "changelog": "${COMMIT_MSG}",
+            "changelog": ${CHANGELOG_JSON},
             "releaseDate": "${DATE_STR}"
           }
           EOF
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add release/version.json
+          git add release/version.json release/changelog.txt
           if ! git diff --cached --quiet; then
             git commit -m "chore(release): update OTA version.json to v${VNAME} (${VCODE})"
             for i in 1 2 3; do
