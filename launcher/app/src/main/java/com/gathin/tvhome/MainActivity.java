@@ -1,6 +1,7 @@
 package com.gathin.tvhome;
 
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.ActivityNotFoundException;
@@ -43,9 +44,12 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.StatFs;
 import android.provider.Settings;
+import android.text.format.Formatter;
 import android.util.Log;
 import android.text.SpannableString;
 import android.text.Spanned;
@@ -2873,21 +2877,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             showSoundEffectsDialog();
         });
 
-        // Row 5: Auto-Update (OTA)
-        boolean isAuto = AppUpdateManager.isAutoUpdateEnabled(this);
-        String updateLabel = "Update Otomatis: " + (isAuto ? "ON (" + AppUpdateManager.getAutoUpdateTime(this) + ")" : "OFF");
-        addInputRow(rows, close, R.drawable.ic_update, updateLabel, -1, () -> {
-            SoundEffects.playSelect();
-            showAutoUpdateDialog();
-        });
-
-        // Row 6: Nightstand / Screensaver
+        // Row 5: Nightstand / Screensaver
         addInputRow(rows, close, R.drawable.ic_weather_sun, "Screensaver Jam Meja", -1, () -> {
             SoundEffects.playSelect();
             showNightstandScreensaver();
         });
 
-        // Row 7: Smart Boost TV / Bersih Cache
+        // Row 6: Smart Boost TV / Bersih Cache
         addInputRow(rows, close, R.drawable.ic_trash, "Bersihkan Cache TV", -1, () -> {
             SoundEffects.playSelect();
             smartBoostTv();
@@ -2899,7 +2895,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         showMenu(panel, rows, anchor, width, false);
     }
 
-    /** Shows an Apple TV-style frosted glass Settings dropdown menu (Restart, Turn Off, All Settings). */
+    /** Shows an Apple TV-style frosted glass Settings dropdown menu (All Settings, Restart, Turn Off, Now Playing Permission, OTA Update, TV Info). */
     private void showSettingsPopup() {
         if (openMenu != null) return;
         SoundEffects.playSelect();
@@ -2909,37 +2905,156 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         LinearLayout rows = panel.findViewById(R.id.rows);
         Runnable close = () -> closeMenu(false);
 
-        // Row 1: Restart TV
-        addInputRow(rows, close, R.drawable.ic_restart, "Mulai Ulang TV", -1, () -> {
-            SoundEffects.playSelect();
-            showRestartDialog();
-        });
-
-        // Row 2: Turn Off TV
-        addInputRow(rows, close, R.drawable.ic_power, "Matikan TV", -1, () -> {
-            SoundEffects.playSelect();
-            showTurnOffDialog();
-        });
-
-        addSeparator(rows);
-
-        // Row 3: All Settings (Android Settings)
+        // Row 1: All Settings (Android Settings) - Paling atas
         addInputRow(rows, close, R.drawable.ic_settings, "Semua Pengaturan", -1, () -> {
             SoundEffects.playSelect();
             open(systemIntent(Settings.ACTION_SETTINGS));
         });
 
-        // Row 4: Music Notification Access Permission
-        addInputRow(rows, close, R.drawable.ic_music, "Izin Info Musik (Now Playing)", -1, () -> {
+        // Row 2: Restart TV
+        addInputRow(rows, close, R.drawable.ic_restart, "Mulai Ulang TV", -1, () -> {
+            SoundEffects.playSelect();
+            showRestartDialog();
+        });
+
+        // Row 3: Turn Off TV
+        addInputRow(rows, close, R.drawable.ic_power, "Matikan TV", -1, () -> {
+            SoundEffects.playSelect();
+            showTurnOffDialog();
+        });
+
+        // Row 4: Music Notification Access Permission - Izin Now Playing
+        addInputRow(rows, close, R.drawable.ic_music, "Izin Now Playing", -1, () -> {
             SoundEffects.playSelect();
             NowPlayingManager.openNotificationAccessSettings(this);
             Toast.makeText(this, "Buka Akses aplikasi khusus > Akses notifikasi > Aktifkan Aura TV Home", Toast.LENGTH_LONG).show();
         });
 
+        // Row 5: Auto-Update (OTA)
+        boolean isAuto = AppUpdateManager.isAutoUpdateEnabled(this);
+        String updateLabel = "Update OTA : " + (isAuto ? "ON" : "OFF");
+        addInputRow(rows, close, R.drawable.ic_update, updateLabel, -1, () -> {
+            SoundEffects.playSelect();
+            showAutoUpdateDialog();
+        });
+
+        // Row 6: Info TV : X% RAM Digunakan - Paling bawah sendiri
+        int ramPercent = getRamUsedPercent();
+        String infoLabel = "Info TV : " + ramPercent + "% RAM Digunakan";
+        addInputRow(rows, close, R.drawable.ic_info, infoLabel, -1, () -> {
+            SoundEffects.playSelect();
+            showTvSystemInfoDialog();
+        });
+
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-        int width = Math.max((int) (200 * density), panel.getMeasuredWidth());
+        int width = Math.max((int) (220 * density), panel.getMeasuredWidth());
 
         showMenu(panel, rows, anchor, width, false);
+    }
+
+    private int getRamUsedPercent() {
+        try {
+            ActivityManager actMgr = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+            if (actMgr != null) {
+                ActivityManager.MemoryInfo memInfo = new ActivityManager.MemoryInfo();
+                actMgr.getMemoryInfo(memInfo);
+                if (memInfo.totalMem > 0) {
+                    long usedMem = memInfo.totalMem - memInfo.availMem;
+                    return (int) Math.round((double) usedMem * 100.0 / memInfo.totalMem);
+                }
+            }
+        } catch (Exception ignored) {}
+        return 0;
+    }
+
+    private void showTvSystemInfoDialog() {
+        long totalMem = 0;
+        long usedMem = 0;
+        long availMem = 0;
+        int ramPercent = 0;
+
+        try {
+            ActivityManager actMgr = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+            if (actMgr != null) {
+                ActivityManager.MemoryInfo memInfo = new ActivityManager.MemoryInfo();
+                actMgr.getMemoryInfo(memInfo);
+                totalMem = memInfo.totalMem;
+                availMem = memInfo.availMem;
+                usedMem = totalMem - availMem;
+                if (totalMem > 0) {
+                    ramPercent = (int) Math.round((double) usedMem * 100.0 / totalMem);
+                }
+            }
+        } catch (Exception ignored) {}
+
+        long totalStorage = 0;
+        long availStorage = 0;
+        long usedStorage = 0;
+        int storagePercent = 0;
+        try {
+            File dataDir = Environment.getDataDirectory();
+            StatFs stat = new StatFs(dataDir.getPath());
+            long blockSize = stat.getBlockSizeLong();
+            totalStorage = stat.getBlockCountLong() * blockSize;
+            availStorage = stat.getAvailableBlocksLong() * blockSize;
+            usedStorage = totalStorage - availStorage;
+            if (totalStorage > 0) {
+                storagePercent = (int) Math.round((double) usedStorage * 100.0 / totalStorage);
+            }
+        } catch (Exception ignored) {}
+
+        List<ThemedDialogItem> items = new ArrayList<>();
+
+        // Item 1: RAM
+        String ramSub = Formatter.formatFileSize(this, usedMem) + " digunakan dari "
+                + Formatter.formatFileSize(this, totalMem)
+                + " (" + (totalMem > 0 ? (100 - ramPercent) : 0) + "% bebas)";
+        items.add(new ThemedDialogItem(
+                "⚡ Memori RAM",
+                ramSub,
+                false,
+                ramPercent + "% DIGUNAKAN",
+                null
+        ));
+
+        // Item 2: Internal Storage
+        String storageSub = Formatter.formatFileSize(this, availStorage) + " bebas dari "
+                + Formatter.formatFileSize(this, totalStorage) + " total internal";
+        items.add(new ThemedDialogItem(
+                "💾 Penyimpanan TV",
+                storageSub,
+                false,
+                storagePercent + "% DIGUNAKAN",
+                null
+        ));
+
+        // Item 3: Device Model & OS
+        String deviceName = Build.MANUFACTURER.toUpperCase(Locale.ROOT) + " " + Build.MODEL;
+        String osVersion = "Android " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")";
+        items.add(new ThemedDialogItem(
+                "📺 Perangkat & Sistem",
+                deviceName + " • " + osVersion,
+                false,
+                "SISTEM",
+                null
+        ));
+
+        // Item 4: Open TV About Settings
+        items.add(new ThemedDialogItem(
+                "⚙️ Buka Pengaturan Tentang TV",
+                "Lihat informasi lengkap perangkat, lisensi, dan status di Pengaturan TV",
+                true,
+                "BUKA",
+                () -> open(systemIntent(Settings.ACTION_DEVICE_INFO_SETTINGS))
+        ));
+
+        showThemedListDialog(
+                "ℹ️ Info Sistem TV",
+                "Ringkasan performa perangkat, memori, dan informasi sistem",
+                items,
+                "Tutup",
+                null
+        );
     }
 
     public static final class ThemedDialogItem {
@@ -4283,7 +4398,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
             for (ImageView btn : new ImageView[]{btnPopupPrev, btnPlayPause, btnPopupNext}) {
                 if (btn == null) continue;
-                float r = (btn == btnPlayPause) ? 26 * density : 20 * density;
+                float r = (btn == btnPlayPause) ? 22 * density : 18 * density;
                 StateListDrawable sld = new StateListDrawable();
                 sld.addState(new int[]{android.R.attr.state_focused},
                         new NeumorphicDrawable(r, density, NeumorphicDrawable.MODE_RECESSED, false));
@@ -4297,9 +4412,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 if (btn == null) continue;
                 StateListDrawable sld = new StateListDrawable();
                 sld.addState(new int[]{android.R.attr.state_focused},
-                        new NeumorphicDrawable(12 * density, density, NeumorphicDrawable.MODE_RECESSED, false));
+                        new NeumorphicDrawable(10 * density, density, NeumorphicDrawable.MODE_RECESSED, false));
                 sld.addState(new int[]{},
-                        new NeumorphicDrawable(12 * density, density, NeumorphicDrawable.MODE_EXTRUDED, false));
+                        new NeumorphicDrawable(10 * density, density, NeumorphicDrawable.MODE_EXTRUDED, false));
                 btn.setBackground(sld);
                 btn.setTextColor(ThemeManager.neu(0xFF1F2429));
             }
@@ -4353,12 +4468,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 StateListDrawable sld = new StateListDrawable();
                 GradientDrawable foc = new GradientDrawable();
                 foc.setColor(0x3300F0FF);
-                foc.setCornerRadius(12 * density);
+                foc.setCornerRadius(10 * density);
                 foc.setStroke(Math.max(1, Math.round(1.5f * density)), 0xFF00F0FF);
 
                 GradientDrawable norm = new GradientDrawable();
                 norm.setColor(0xFF141D2C);
-                norm.setCornerRadius(12 * density);
+                norm.setCornerRadius(10 * density);
                 norm.setStroke(Math.max(1, Math.round(1f * density)), 0x4D00F0FF);
 
                 sld.addState(new int[]{android.R.attr.state_focused}, foc);
@@ -4371,12 +4486,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 StateListDrawable sld = new StateListDrawable();
                 GradientDrawable foc = new GradientDrawable();
                 foc.setColor(0x26FFFFFF);
-                foc.setCornerRadius(12 * density);
+                foc.setCornerRadius(10 * density);
                 foc.setStroke(Math.max(1, Math.round(1.5f * density)), 0x88FFFFFF);
 
                 GradientDrawable norm = new GradientDrawable();
                 norm.setColor(0xFF141824);
-                norm.setCornerRadius(12 * density);
+                norm.setCornerRadius(10 * density);
                 norm.setStroke(Math.max(1, Math.round(1f * density)), 0x26FFFFFF);
 
                 sld.addState(new int[]{android.R.attr.state_focused}, foc);
@@ -4412,7 +4527,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
 
         // Layout positioning: flush with left edge of nowPlayingCard, extending rightwards
-        int width = (int) (430 * density);
+        int width = (int) (400 * density);
         anchor.getLocationInWindow(pillAt);
         root.getLocationInWindow(rootAt);
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(width, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -4615,12 +4730,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (imgAlbumArt != null) {
                 if (info.albumArtUri != null) {
                     if (!isSameSong) {
-                        loadUriBitmapAsync(info.albumArtUri, imgAlbumArt, 16f * density, info.packageName, 16, trackKey, info.albumArt);
+                        loadUriBitmapAsync(info.albumArtUri, imgAlbumArt, 14f * density, info.packageName, 14, trackKey, info.albumArt);
                     }
                 } else if (info.albumArt != null) {
                     if (!isSameSong) {
                         int bSize = Math.min(info.albumArt.getWidth(), info.albumArt.getHeight());
-                        float r = bSize * (16f / 96f);
+                        float r = bSize * (14f / 76f);
                         imgAlbumArt.setImageBitmap(getRoundedCornerBitmap(info.albumArt, r));
                         imgAlbumArt.setPadding(0, 0, 0, 0);
                         imgAlbumArt.setBackground(null);

@@ -7,8 +7,8 @@
     android:background="@drawable/bg_glass_dialog"
     android:paddingStart="24dp"
     android:paddingEnd="24dp"
-    android:paddingTop="20dp"
-    android:paddingBottom="20dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp"
     android:clipChildren="false"
     android:clipToPadding="false"
     android:elevation="20dp">
@@ -62,19 +62,19 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="10dp"
         android:orientation="horizontal"
         android:gravity="center_vertical">
 
         <!-- Album Art / Thumbnail -->
         <FrameLayout
-            android:layout_width="96dp"
-            android:layout_height="96dp">
+            android:layout_width="76dp"
+            android:layout_height="76dp">
 
             <ImageView
                 android:id="@+id/imgAlbumArt"
-                android:layout_width="96dp"
-                android:layout_height="96dp"
+                android:layout_width="76dp"
+                android:layout_height="76dp"
                 android:background="@drawable/bg_media_app_pill"
                 android:scaleType="centerCrop"
                 android:src="@drawable/ic_music" />
@@ -134,7 +134,7 @@
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="10dp"
         android:layout_gravity="center_horizontal"
         android:gravity="center_vertical"
         android:clipChildren="false"
@@ -143,9 +143,9 @@
 
         <ImageView
             android:id="@+id/btnPopupPrev"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:padding="9dp"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="8dp"
             android:scaleType="centerInside"
             android:src="@drawable/ic_skip_previous"
             android:tint="@color/ic_np_tint"
@@ -159,11 +159,11 @@
 
         <ImageView
             android:id="@+id/btnPlayPause"
-            android:layout_width="52dp"
-            android:layout_height="52dp"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
-            android:padding="12dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="14dp"
+            android:layout_marginEnd="14dp"
+            android:padding="10dp"
             android:scaleType="centerInside"
             android:src="@drawable/ic_pause"
             android:tint="@color/ic_np_tint"
@@ -177,9 +177,9 @@
 
         <ImageView
             android:id="@+id/btnPopupNext"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:padding="9dp"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="8dp"
             android:scaleType="centerInside"
             android:src="@drawable/ic_skip_next"
             android:tint="@color/ic_np_tint"
@@ -196,7 +196,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="18dp"
+        android:layout_marginTop="12dp"
         android:clipChildren="false"
         android:clipToPadding="false"
         android:orientation="horizontal"
@@ -205,12 +205,12 @@
         <TextView
             android:id="@+id/btnOpenApp"
             android:layout_width="0dp"
-            android:layout_height="38dp"
+            android:layout_height="34dp"
             android:layout_weight="1"
             android:layout_marginEnd="8dp"
             android:background="@drawable/bg_dialog_btn"
             android:textColor="@drawable/dialog_btn_text"
-            android:textSize="12.5sp"
+            android:textSize="12sp"
             android:fontFamily="@font/outfit"
             android:fontVariationSettings="'wght' 600"
             android:gravity="center"
@@ -225,12 +225,12 @@
         <TextView
             android:id="@+id/btnCloseDialog"
             android:layout_width="0dp"
-            android:layout_height="38dp"
+            android:layout_height="34dp"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
             android:background="@drawable/bg_dialog_btn"
             android:textColor="@drawable/dialog_btn_text"
-            android:textSize="12.5sp"
+            android:textSize="12sp"
             android:fontFamily="@font/outfit"
             android:fontVariationSettings="'wght' 600"
             android:gravity="center"

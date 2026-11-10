@@ -270,6 +270,43 @@ public final class NeumorphicDrawable extends Drawable {
     }
 
     /**
+     * Optimized 2-pass ambient dual shadow for unfocused tiles and background elements.
+     * Replaces 11 feathered passes with 2 pre-blended passes, reducing draw calls by 82%
+     * while retaining the authentic top-left highlight and bottom-right dark depth.
+     */
+    public static void drawAmbientDualShadows(@NonNull Canvas c, @NonNull RectF bounds, float r,
+                                              float density, float alpha) {
+        if (bounds.isEmpty() || alpha <= 0f) return;
+
+        // Top-Left Light Highlight Shadow (Single blended pass)
+        SHADOW_LIGHT_PAINT.setStyle(Paint.Style.FILL);
+        float shiftLight = 2.0f * density;
+        float spreadLight = 1.5f * density;
+        TMP_RECT.set(
+                bounds.left - shiftLight - spreadLight,
+                bounds.top - shiftLight - spreadLight,
+                bounds.right + spreadLight * 0.2f,
+                bounds.bottom + spreadLight * 0.2f);
+        int lightAlpha = Math.min(255, Math.round(58 * sOuterLightK * alpha));
+        SHADOW_LIGHT_PAINT.setColor((lightAlpha << 24) | sLightRgb);
+        c.drawRoundRect(TMP_RECT, r + spreadLight, r + spreadLight, SHADOW_LIGHT_PAINT);
+
+        // Bottom-Right Dark Drop Shadow (Single blended pass)
+        SHADOW_DARK_PAINT.setStyle(Paint.Style.FILL);
+        float dx = 2.4f * density;
+        float dy = 2.8f * density;
+        float spreadDark = 2.0f * density;
+        TMP_RECT.set(
+                bounds.left - spreadDark * 0.2f,
+                bounds.top - spreadDark * 0.2f,
+                bounds.right + dx + spreadDark,
+                bounds.bottom + dy + spreadDark);
+        int darkAlpha = Math.min(255, Math.round(48 * sOuterDarkK * alpha));
+        SHADOW_DARK_PAINT.setColor((darkAlpha << 24) | sDarkRgb);
+        c.drawRoundRect(TMP_RECT, r + spreadDark, r + spreadDark, SHADOW_DARK_PAINT);
+    }
+
+    /**
      * Draws a recessed / pressed-in ("efek cekungan") Soft UI cavity with inner top-left dark
      * shadow and inner bottom-right bright white highlight lip, matching the Weather pill and
      * focused menu row in reference image 1793633365104.jpg.
@@ -295,34 +332,34 @@ public final class NeumorphicDrawable extends Drawable {
         int save = c.save();
         c.clipPath(TMP_PATH);
 
-        // Inner top-left dark shadow crescent (6 feathered passes)
+        // Inner top-left dark shadow crescent (2 feathered passes - optimized from 6)
         SHADOW_DARK_PAINT.setStyle(Paint.Style.STROKE);
-        float darkStrokeW = 2.5f * density;
+        float darkStrokeW = 3.0f * density;
         SHADOW_DARK_PAINT.setStrokeWidth(darkStrokeW);
-        for (int i = 1; i <= 6; i++) {
-            float d = (i - 0.5f) * 1.1f * density;
+        for (int i = 1; i <= 2; i++) {
+            float d = i * 1.8f * density;
             TMP_RECT.set(
                     bounds.left + d * 0.45f,
                     bounds.top + d * 0.55f,
-                    bounds.right + d * 3.0f,
-                    bounds.bottom + d * 3.0f);
-            int passAlpha = Math.min(255, Math.round(36 * sInnerDarkK * alpha * ((7 - i) / 6f)));
+                    bounds.right + d * 2.5f,
+                    bounds.bottom + d * 2.5f);
+            int passAlpha = Math.min(255, Math.round(52 * sInnerDarkK * alpha * (i == 1 ? 1.0f : 0.65f)));
             SHADOW_DARK_PAINT.setColor((passAlpha << 24) | sInnerDarkRgb);
             c.drawRoundRect(TMP_RECT, r, r, SHADOW_DARK_PAINT);
         }
 
-        // Inner bottom-right bright white highlight crescent (5 feathered passes)
+        // Inner bottom-right bright white highlight crescent (2 feathered passes - optimized from 5)
         SHADOW_LIGHT_PAINT.setStyle(Paint.Style.STROKE);
-        float lightStrokeW = 2.2f * density;
+        float lightStrokeW = 2.6f * density;
         SHADOW_LIGHT_PAINT.setStrokeWidth(lightStrokeW);
-        for (int i = 1; i <= 5; i++) {
-            float d = (i - 0.5f) * 1.0f * density;
+        for (int i = 1; i <= 2; i++) {
+            float d = i * 1.6f * density;
             TMP_RECT.set(
-                    bounds.left - d * 3.0f,
-                    bounds.top - d * 3.0f,
+                    bounds.left - d * 2.5f,
+                    bounds.top - d * 2.5f,
                     bounds.right - d * 0.45f,
                     bounds.bottom - d * 0.55f);
-            int passAlpha = Math.min(255, Math.round(64 * sInnerLightK * alpha * ((6 - i) / 5f)));
+            int passAlpha = Math.min(255, Math.round(78 * sInnerLightK * alpha * (i == 1 ? 1.0f : 0.65f)));
             SHADOW_LIGHT_PAINT.setColor((passAlpha << 24) | sLightRgb);
             c.drawRoundRect(TMP_RECT, r, r, SHADOW_LIGHT_PAINT);
         }

@@ -3,6 +3,7 @@ package com.gathin.tvhome;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.LinearGradient;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.RectF;
@@ -29,6 +30,17 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
     private Glider glider;
     private final int[] at = new int[2], gliderAt = new int[2];
     private final Backdrop.Fill blur = new Backdrop.Fill();
+
+    // Zero-allocation reusable shader matrix and normalized gradients for tray bevel rim
+    private static final Matrix TRAY_RIM_MATRIX = new Matrix();
+    private static final LinearGradient TRAY_RIM_LIGHT_GRAD = new LinearGradient(
+            0f, 0f, 1f, 1f,
+            new int[]{0xFFFFFFFF, 0x70FFFFFF, 0x321A1610},
+            new float[]{0f, 0.48f, 1f}, Shader.TileMode.CLAMP);
+    private static final LinearGradient TRAY_RIM_DARK_GRAD = new LinearGradient(
+            0f, 0f, 1f, 1f,
+            new int[]{0xB3343A4D, 0x40282D3B, 0x8C05060A},
+            new float[]{0f, 0.48f, 1f}, Shader.TileMode.CLAMP);
 
     // Theme-specific paints
     private final Paint darkTrayFill = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -139,16 +151,18 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
 
             drawGlider(c, parent);
 
-            // Re-stroke tray bevel rim so it stays crisp over the glider edge
+            // Re-stroke tray bevel rim so it stays crisp over the glider edge (zero-allocation)
             float half = neuTrayRim.getStrokeWidth() / 2f;
             rect.inset(half, half);
-            neuTrayRim.setShader(new LinearGradient(rect.left, rect.top, rect.right, rect.bottom,
-                    ThemeManager.isNeuDarkCached() ? new int[]{0xB3343A4D, 0x40282D3B, 0x8C05060A} : new int[]{0xFFFFFFFF, 0x70FFFFFF, 0x321A1610},
-                    new float[]{0f, 0.48f, 1f}, Shader.TileMode.CLAMP));
+            LinearGradient trayGrad = ThemeManager.isNeuDarkCached() ? TRAY_RIM_DARK_GRAD : TRAY_RIM_LIGHT_GRAD;
+            TRAY_RIM_MATRIX.reset();
+            TRAY_RIM_MATRIX.setScale(Math.max(1f, rect.width()), Math.max(1f, rect.height()));
+            TRAY_RIM_MATRIX.postTranslate(rect.left, rect.top);
+            trayGrad.setLocalMatrix(TRAY_RIM_MATRIX);
+            neuTrayRim.setShader(trayGrad);
             c.drawRoundRect(rect, radius - half, radius - half, neuTrayRim);
 
-            // Draw authentic 3D Soft UI dual outer shadows (top-left bright white highlight +
-            // bottom-right warm dark drop shadow) behind EVERY visible app tile on the home screen!
+            // Draw optimized 3D Soft UI dual ambient shadows behind visible app tiles (zero lag)
             drawNeumorphicTileShadows(c, parent);
         } else {
             // Default: Frosted Glass
@@ -175,6 +189,9 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
             View child = parent.getChildAt(i);
             View card = child.findViewById(R.id.card);
             if (card == null || card.getWidth() <= 0) continue;
+            // Glider already renders the rich 11-pass 3D dual shadows for the focused tile!
+            if (card.isFocused()) continue;
+
             float cx = child.getLeft() + card.getLeft() + card.getWidth() * 0.5f;
             float cy = child.getTop() + card.getTop() + child.getTranslationY() + card.getHeight() * 0.5f;
             float sx = card.getScaleX();
@@ -183,8 +200,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
             float hh = card.getHeight() * sy * 0.5f;
             tileBounds.set(cx - hw, cy - hh, cx + hw, cy + hh);
             float tileR = AppAdapter.cornerRadius(card.getWidth(), density) * sx;
-            NeumorphicDrawable.drawOuterDualShadows(c, tileBounds, tileR, density, 1f,
-                    card.isFocused() ? 1.35f : 1.0f);
+            NeumorphicDrawable.drawAmbientDualShadows(c, tileBounds, tileR, density, 1f);
         }
     }
 

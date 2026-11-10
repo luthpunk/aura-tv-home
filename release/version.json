@@ -1,7 +1,7 @@
 {
-  "versionCode": 63,
-  "versionName": "3.7.2-id",
+  "versionCode": 64,
+  "versionName": "3.7.3-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "feat(screensaver): theme-adaptive StandBy screensaver for Frosted Glass, Neumorphism Light, Neumorphism Dark, and Dark Glow (v3.7.2-id)",
-  "releaseDate": "2026-11-09"
+  "changelog": "perf(neumorphism): 60fps optimization, simplified OTA label, reordered settings menu (v3.7.3-id)",
+  "releaseDate": "2026-11-10"
 }
