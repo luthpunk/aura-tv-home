@@ -3254,8 +3254,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             String title = name + (isActive ? " : AKTIF" : "");
             addInputRow(rows, null, 0, title, -1, () -> {
                 SoundEffects.playSelect();
-                applyActiveTheme(key);
+                if (glider != null) glider.hideNow();
                 closeMenuAndFocusApp();
+                grid.postDelayed(() -> applyActiveTheme(key), 80);
             });
         }
     }
@@ -7857,7 +7858,27 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         menuBackStack.clear();
         closeMenu(false);
-        focusTile(lastFocused % COLUMNS);
+        final int targetPos = Math.max(0, lastFocused % COLUMNS);
+        if (grid != null) {
+            grid.post(() -> {
+                int count = adapter != null ? adapter.getItemCount() : 0;
+                if (count > 0) {
+                    int safePos = Math.min(targetPos, count - 1);
+                    RecyclerView.ViewHolder vh = grid.findViewHolderForAdapterPosition(safePos);
+                    if (vh != null) {
+                        View card = vh.itemView.findViewById(R.id.card);
+                        if (card != null) {
+                            card.requestFocus();
+                            onTileFocused(safePos, card);
+                            return;
+                        }
+                    }
+                    focusTile(safePos);
+                }
+            });
+        } else {
+            focusTile(targetPos);
+        }
     }
 
     private void navigateToSubMenu(FrameLayout panel, LinearLayout rows, Runnable currentBuilder, Runnable nextBuilder) {

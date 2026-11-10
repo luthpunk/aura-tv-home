@@ -229,40 +229,41 @@ public final class NeumorphicDrawable extends Drawable {
 
     /**
      * Draws only the dual opposing Soft UI outer shadows (bright white top-left highlight glow +
-     * warm dark bottom-right drop shadow) behind a card or tray.
+     * warm dark bottom-right drop shadow) behind a card, pill, widget, or tray.
+     * Optimized 2-pass feathered rendering for 60fps locked GPU performance.
      */
     public static void drawOuterDualShadows(@NonNull Canvas c, @NonNull RectF bounds, float r,
                                             float density, float alpha, float intensity) {
         if (bounds.isEmpty() || alpha <= 0f) return;
 
-        // 1. Top-Left Bright White Highlight Shadow (Timbul atas-kiri)
+        // 1. Top-Left Bright White Highlight Shadow (Optimized 2-pass feathered highlight)
         SHADOW_LIGHT_PAINT.setStyle(Paint.Style.FILL);
-        for (int i = 5; i >= 1; i--) {
-            float shift = i * 1.05f * density * intensity;
-            float spread = i * 0.5f * density * intensity;
+        for (int i = 2; i >= 1; i--) {
+            float shift = i * 1.5f * density * intensity;
+            float spread = i * 0.8f * density * intensity;
             TMP_RECT.set(
                     bounds.left - shift - spread,
                     bounds.top - shift - spread,
                     bounds.right - shift * 0.15f + spread * 0.25f,
                     bounds.bottom - shift * 0.15f + spread * 0.25f);
-            int passAlpha = Math.min(255, Math.round(44 * sOuterLightK * alpha * ((6 - i) / 5f)));
+            int passAlpha = Math.min(255, Math.round(52 * sOuterLightK * alpha * (i == 1 ? 1.0f : 0.6f)));
             SHADOW_LIGHT_PAINT.setColor((passAlpha << 24) | sLightRgb);
             float sr = r + spread;
             c.drawRoundRect(TMP_RECT, sr, sr, SHADOW_LIGHT_PAINT);
         }
 
-        // 2. Bottom-Right Warm Dark Drop Shadow (Timbul bawah-kanan)
+        // 2. Bottom-Right Warm Dark Drop Shadow (Optimized 2-pass feathered shadow)
         SHADOW_DARK_PAINT.setStyle(Paint.Style.FILL);
-        for (int i = 6; i >= 1; i--) {
-            float dx = i * 1.25f * density * intensity;
-            float dy = i * 1.45f * density * intensity;
-            float spread = i * 0.6f * density * intensity;
+        for (int i = 2; i >= 1; i--) {
+            float dx = i * 1.8f * density * intensity;
+            float dy = i * 2.2f * density * intensity;
+            float spread = i * 1.0f * density * intensity;
             TMP_RECT.set(
                     bounds.left + dx * 0.15f - spread * 0.25f,
                     bounds.top + dy * 0.15f - spread * 0.25f,
                     bounds.right + dx + spread,
                     bounds.bottom + dy + spread);
-            int passAlpha = Math.min(255, Math.round(28 * sOuterDarkK * alpha * ((7 - i) / 6f)));
+            int passAlpha = Math.min(255, Math.round(42 * sOuterDarkK * alpha * (i == 1 ? 1.0f : 0.65f)));
             SHADOW_DARK_PAINT.setColor((passAlpha << 24) | sDarkRgb);
             float sr = r + spread;
             c.drawRoundRect(TMP_RECT, sr, sr, SHADOW_DARK_PAINT);
