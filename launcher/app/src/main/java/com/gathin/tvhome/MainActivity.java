@@ -36,12 +36,17 @@ import android.media.tv.TvContract;
 import android.media.tv.TvInputInfo;
 import android.media.tv.TvInputManager;
 import android.net.ConnectivityManager;
+import android.net.LinkAddress;
+import android.net.LinkProperties;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.Uri;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -860,6 +865,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     if (weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE) {
                         weatherAirQualityView.requestFocus();
                         return true;
+                    } else if (weatherPillMinimalView != null && weatherPillMinimalView.getVisibility() == View.VISIBLE) {
+                        weatherPillMinimalView.requestFocus();
+                        return true;
                     }
                 }
                 // Back to the dock tile Up came from, not wherever the focus finder lands.
@@ -1593,6 +1601,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (weatherAirQualityView != null && weatherAirQualityView.getAlpha() < 1f) {
                 weatherAirQualityView.animate().alpha(1f).setDuration(reducedMotion ? 100 : 160).start();
             }
+            if (weatherPillMinimalView != null && weatherPillMinimalView.getAlpha() < 1f) {
+                weatherPillMinimalView.animate().alpha(1f).setDuration(reducedMotion ? 100 : 160).start();
+            }
             int decoratedTop = item.getTop() - (int) (6 * density);
             int dy = decoratedTop - grid.getPaddingTop();
             // A 1px mismatch used to start a scroll on every dock move. Only scroll when the row is
@@ -1609,6 +1620,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             hideShelf();
             if (weatherAirQualityView != null && weatherAirQualityView.getAlpha() > 0f) {
                 weatherAirQualityView.animate().alpha(0f).setDuration(reducedMotion ? 100 : 160).start();
+            }
+            if (position < 2 * COLUMNS) {
+                // Baris ke-2: cuaca kecil tetap terlihat rapi di bawah jam karena belum bertabrakan
+                if (weatherPillMinimalView != null && weatherPillMinimalView.getAlpha() < 1f) {
+                    weatherPillMinimalView.animate().alpha(1f).setDuration(reducedMotion ? 100 : 160).start();
+                }
+            } else {
+                // Baris ke-3 dst: cuaca kecil otomatis pudar agar tidak bertumpuk dengan kartu aplikasi yang naik ke atas
+                if (weatherPillMinimalView != null && weatherPillMinimalView.getAlpha() > 0f) {
+                    weatherPillMinimalView.animate().alpha(0f).setDuration(reducedMotion ? 100 : 160).start();
+                }
             }
             showAmbient(adapter.ambientColorAt(position));
             // Scroll just enough so the whole glass (not only the tile) is visible.
@@ -1932,7 +1954,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         // Minimal Weather Capsule Pill Widget Theme Styling
         if (weatherPillMinimalView != null) {
-            float minRadius = 18f * density;
+            float minRadius = 19f * density;
             if (isDark) {
                 StateListDrawable sld = new StateListDrawable();
                 GradientDrawable focused = new GradientDrawable();
@@ -1962,9 +1984,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 focused.setStroke(Math.max(2, Math.round(1.5f * density)), 0xF2FFFFFF);
                 GradientDrawable normal = new GradientDrawable(
                         GradientDrawable.Orientation.TL_BR,
-                        new int[]{0x52252B38, 0x52181C26});
+                        new int[]{0x4D2A3244, 0x3D1E2432});
                 normal.setCornerRadius(minRadius);
-                normal.setStroke(Math.max(1, Math.round(1.0f * density)), 0x45FFFFFF);
+                normal.setStroke(Math.max(1, Math.round(1.0f * density)), 0x38FFFFFF);
                 sld.addState(new int[]{android.R.attr.state_focused}, focused);
                 sld.addState(new int[]{}, normal);
                 weatherPillMinimalView.setBackground(sld);
@@ -1975,12 +1997,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 else minWeaTemp.setShadowLayer(3f, 0, 1f, 0x80000000);
             }
             if (minWeaCond != null) {
-                minWeaCond.setTextColor(isNeu ? ThemeManager.neu(0xFF363E4A) : 0xE6FFFFFF);
+                minWeaCond.setTextColor(isNeu ? ThemeManager.neu(0xFF1F2429) : 0xFFFFFFFF);
                 if (isNeu) minWeaCond.setShadowLayer(0, 0, 0, 0);
-                else minWeaCond.setShadowLayer(2f, 0, 1f, 0x80000000);
+                else minWeaCond.setShadowLayer(3f, 0, 1f, 0x80000000);
+            }
+            if (minWeaAqi != null) {
+                if (isNeu) minWeaAqi.setShadowLayer(0, 0, 0, 0);
+                else minWeaAqi.setShadowLayer(3f, 0, 1f, 0x80000000);
             }
             if (minWeaDivider != null) {
-                minWeaDivider.setBackgroundColor(isNeu ? ThemeManager.neu(0x1F000000) : (isDark ? 0x2E00F0FF : 0x28FFFFFF));
+                minWeaDivider.setBackgroundColor(isNeu ? ThemeManager.neu(0x1F000000) : (isDark ? 0x2E00F0FF : 0x4DFFFFFF));
             }
         }
 
@@ -2099,7 +2125,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 View lb = findViewById(R.id.leftBlock);
                 View activeWea = (weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE)
                         ? weatherAirQualityView
-                        : ((weatherPillMinimalView != null && weatherPillMinimalView.getVisibility() == View.VISIBLE) ? weatherPillMinimalView : null);
+                        : null;
                 if (lb != null && gridWrap != null && activeWea != null
                         && activeWea.getHeight() > 0 && grid.getPaddingTop() > 0) {
                     // Use pure layout coordinates inside mainContent (getTop/getBottom ignore translationY
@@ -2116,6 +2142,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     if (Math.abs(activeWea.getTranslationY() - dy) >= 1f) {
                         activeWea.setTranslationY(dy);
                     }
+                }
+                if (weatherPillMinimalView != null && weatherPillMinimalView.getTranslationY() != 0f) {
+                    weatherPillMinimalView.setTranslationY(0f);
                 }
             }
         }
@@ -2821,7 +2850,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     fw.weatherCode, nowHour, iconColor, 22f, 22f, density, false));
         }
         if (minWeaAqi != null) {
-            minWeaAqi.setText("AQI " + fw.aqi);
+            String aqiStatusText = fw.aqiStatus != null && !fw.aqiStatus.isEmpty() ? (" " + fw.aqiStatus) : "";
+            minWeaAqi.setText("AQI " + fw.aqi + aqiStatusText);
+            int aqiColor = fw.aqiColor != 0 ? fw.aqiColor : WeatherAirQuality.getAqiColor(fw.aqi, isNeu);
+            minWeaAqi.setTextColor(aqiColor);
         }
     }
 
@@ -2882,7 +2914,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         LinearLayout rows = panel.findViewById(R.id.rows);
         Runnable close = () -> closeMenu(false);
 
-        String ssid = getString(R.string.wifi);
+        String ssid = null;
         String ip = "";
         boolean isConnected = false;
         try {
@@ -2890,26 +2922,67 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             Network activeNet = cm != null ? cm.getActiveNetwork() : null;
             if (activeNet != null) {
                 NetworkCapabilities caps = cm.getNetworkCapabilities(activeNet);
-                if (caps != null && (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) || caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))) {
-                    isConnected = true;
+                if (caps != null) {
+                    if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+                        isConnected = true;
+                    }
+                    if (caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
+                        ssid = getString(R.string.ethernet);
+                    } else if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            Object transportInfo = caps.getTransportInfo();
+                            if (transportInfo instanceof WifiInfo) {
+                                String s = ((WifiInfo) transportInfo).getSSID();
+                                if (s != null && !s.contains("unknown") && !s.equals("0x") && !s.isEmpty()) {
+                                    ssid = s.replaceAll("^\"|\"$", "").trim();
+                                }
+                            }
+                        }
+                    }
+                }
+                LinkProperties lp = cm.getLinkProperties(activeNet);
+                if (lp != null) {
+                    for (LinkAddress la : lp.getLinkAddresses()) {
+                        InetAddress addr = la.getAddress();
+                        if (addr instanceof Inet4Address && !addr.isLoopbackAddress()) {
+                            ip = addr.getHostAddress();
+                            break;
+                        }
+                    }
                 }
             }
-            WifiManager wm = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-            if (wm != null && wm.isWifiEnabled()) {
-                WifiInfo info = wm.getConnectionInfo();
-                if (info != null && info.getNetworkId() != -1) {
-                    String s = info.getSSID();
-                    if (s != null && !s.equals("<unknown ssid>") && !s.isEmpty()) {
-                        ssid = s.replaceAll("^\"|\"$", "");
+
+            if (ssid == null || ssid.isEmpty()) {
+                WifiManager wm = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+                if (wm != null && wm.isWifiEnabled()) {
+                    WifiInfo info = wm.getConnectionInfo();
+                    if (info != null) {
+                        String s = info.getSSID();
+                        if (s != null && !s.contains("unknown") && !s.equals("0x") && !s.isEmpty()) {
+                            ssid = s.replaceAll("^\"|\"$", "").trim();
+                        }
                     }
-                    int ipVal = info.getIpAddress();
-                    if (ipVal != 0) {
-                        ip = String.format(Locale.getDefault(), "%d.%d.%d.%d",
-                                (ipVal & 0xff), (ipVal >> 8 & 0xff), (ipVal >> 16 & 0xff), (ipVal >> 24 & 0xff));
+                }
+            }
+
+            if (ip == null || ip.isEmpty()) {
+                for (NetworkInterface nif : Collections.list(NetworkInterface.getNetworkInterfaces())) {
+                    if (nif.getName().startsWith("wlan") || nif.getName().startsWith("eth")) {
+                        for (InetAddress addr : Collections.list(nif.getInetAddresses())) {
+                            if (!addr.isLoopbackAddress() && addr instanceof Inet4Address) {
+                                ip = addr.getHostAddress();
+                                break;
+                            }
+                        }
+                        if (ip != null && !ip.isEmpty()) break;
                     }
                 }
             }
         } catch (Exception ignored) {
+        }
+
+        if (ssid == null || ssid.isEmpty()) {
+            ssid = isConnected ? getString(R.string.wifi) : "Tidak Terhubung";
         }
 
         int width = (int) (240 * density);
@@ -2922,8 +2995,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         });
 
         // Row 2: Alamat IP Wi-Fi (read-only keterangan info, tidak bisa di-klik)
-        String ipLabel = (ip != null && !ip.isEmpty()) ? ("IP : " + ip) : (isConnected ? "IP : Memperoleh..." : "IP : Tidak Tersedia");
-        addInputRow(rows, close, R.drawable.ic_info, ipLabel, -1, null);
+        String ipVal = (ip != null && !ip.isEmpty()) ? ip : (isConnected ? "Memperoleh..." : "Tidak Tersedia");
+        addInputRow(rows, close, R.drawable.ic_info, "IP : " + ipVal, -1, null);
 
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         width = Math.max(width, panel.getMeasuredWidth());
@@ -2951,11 +3024,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void applyWeatherWidgetMode() {
         String mode = getWeatherWidgetMode();
         if (WIDGET_MODE_LARGE.equals(mode)) {
-            if (weatherAirQualityView != null) weatherAirQualityView.setVisibility(View.VISIBLE);
+            if (weatherAirQualityView != null) {
+                weatherAirQualityView.setVisibility(View.VISIBLE);
+                weatherAirQualityView.setAlpha(1f);
+            }
             if (weatherPillMinimalView != null) weatherPillMinimalView.setVisibility(View.GONE);
         } else if (WIDGET_MODE_MINIMAL.equals(mode)) {
             if (weatherAirQualityView != null) weatherAirQualityView.setVisibility(View.GONE);
-            if (weatherPillMinimalView != null) weatherPillMinimalView.setVisibility(View.VISIBLE);
+            if (weatherPillMinimalView != null) {
+                weatherPillMinimalView.setVisibility(View.VISIBLE);
+                weatherPillMinimalView.setAlpha(1f);
+            }
         } else {
             if (weatherAirQualityView != null) weatherAirQualityView.setVisibility(View.GONE);
             if (weatherPillMinimalView != null) weatherPillMinimalView.setVisibility(View.GONE);
@@ -2973,7 +3052,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // 1. Cuaca Minimalis (Kapsul)
         items.add(new ThemedDialogItem(
                 "🌤️ Cuaca Minimalis",
-                "Tampilkan cuaca ringkas berbentuk kapsul horizontal",
+                null,
                 isMinimal,
                 isMinimal ? "ON" : "OFF",
                 () -> {
@@ -2988,7 +3067,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // 2. Cuaca Besar (Lengkap)
         items.add(new ThemedDialogItem(
                 "🌦️ Cuaca Besar",
-                "Tampilkan cuaca lengkap dengan perkiraan jam & kualitas udara (AQI)",
+                null,
                 isLarge,
                 isLarge ? "ON" : "OFF",
                 () -> {
@@ -3002,9 +3081,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         showThemedListDialog(
                 "🧩 Kelola Widget Beranda",
-                "Pilih widget cuaca atau matikan keduanya agar beranda bersih",
+                null,
                 items,
-                "Tutup",
+                null,
                 null
         );
     }
@@ -3015,55 +3094,173 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         SoundEffects.playSelect();
         View anchor = btnCandyBox != null ? btnCandyBox : findViewById(R.id.btnSettings);
         if (anchor == null) return;
+        menuBackStack.clear();
         FrameLayout panel = (FrameLayout) getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
         LinearLayout rows = panel.findViewById(R.id.rows);
-        Runnable close = () -> closeMenu(false);
 
+        buildCandyBoxRows(panel, rows);
+
+        panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        int width = Math.max((int) (310 * density), panel.getMeasuredWidth());
+
+        showMenu(panel, rows, anchor, width, false);
+    }
+
+    private void buildCandyBoxRows(FrameLayout panel, LinearLayout rows) {
         // Row 1: Wallpaper
-        addInputRow(rows, close, R.drawable.ic_wallpaper, "Wallpaper 4K", -1, () -> {
+        addInputRow(rows, null, R.drawable.ic_wallpaper, "Wallpaper 4K", -1, () -> {
             SoundEffects.playSelect();
-            showWallpaperDialog();
+            navigateToSubMenu(panel, rows, () -> buildCandyBoxRows(panel, rows), () -> buildWallpaperSubMenu(panel, rows));
         });
 
         // Row 2: Gaya Tema
         String currentTheme = ThemeManager.getActiveTheme(this);
-        String themeLabel = "Tema: " + ThemeManager.getThemeDisplayName(currentTheme);
-        addInputRow(rows, close, R.drawable.ic_theme, themeLabel, -1, () -> {
+        String themeLabel = "Tema : " + ThemeManager.getThemeDisplayName(currentTheme);
+        addInputRow(rows, null, R.drawable.ic_theme, themeLabel, -1, () -> {
             SoundEffects.playSelect();
-            showThemeDialog();
+            navigateToSubMenu(panel, rows, () -> buildCandyBoxRows(panel, rows), () -> buildThemeSubMenu(panel, rows));
         });
 
         // Row 3: Kelola Widget Beranda (tepat di bawah menu Tema)
-        addInputRow(rows, close, R.drawable.ic_candy_box, "Kelola Widget", -1, () -> {
+        addInputRow(rows, null, R.drawable.ic_candy_box, "Kelola Widget", -1, () -> {
             SoundEffects.playSelect();
-            showWidgetManagerDialog();
+            navigateToSubMenu(panel, rows, () -> buildCandyBoxRows(panel, rows), () -> buildWidgetManagerSubMenu(panel, rows));
         });
 
         // Row 4: Lokasi Cuaca (hanya nama kota tanpa zona waktu)
         String locName = AppLocationManager.getLocationName(this);
-        addInputRow(rows, close, R.drawable.ic_location, "Lokasi: " + locName, -1, () -> {
+        addInputRow(rows, null, R.drawable.ic_location, "Lokasi : " + locName, -1, () -> {
             SoundEffects.playSelect();
+            closeMenu(false);
             showAsiaCountryDialog();
         });
 
         // Row 5: Efek Suara
         String currentSoundTheme = SoundEffects.getActiveTheme(this);
-        String soundLabel = "Suara: " + SoundEffects.getThemeDisplayName(currentSoundTheme);
-        addInputRow(rows, close, R.drawable.ic_sound, soundLabel, -1, () -> {
+        String soundLabel = "Suara : " + SoundEffects.getThemeDisplayName(currentSoundTheme);
+        addInputRow(rows, null, R.drawable.ic_sound, soundLabel, -1, () -> {
             SoundEffects.playSelect();
-            showSoundEffectsDialog();
+            navigateToSubMenu(panel, rows, () -> buildCandyBoxRows(panel, rows), () -> buildSoundSubMenu(panel, rows));
         });
 
         // Row 6: Nightstand / Screensaver
-        addInputRow(rows, close, R.drawable.ic_weather_sun, "Screensaver Jam Meja", -1, () -> {
+        addInputRow(rows, null, R.drawable.ic_weather_sun, "Screensaver Jam Meja", -1, () -> {
             SoundEffects.playSelect();
+            closeMenu(false);
             showNightstandScreensaver();
         });
+    }
 
-        panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-        int width = Math.max((int) (230 * density), panel.getMeasuredWidth());
+    private void buildWallpaperSubMenu(FrameLayout panel, LinearLayout rows) {
+        addInputRow(rows, null, R.drawable.ic_back, "Kembali", -1, () -> popMenuSubPage(panel, rows));
 
-        showMenu(panel, rows, anchor, width, false);
+        String rawKey = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE).getString("active_category", "Indonesia");
+        final String currentKey = "Malaysia".equalsIgnoreCase(rawKey) ? "Indonesia" : rawKey;
+
+        String[][] categories = {
+            {"Indonesia", "🇮🇩 Pesona Nusantara"},
+            {"Anime", "🎌 Anime HD"},
+            {"Natural", "🌿 Alam & Pemandangan"},
+            {"Skyscraper", "🏙️ Metropolis Modern"},
+            {"Space", "🌌 Luar Angkasa 4K"},
+            {"Ocean", "🌊 Lautan & Pantai"},
+            {"Minimalist", "🔲 Minimalis Gelap"}
+        };
+
+        for (String[] cat : categories) {
+            final String key = cat[0];
+            final String label = cat[1];
+            boolean isActive = key.equalsIgnoreCase(currentKey);
+            String title = label + (isActive ? " : AKTIF" : "");
+            addInputRow(rows, null, R.drawable.ic_wallpaper, title, -1, () -> {
+                SoundEffects.playSelect();
+                switchWallpaperCategory(key);
+                closeMenuAndFocusApp();
+            });
+        }
+
+        // Ganti Gambar Lain
+        addInputRow(rows, null, R.drawable.ic_restart, "Ganti Gambar Lain", -1, () -> {
+            SoundEffects.playSelect();
+            showNextWallpaper(true);
+            closeMenuAndFocusApp();
+        });
+    }
+
+    private void buildThemeSubMenu(FrameLayout panel, LinearLayout rows) {
+        addInputRow(rows, null, R.drawable.ic_back, "Kembali", -1, () -> popMenuSubPage(panel, rows));
+
+        final String activeTheme = ThemeManager.getActiveTheme(this);
+        String[][] themes = {
+            {ThemeManager.THEME_FROSTED_GLASS, "💎 Apple TV Glass"},
+            {ThemeManager.THEME_NEUMORPHISM, "⚪ Neumorphism Light"},
+            {ThemeManager.THEME_NEUMORPHISM_DARK, "⚫ Neumorphism Dark"},
+            {ThemeManager.THEME_DARK_GLOW, "⚡ Dark Glow"}
+        };
+        for (String[] t : themes) {
+            final String key = t[0];
+            final String name = t[1];
+            boolean isActive = key.equalsIgnoreCase(activeTheme);
+            String title = name + (isActive ? " : AKTIF" : "");
+            addInputRow(rows, null, R.drawable.ic_theme, title, -1, () -> {
+                SoundEffects.playSelect();
+                ThemeManager.setActiveTheme(MainActivity.this, key);
+                closeMenuAndFocusApp();
+                recreate();
+            });
+        }
+    }
+
+    private void buildWidgetManagerSubMenu(FrameLayout panel, LinearLayout rows) {
+        addInputRow(rows, null, R.drawable.ic_back, "Kembali", -1, () -> popMenuSubPage(panel, rows));
+
+        String curMode = getWeatherWidgetMode();
+        boolean isMinimal = WIDGET_MODE_MINIMAL.equals(curMode);
+        boolean isLarge = WIDGET_MODE_LARGE.equals(curMode);
+
+        addInputRow(rows, null, R.drawable.ic_weather_sun, "Cuaca Kecil : " + (isMinimal ? "ON" : "OFF"), -1, () -> {
+            SoundEffects.playSelect();
+            String next = isMinimal ? WIDGET_MODE_NONE : WIDGET_MODE_MINIMAL;
+            setWeatherWidgetMode(next);
+            applyWeatherWidgetMode();
+            rows.removeAllViews();
+            buildWidgetManagerSubMenu(panel, rows);
+            bindMenuKeyListeners(panel, rows, false);
+        });
+
+        addInputRow(rows, null, R.drawable.ic_weather_cloud, "Cuaca Besar : " + (isLarge ? "ON" : "OFF"), -1, () -> {
+            SoundEffects.playSelect();
+            String next = isLarge ? WIDGET_MODE_NONE : WIDGET_MODE_LARGE;
+            setWeatherWidgetMode(next);
+            applyWeatherWidgetMode();
+            rows.removeAllViews();
+            buildWidgetManagerSubMenu(panel, rows);
+            bindMenuKeyListeners(panel, rows, false);
+        });
+    }
+
+    private void buildSoundSubMenu(FrameLayout panel, LinearLayout rows) {
+        addInputRow(rows, null, R.drawable.ic_back, "Kembali", -1, () -> popMenuSubPage(panel, rows));
+
+        String activeTheme = SoundEffects.getActiveTheme(this);
+        String[][] sounds = {
+            {SoundEffects.THEME_PS5, "🎮 PlayStation 5"},
+            {SoundEffects.THEME_SWITCH, "🕹️ Nintendo Switch"},
+            {SoundEffects.THEME_XBOX, "🟩 Xbox Series X/S"},
+            {SoundEffects.THEME_OFF, "🔇 Matikan Suara"}
+        };
+
+        for (String[] s : sounds) {
+            final String key = s[0];
+            final String name = s[1];
+            boolean isActive = key.equalsIgnoreCase(activeTheme);
+            String title = name + (isActive ? " : AKTIF" : "");
+            addInputRow(rows, null, R.drawable.ic_sound, title, -1, () -> {
+                SoundEffects.playSelect();
+                SoundEffects.setTheme(MainActivity.this, key);
+                closeMenuAndFocusApp();
+            });
+        }
     }
 
     /** Shows an Apple TV-style frosted glass Settings dropdown menu (All Settings, Restart, Turn Off, Now Playing Permission, OTA Update, TV Info). */
@@ -3072,33 +3269,44 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         SoundEffects.playSelect();
         View anchor = findViewById(R.id.btnSettings);
         if (anchor == null) return;
+        menuBackStack.clear();
         FrameLayout panel = (FrameLayout) getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
         LinearLayout rows = panel.findViewById(R.id.rows);
-        Runnable close = () -> closeMenu(false);
 
+        buildSettingsRows(panel, rows);
+
+        panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        int width = Math.max((int) (310 * density), panel.getMeasuredWidth());
+
+        showMenu(panel, rows, anchor, width, false);
+    }
+
+    private void buildSettingsRows(FrameLayout panel, LinearLayout rows) {
         // Row 1: All Settings (Android Settings) - Paling atas
-        addInputRow(rows, close, R.drawable.ic_settings, "Semua Pengaturan", -1, () -> {
+        addInputRow(rows, null, R.drawable.ic_settings, "Semua Pengaturan", -1, () -> {
             SoundEffects.playSelect();
+            closeMenuAndFocusApp();
             open(systemIntent(Settings.ACTION_SETTINGS));
         });
 
         // Row 2: Restart TV
-        addInputRow(rows, close, R.drawable.ic_restart, "Mulai Ulang TV", -1, () -> {
+        addInputRow(rows, null, R.drawable.ic_restart, "Mulai Ulang TV", -1, () -> {
             SoundEffects.playSelect();
-            showRestartDialog();
+            navigateToSubMenu(panel, rows, () -> buildSettingsRows(panel, rows), () -> buildRestartSubMenu(panel, rows));
         });
 
         // Row 3: Turn Off TV
-        addInputRow(rows, close, R.drawable.ic_power, "Matikan TV", -1, () -> {
+        addInputRow(rows, null, R.drawable.ic_power, "Matikan TV", -1, () -> {
             SoundEffects.playSelect();
-            showTurnOffDialog();
+            navigateToSubMenu(panel, rows, () -> buildSettingsRows(panel, rows), () -> buildPowerSubMenu(panel, rows));
         });
 
         // Row 4: Music Notification Access Permission - Izin Now Playing (dengan status)
         boolean npGranted = NowPlayingManager.isNotificationAccessGranted(this);
         String npLabel = "Izin Now Playing : " + (npGranted ? "AKTIF" : "NONAKTIF");
-        addInputRow(rows, close, R.drawable.ic_music, npLabel, -1, () -> {
+        addInputRow(rows, null, R.drawable.ic_music, npLabel, -1, () -> {
             SoundEffects.playSelect();
+            closeMenuAndFocusApp();
             NowPlayingManager.openNotificationAccessSettings(this);
             Toast.makeText(this, "Buka Akses aplikasi khusus > Akses notifikasi > Aktifkan Aura TV Home", Toast.LENGTH_LONG).show();
         });
@@ -3106,23 +3314,110 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Row 5: Auto-Update (OTA)
         boolean isAuto = AppUpdateManager.isAutoUpdateEnabled(this);
         String updateLabel = "Update OTA : " + (isAuto ? "ON" : "OFF");
-        addInputRow(rows, close, R.drawable.ic_update, updateLabel, -1, () -> {
+        addInputRow(rows, null, R.drawable.ic_update, updateLabel, -1, () -> {
             SoundEffects.playSelect();
-            showAutoUpdateDialog();
+            navigateToSubMenu(panel, rows, () -> buildSettingsRows(panel, rows), () -> buildOtaSubMenu(panel, rows));
         });
 
         // Row 6: Info TV : X% RAM Digunakan - Paling bawah sendiri
         int ramPercent = getRamUsedPercent();
         String infoLabel = "Info TV : " + ramPercent + "% RAM Digunakan";
-        addInputRow(rows, close, R.drawable.ic_info, infoLabel, -1, () -> {
+        addInputRow(rows, null, R.drawable.ic_info, infoLabel, -1, () -> {
             SoundEffects.playSelect();
-            showTvSystemInfoDialog();
+            navigateToSubMenu(panel, rows, () -> buildSettingsRows(panel, rows), () -> buildTvInfoSubMenu(panel, rows));
+        });
+    }
+
+    private void buildRestartSubMenu(FrameLayout panel, LinearLayout rows) {
+        addInputRow(rows, null, R.drawable.ic_back, "Kembali", -1, () -> popMenuSubPage(panel, rows));
+        addInputRow(rows, null, R.drawable.ic_restart, "Konfirmasi Mulai Ulang TV", -1, () -> {
+            SoundEffects.playSelect();
+            closeMenuAndFocusApp();
+            Toast.makeText(MainActivity.this, "Memulai ulang TV...", Toast.LENGTH_SHORT).show();
+            handler.postDelayed(() -> HomeKeyService.restartTv(MainActivity.this), 300);
+        });
+    }
+
+    private void buildPowerSubMenu(FrameLayout panel, LinearLayout rows) {
+        addInputRow(rows, null, R.drawable.ic_back, "Kembali", -1, () -> popMenuSubPage(panel, rows));
+        addInputRow(rows, null, R.drawable.ic_power, "Konfirmasi Matikan TV", -1, () -> {
+            SoundEffects.playSelect();
+            closeMenuAndFocusApp();
+            HomeKeyService.turnOffTv(MainActivity.this);
+        });
+    }
+
+    private void buildOtaSubMenu(FrameLayout panel, LinearLayout rows) {
+        addInputRow(rows, null, R.drawable.ic_back, "Kembali", -1, () -> popMenuSubPage(panel, rows));
+
+        boolean isAuto = AppUpdateManager.isAutoUpdateEnabled(this);
+        addInputRow(rows, null, R.drawable.ic_update, "Pembaruan Otomatis : " + (isAuto ? "ON" : "OFF"), -1, () -> {
+            SoundEffects.playSelect();
+            AppUpdateManager.setAutoUpdateEnabled(MainActivity.this, !isAuto);
+            rows.removeAllViews();
+            buildOtaSubMenu(panel, rows);
+            bindMenuKeyListeners(panel, rows, false);
         });
 
-        panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-        int width = Math.max((int) (220 * density), panel.getMeasuredWidth());
+        addInputRow(rows, null, R.drawable.ic_update, "Periksa Pembaruan Sekarang", -1, () -> {
+            SoundEffects.playSelect();
+            closeMenuAndFocusApp();
+            AppUpdateManager.checkForUpdates(MainActivity.this, true);
+        });
+    }
 
-        showMenu(panel, rows, anchor, width, false);
+    private void buildTvInfoSubMenu(FrameLayout panel, LinearLayout rows) {
+        addInputRow(rows, null, R.drawable.ic_back, "Kembali", -1, () -> popMenuSubPage(panel, rows));
+
+        long totalMem = 0;
+        long usedMem = 0;
+        long availMem = 0;
+        int ramPercent = 0;
+        try {
+            ActivityManager actMgr = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+            if (actMgr != null) {
+                ActivityManager.MemoryInfo memInfo = new ActivityManager.MemoryInfo();
+                actMgr.getMemoryInfo(memInfo);
+                totalMem = memInfo.totalMem;
+                availMem = memInfo.availMem;
+                usedMem = totalMem - availMem;
+                if (totalMem > 0) ramPercent = (int) Math.round((double) usedMem * 100.0 / totalMem);
+            }
+        } catch (Exception ignored) {}
+
+        long totalStorage = 0;
+        long availStorage = 0;
+        try {
+            File dataDir = Environment.getDataDirectory();
+            StatFs stat = new StatFs(dataDir.getPath());
+            long blockSize = stat.getBlockSizeLong();
+            totalStorage = stat.getBlockCountLong() * blockSize;
+            availStorage = stat.getAvailableBlocksLong() * blockSize;
+        } catch (Exception ignored) {}
+
+        String ramStr = ramPercent + "% (" + Formatter.formatFileSize(this, usedMem) + " / " + Formatter.formatFileSize(this, totalMem) + ")";
+        addInputRow(rows, null, R.drawable.ic_settings, "RAM : " + ramStr, -1, () -> {});
+
+        String storageStr = Formatter.formatFileSize(this, availStorage) + " Bebas (" + Formatter.formatFileSize(this, totalStorage) + ")";
+        addInputRow(rows, null, R.drawable.ic_input, "Penyimpanan : " + storageStr, -1, () -> {});
+
+        String deviceName = Build.MANUFACTURER.toUpperCase(Locale.ROOT) + " " + Build.MODEL;
+        addInputRow(rows, null, R.drawable.ic_info, "Model : " + deviceName, -1, () -> {});
+
+        String osVersion = "Android " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")";
+        addInputRow(rows, null, R.drawable.ic_settings, "Sistem : " + osVersion, -1, () -> {});
+
+        addInputRow(rows, null, R.drawable.ic_trash, "Bersihkan RAM Sekarang", -1, () -> {
+            SoundEffects.playSelect();
+            smartBoostTv();
+            handler.postDelayed(() -> {
+                if (openMenu == panel) {
+                    rows.removeAllViews();
+                    buildTvInfoSubMenu(panel, rows);
+                    bindMenuKeyListeners(panel, rows, false);
+                }
+            }, 600);
+        });
     }
 
     private int getRamUsedPercent() {
@@ -3352,25 +3647,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         LinearLayout textCol = new LinearLayout(this);
         textCol.setOrientation(LinearLayout.VERTICAL);
+        textCol.setGravity(Gravity.CENTER_VERTICAL);
         textCol.setPadding((int) (12 * density), 0, (int) (8 * density), 0);
         LinearLayout.LayoutParams tcLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         textCol.setLayoutParams(tcLp);
 
         TextView btnTitle = new TextView(this);
         btnTitle.setText("Bersihkan & Optimalkan TV");
-        btnTitle.setTextSize(14f);
+        btnTitle.setTextSize(14.5f);
         btnTitle.setTextColor(isNeu ? ThemeManager.neu(0xFF1F2429) : 0xFFFFFFFF);
         btnTitle.setTypeface(outfit, Typeface.BOLD);
         btnTitle.setFontVariationSettings("'wght' 700");
         textCol.addView(btnTitle);
-
-        TextView btnSub = new TextView(this);
-        btnSub.setText("Kosongkan cache sistem & bebaskan memori RAM perangkat");
-        btnSub.setTextSize(11f);
-        btnSub.setTextColor(isNeu ? ThemeManager.neu(0xFF5A626E) : (isDark ? 0x9900F0FF : 0xB3FFFFFF));
-        btnSub.setTypeface(outfit, Typeface.NORMAL);
-        btnSub.setFontVariationSettings("'wght' 500");
-        textCol.addView(btnSub);
 
         cleanBtn.addView(textCol);
 
@@ -3401,7 +3689,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this, R.style.Theme_TvHome_GlassDialog);
         builder.setView(rootLayout);
-        builder.setNegativeButton("Tutup", (d, w) -> d.dismiss());
         AlertDialog dialog = builder.create();
         dialogHolder[0] = dialog;
         dialog.show();
@@ -3570,6 +3857,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             else subView.setShadowLayer(4 * density, 0, 1.2f * density, 0xCC000000);
             subView.setPadding(0, (int) (3 * density), 0, (int) (12 * density));
             layout.addView(subView);
+        } else {
+            titleView.setPadding(0, 0, 0, (int) (12 * density));
         }
 
         ScrollView scroll = new ScrollView(ctx);
@@ -3612,14 +3901,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             } else {
                 // Frosted Glass: translucent white glass highlight with crisp white glass rim
                 GradientDrawable on = new GradientDrawable();
-                on.setColor(0x42FFFFFF);
+                on.setColor(0x40FFFFFF);
                 on.setCornerRadius(10 * density);
-                on.setStroke(Math.max(1, Math.round(1.5f * density)), 0xF2FFFFFF);
+                on.setStroke(Math.max(1, Math.round(1.5f * density)), 0xCCFFFFFF);
 
                 GradientDrawable off = new GradientDrawable();
-                off.setColor(isActive ? 0x28FFFFFF : 0x16FFFFFF);
+                off.setColor(isActive ? 0x24FFFFFF : 0x12FFFFFF);
                 off.setCornerRadius(10 * density);
-                off.setStroke(Math.max(1, Math.round(1.0f * density)), isActive ? 0x73FFFFFF : 0x2BFFFFFF);
+                off.setStroke(Math.max(1, Math.round(1.0f * density)), isActive ? 0x66FFFFFF : 0x28FFFFFF);
 
                 bg.addState(new int[]{android.R.attr.state_focused}, on);
                 bg.addState(new int[]{}, off);
@@ -3773,7 +4062,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         for (int i = 0; i < soundKeys.length; i++) {
             final String chosenKey = soundKeys[i];
             boolean active = chosenKey.equalsIgnoreCase(currentTheme);
-            items.add(new ThemedDialogItem(soundOptions[i], soundSubs[i], active, active ? "AKTIF" : null, () -> {
+            items.add(new ThemedDialogItem(soundOptions[i], null, active, active ? "AKTIF" : null, () -> {
                 SoundEffects.setTheme(MainActivity.this, chosenKey);
                 String displayName = SoundEffects.getThemeDisplayName(chosenKey);
                 if (SoundEffects.THEME_OFF.equalsIgnoreCase(chosenKey)) {
@@ -3787,7 +4076,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         showThemedListDialog(
                 "🔊 Pilih Efek Suara Navigasi",
-                "Sesuaikan respons audio saat berpindah menu menggunakan remote TV",
+                null,
                 items,
                 null,
                 null
@@ -4360,7 +4649,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         for (int i = 0; i < rawTimes.length; i++) {
             final String chosen = rawTimes[i];
             boolean active = chosen.equalsIgnoreCase(current);
-            items.add(new ThemedDialogItem(times[i], timeSubs[i], active, active ? "AKTIF" : null, () -> {
+            items.add(new ThemedDialogItem(times[i], null, active, active ? "AKTIF" : null, () -> {
                 AppUpdateManager.setAutoUpdateTime(MainActivity.this, chosen);
                 AppUpdateManager.setAutoUpdateEnabled(MainActivity.this, true);
                 Toast.makeText(MainActivity.this, "Waktu Update Otomatis diatur ke: " + chosen, Toast.LENGTH_SHORT).show();
@@ -4369,7 +4658,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         showThemedListDialog(
                 "⏱️ Pilih Waktu Update Otomatis Harian",
-                "Pilih jadwal pemeriksaan pembaruan otomatis setiap hari",
+                null,
                 items,
                 null,
                 null
@@ -5382,7 +5671,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             final String chosenKey = opt.key;
             items.add(new ThemedDialogItem(
                     opt.title,
-                    opt.subtitle,
+                    null,
                     isActive,
                     isActive ? "AKTIF" : null,
                     () -> {
@@ -5402,7 +5691,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         showThemedListDialog(
                 "🖼️ Pilih Koleksi Wallpaper 4K",
-                "Pexels & Unsplash CDN • Resolusi Ultra HD 3840×2160",
+                null,
                 items,
                 null,
                 null
@@ -5487,11 +5776,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 } else {
                     GradientDrawable dialogBg = new GradientDrawable(
                             GradientDrawable.Orientation.TOP_BOTTOM,
-                            new int[]{0xD9252B38, 0xD9191E2A}
+                            new int[]{0xCC1A2130, 0xBF101624}
                     );
                     dialogBg.setCornerRadius(22 * d);
-                    dialogBg.setStroke(Math.max(1, Math.round(1.5f * d)), 0x66FFFFFF);
+                    dialogBg.setStroke(Math.max(1, Math.round(1.5f * d)), 0x55FFFFFF);
                     dialog.getWindow().setBackgroundDrawable(dialogBg);
+                    dialog.getWindow().setDimAmount(0.50f);
                 }
             }
             Typeface outfit = ctx.getResources().getFont(R.font.outfit);
@@ -7455,49 +7745,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         openMenu = panel;
         menuAnchor = anchor;
 
-        // Focus stays strictly inside the menu rows until it closes.
-        final List<View> focusableRows = new ArrayList<>();
-        for (int i = 0; i < rows.getChildCount(); i++) {
-            View row = rows.getChildAt(i);
-            if (!row.isFocusable()) continue;
-            focusableRows.add(row);
-            row.setOnFocusChangeListener((v, has) -> {
-                if (has) glideToMenuRow(panel, rows, v);
-            });
-        }
-        final View top = focusableRows.isEmpty() ? null : focusableRows.get(0);
-        final View bottom = focusableRows.isEmpty() ? null : focusableRows.get(focusableRows.size() - 1);
-        for (int i = 0; i < focusableRows.size(); i++) {
-            final int idx = i;
-            View row = focusableRows.get(i);
-            row.setOnKeyListener((v, keyCode, event) -> {
-                boolean down = event.getAction() == KeyEvent.ACTION_DOWN;
-                switch (keyCode) {
-                    case KeyEvent.KEYCODE_DPAD_UP:
-                        if (idx > 0) {
-                            if (down) focusableRows.get(idx - 1).requestFocus();
-                            return true;
-                        }
-                        if (down && !above) closeMenu(true);
-                        return true;
-                    case KeyEvent.KEYCODE_DPAD_DOWN:
-                        if (idx < focusableRows.size() - 1) {
-                            if (down) focusableRows.get(idx + 1).requestFocus();
-                            return true;
-                        }
-                        if (down && above) closeMenu(true);
-                        return true;
-                    case KeyEvent.KEYCODE_DPAD_LEFT:
-                    case KeyEvent.KEYCODE_DPAD_RIGHT:
-                        return true;
-                    case KeyEvent.KEYCODE_BACK:
-                        if (down) closeMenu(true);
-                        return true;
-                    default:
-                        return false;
-                }
-            });
-        }
+        bindMenuKeyListeners(panel, rows, above);
 
         // The panel background and the rows fade in around the selection as it arrives.
         final Drawable panelBg = panel.getBackground();
@@ -7515,6 +7763,107 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             rows.setTranslationY(slide * (1f - f));
         });
         in.start();
+    }
+
+    private final java.util.Stack<Runnable> menuBackStack = new java.util.Stack<>();
+
+    private void closeMenuAndFocusApp() {
+        if (openMenu != null) {
+            openMenu.clearFocus();
+        }
+        menuBackStack.clear();
+        closeMenu(false);
+        focusTile(lastFocused % COLUMNS);
+    }
+
+    private void navigateToSubMenu(FrameLayout panel, LinearLayout rows, Runnable currentBuilder, Runnable nextBuilder) {
+        menuBackStack.push(currentBuilder);
+        SoundEffects.playNav();
+        rows.animate().alpha(0f).translationX(-15f * density).setDuration(100).withEndAction(() -> {
+            rows.removeAllViews();
+            nextBuilder.run();
+            bindMenuKeyListeners(panel, rows, false);
+            rows.setTranslationX(15f * density);
+            rows.animate().alpha(1f).translationX(0f).setDuration(140).start();
+        }).start();
+    }
+
+    private void popMenuSubPage(FrameLayout panel, LinearLayout rows) {
+        if (!menuBackStack.isEmpty()) {
+            Runnable prev = menuBackStack.pop();
+            SoundEffects.playNav();
+            rows.animate().alpha(0f).translationX(15f * density).setDuration(100).withEndAction(() -> {
+                rows.removeAllViews();
+                prev.run();
+                bindMenuKeyListeners(panel, rows, false);
+                rows.setTranslationX(-15f * density);
+                rows.animate().alpha(1f).translationX(0f).setDuration(140).start();
+            }).start();
+        } else {
+            closeMenu(true);
+        }
+    }
+
+    private void bindMenuKeyListeners(FrameLayout panel, LinearLayout rows, boolean above) {
+        final List<View> focusableRows = new ArrayList<>();
+        for (int i = 0; i < rows.getChildCount(); i++) {
+            View row = rows.getChildAt(i);
+            if (!row.isFocusable()) continue;
+            focusableRows.add(row);
+            row.setOnFocusChangeListener((v, has) -> {
+                if (has) glideToMenuRow(panel, rows, v);
+            });
+        }
+        for (int i = 0; i < focusableRows.size(); i++) {
+            final int idx = i;
+            View row = focusableRows.get(i);
+            row.setOnKeyListener((v, keyCode, event) -> {
+                boolean down = event.getAction() == KeyEvent.ACTION_DOWN;
+                switch (keyCode) {
+                    case KeyEvent.KEYCODE_DPAD_UP:
+                        if (idx > 0) {
+                            if (down) focusableRows.get(idx - 1).requestFocus();
+                            return true;
+                        }
+                        if (down && !above) {
+                            if (!menuBackStack.isEmpty()) {
+                                popMenuSubPage(panel, rows);
+                                return true;
+                            }
+                            closeMenu(true);
+                        }
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_DOWN:
+                        if (idx < focusableRows.size() - 1) {
+                            if (down) focusableRows.get(idx + 1).requestFocus();
+                            return true;
+                        }
+                        if (down && above) {
+                            if (!menuBackStack.isEmpty()) {
+                                popMenuSubPage(panel, rows);
+                                return true;
+                            }
+                            closeMenu(true);
+                        }
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_LEFT:
+                    case KeyEvent.KEYCODE_DPAD_RIGHT:
+                        return true;
+                    case KeyEvent.KEYCODE_BACK:
+                        if (down) {
+                            if (!menuBackStack.isEmpty()) {
+                                popMenuSubPage(panel, rows);
+                                return true;
+                            }
+                            closeMenu(true);
+                        }
+                        return true;
+                    default:
+                        return false;
+                }
+            });
+        }
+        final View top = focusableRows.isEmpty() ? null : focusableRows.get(0);
         if (top != null) {
             top.requestFocus();
             panel.post(() -> {
@@ -7628,33 +7977,40 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void addInputRow(LinearLayout rows, Runnable close, int iconRes, String title, int state, Runnable action) {
         View row = getLayoutInflater().inflate(R.layout.item_input, rows, false);
         boolean isNeu = ThemeManager.isNeumorphism(this);
+        boolean isDark = ThemeManager.isDarkGlow(this);
+        Typeface outfit = getResources().getFont(R.font.outfit);
+
         ImageView iconView = row.findViewById(R.id.icon);
         iconView.setImageResource(iconRes);
         TextView titleView = row.findViewById(R.id.title);
-        titleView.setText(title);
         TextView status = row.findViewById(R.id.status);
         View dot = row.findViewById(R.id.dot);
 
-        if (isNeu) {
-            iconView.setColorFilter(ThemeManager.neu(0xFF2B3036));
-            titleView.setTextColor(ThemeManager.neu(0xFF2B3036));
-            titleView.setShadowLayer(0, 0, 0, 0);
-            if (status != null) {
-                status.setTextColor(ThemeManager.neu(0xFF5A626E));
-                status.setShadowLayer(0, 0, 0, 0);
-            }
+        String mainTitle = title;
+        String subValue = null;
+        int colonIdx = (title != null) ? title.indexOf(':') : -1;
+        if (colonIdx > 0 && state == -1) {
+            mainTitle = title.substring(0, colonIdx).trim();
+            subValue = title.substring(colonIdx + 1).trim();
         }
-        // This TV reports "standby" for every port whether or not something is plugged in, so only
-        // definite states are shown.
-        if (state == TvInputManager.INPUT_STATE_CONNECTED) {
-            status.setText(R.string.connected);
+        titleView.setText(mainTitle);
+
+        if (subValue != null) {
+            status.setVisibility(View.VISIBLE);
+            status.setText(subValue);
+            status.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
+            status.setTypeface(outfit, Typeface.NORMAL);
+            status.setFontVariationSettings("'wght' 450");
+            dot.setVisibility(View.GONE);
+        } else if (state == TvInputManager.INPUT_STATE_CONNECTED) {
+            status.setVisibility(View.GONE);
             dot.setVisibility(View.VISIBLE);
             GradientDrawable d = new GradientDrawable();
             d.setShape(GradientDrawable.OVAL);
             d.setColor(0xFF34C759);
             dot.setBackground(d);
         } else if (state == TvInputManager.INPUT_STATE_DISCONNECTED) {
-            status.setText(R.string.not_connected);
+            status.setVisibility(View.GONE);
             dot.setVisibility(View.VISIBLE);
             GradientDrawable d = new GradientDrawable();
             d.setShape(GradientDrawable.OVAL);
@@ -7664,11 +8020,30 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             status.setVisibility(View.GONE);
             dot.setVisibility(View.GONE);
         }
+
+        if (isNeu) {
+            iconView.setColorFilter(ThemeManager.neu(0xFF2B3036));
+            titleView.setTextColor(ThemeManager.neu(0xFF2B3036));
+            titleView.setShadowLayer(0, 0, 0, 0);
+            if (status != null) {
+                status.setTextColor(ThemeManager.neu(0xFF5A626E));
+                status.setShadowLayer(0, 0, 0, 0);
+            }
+        } else if (isDark) {
+            if (status != null) {
+                status.setTextColor(0xB3FFFFFF);
+            }
+        } else {
+            if (status != null) {
+                status.setTextColor(0xCCFFFFFF);
+            }
+        }
+
         if (action != null) {
             row.setFocusable(true);
             row.setClickable(true);
             row.setOnClickListener(v -> {
-                close.run();
+                if (close != null) close.run();
                 action.run();
             });
         } else {
@@ -7677,6 +8052,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             row.setOnClickListener(null);
             titleView.setAlpha(0.7f);
             iconView.setAlpha(0.7f);
+            if (status != null) status.setAlpha(0.7f);
         }
         rows.addView(row);
     }

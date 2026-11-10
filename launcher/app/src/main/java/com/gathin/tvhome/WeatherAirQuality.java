@@ -691,11 +691,11 @@ final class WeatherAirQuality {
         return isMalay ? "Berbahaya" : "Hazardous";
     }
 
-    private static int getAqiColor(int aqi) {
+    public static int getAqiColor(int aqi) {
         return getAqiColor(aqi, false);
     }
 
-    private static int getAqiColor(int aqi, boolean isNeu) {
+    public static int getAqiColor(int aqi, boolean isNeu) {
         if (isNeu) {
             if (aqi <= 50) return ThemeManager.neu(0xFF15803D);  // Deep Emerald Green (Baik)
             if (aqi <= 100) return ThemeManager.neu(0xFF0284C7); // Deep Sky Blue (Sedang)
