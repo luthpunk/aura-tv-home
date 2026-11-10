@@ -50,14 +50,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textColor="#FFFFFF"
-        android:duplicateParentState="true"
         android:textSize="13.5sp"
         android:fontFamily="@font/outfit"
-        android:fontVariationSettings="'wght' 600"
+        android:fontVariationSettings="'wght' 700"
         android:textStyle="bold"
-        android:shadowColor="#CC000000"
-        android:shadowDx="0"
-        android:shadowDy="1"
-        android:shadowRadius="3"
         android:letterSpacing="0.02" />
 </LinearLayout>

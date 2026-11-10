@@ -1963,7 +1963,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         // Minimal Weather Capsule Pill Widget Theme Styling
         if (weatherPillMinimalView != null) {
-            float minRadius = 19f * density;
+            float minRadius = 14f * density;
             if (isDark) {
                 StateListDrawable sld = new StateListDrawable();
                 GradientDrawable focused = new GradientDrawable();
@@ -8120,7 +8120,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             status.setText(subValue);
             status.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f);
             status.setTypeface(outfit, Typeface.BOLD);
-            status.setFontVariationSettings("'wght' 600");
+            status.setFontVariationSettings("'wght' 700");
             dot.setVisibility(View.GONE);
         } else if (state == TvInputManager.INPUT_STATE_CONNECTED) {
             status.setVisibility(View.GONE);
@@ -8146,13 +8146,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             titleView.setTextColor(ThemeManager.neu(0xFF2B3036));
             titleView.setShadowLayer(0, 0, 0, 0);
             if (status != null) {
-                status.setTextColor(ThemeManager.neu(0xFF1F2429));
+                boolean isDarkNeu = ThemeManager.isNeuDarkCached();
+                status.setTextColor(isDarkNeu ? 0xFFFFFFFF : 0xFF000000);
                 status.setShadowLayer(0, 0, 0, 0);
+                status.setAlpha(1.0f);
             }
         } else {
             if (status != null) {
                 status.setTextColor(0xFFFFFFFF);
                 status.setShadowLayer(3f, 0, 1f, 0xCC000000);
+                status.setAlpha(1.0f);
             }
         }
 
@@ -8182,11 +8185,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             status.setVisibility(View.VISIBLE);
             status.setText(text);
             boolean isNeu = ThemeManager.isNeumorphism(this);
-            status.setTextColor(isNeu ? ThemeManager.neu(0xFF1F2429) : 0xFFFFFFFF);
+            boolean isDarkNeu = ThemeManager.isNeuDarkCached();
+            int textColor = isNeu ? (isDarkNeu ? 0xFFFFFFFF : 0xFF000000) : 0xFFFFFFFF;
+            status.setTextColor(textColor);
+            status.setShadowLayer(0, 0, 0, 0);
+            status.setAlpha(1.0f);
             try {
                 Typeface outfit = getResources().getFont(R.font.outfit);
                 status.setTypeface(outfit, Typeface.BOLD);
-                status.setFontVariationSettings("'wght' 600");
+                status.setFontVariationSettings("'wght' 700");
             } catch (Exception ignored) {}
         }
     }
