@@ -803,6 +803,83 @@
                 </LinearLayout>
             </LinearLayout>
 
+            <!-- Minimal Weather Capsule Pill Widget (Compact Horizontal Pill) -->
+            <LinearLayout
+                android:id="@+id/weatherPillMinimal"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:layout_below="@id/leftBlock"
+                android:layout_alignParentStart="true"
+                android:layout_marginTop="24dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:focusable="true"
+                android:clickable="true"
+                android:descendantFocusability="blocksDescendants"
+                android:background="@drawable/weather_pill_bg"
+                android:paddingStart="15dp"
+                android:paddingEnd="15dp"
+                android:clipChildren="false"
+                android:clipToPadding="false"
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/minWeaIcon"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_weather_sun" />
+
+                <TextView
+                    android:id="@+id/minWeaTemp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="29°"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="18sp"
+                    android:fontFamily="@font/outfit"
+                    android:fontVariationSettings="'wght' 700"
+                    android:includeFontPadding="false" />
+
+                <View
+                    android:id="@+id/minWeaDivider"
+                    android:layout_width="1dp"
+                    android:layout_height="14dp"
+                    android:layout_marginStart="9dp"
+                    android:layout_marginEnd="9dp"
+                    android:background="#33FFFFFF" />
+
+                <TextView
+                    android:id="@+id/minWeaCond"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Cerah Berawan"
+                    android:textColor="#E6FFFFFF"
+                    android:textSize="13sp"
+                    android:fontFamily="@font/outfit"
+                    android:fontVariationSettings="'wght' 600"
+                    android:includeFontPadding="false"
+                    android:singleLine="true" />
+
+                <TextView
+                    android:id="@+id/minWeaAqi"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="9dp"
+                    android:background="@drawable/bg_location_state_pill"
+                    android:paddingStart="7dp"
+                    android:paddingEnd="7dp"
+                    android:paddingTop="2dp"
+                    android:paddingBottom="2dp"
+                    android:text="AQI 42"
+                    android:textColor="#00F0FF"
+                    android:textSize="10.5sp"
+                    android:fontFamily="@font/outfit"
+                    android:fontVariationSettings="'wght' 700"
+                    android:includeFontPadding="false" />
+            </LinearLayout>
+
             <!-- Top Menu Buttons: Strictly in the same row, vertically centered with the clock -->
             <LinearLayout
                 android:id="@+id/topButtons"

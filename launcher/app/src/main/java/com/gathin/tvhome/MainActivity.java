@@ -193,6 +193,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private TextView shamsiDate;
     private TextView prayerTimesView;
     private View weatherAirQualityView;
+    private View weatherPillMinimalView;
+    private ImageView minWeaIcon;
+    private TextView minWeaTemp, minWeaCond, minWeaAqi;
+    private View minWeaDivider;
     private TextView weaHeaderLoc, weaMainTemp, weaMainCond, weaMainSub;
     private View weaHeaderDiv, weaHourlyBox, weaHourDiv1, weaHourDiv2, weaBottomTray;
     private ImageView weaMainIcon, weaHourIcon1, weaHourIcon2, weaHourIcon3;
@@ -526,6 +530,53 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 v.animate().scaleX(scale).scaleY(scale).setDuration(150).start();
             });
         }
+
+        weatherPillMinimalView = findViewById(R.id.weatherPillMinimal);
+        if (weatherPillMinimalView != null) {
+            minWeaIcon = findViewById(R.id.minWeaIcon);
+            minWeaTemp = findViewById(R.id.minWeaTemp);
+            minWeaDivider = findViewById(R.id.minWeaDivider);
+            minWeaCond = findViewById(R.id.minWeaCond);
+            minWeaAqi = findViewById(R.id.minWeaAqi);
+
+            weatherPillMinimalView.setOnClickListener(v -> {
+                SoundEffects.playSelect();
+                startActivity(new Intent(this, WeatherActivity.class));
+            });
+            weatherPillMinimalView.setOnKeyListener((v, keyCode, event) -> {
+                if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    focusTile(lastFocused % COLUMNS);
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT || keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                    if (nowPlayingCard != null && nowPlayingCard.getVisibility() == View.VISIBLE) {
+                        nowPlayingCard.requestFocus();
+                        return true;
+                    }
+                    View target = (btnInputs != null && btnInputs.getVisibility() == View.VISIBLE) ? btnInputs
+                            : (btnWifi != null && btnWifi.getVisibility() == View.VISIBLE) ? btnWifi
+                            : findViewById(R.id.btnSettings);
+                    if (target != null) {
+                        target.requestFocus();
+                        return true;
+                    }
+                }
+                return false;
+            });
+            weatherPillMinimalView.setOnFocusChangeListener((v, hasFocus) -> {
+                if (hasFocus) {
+                    SoundEffects.playNav();
+                    hideShelf();
+                    if (glider != null) glider.hide();
+                }
+                boolean isNeu = ThemeManager.isNeumorphism(MainActivity.this);
+                float scale = (hasFocus && !isNeu) ? 1.03f : 1.0f;
+                v.animate().scaleX(scale).scaleY(scale).setDuration(150).start();
+            });
+        }
+
+        applyWeatherWidgetMode();
         updateWeatherAqi();
         WeatherAirQuality.syncIfDue(this, this::updateWeatherAqi);
 
@@ -559,6 +610,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN || keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
                     if (weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE) {
                         weatherAirQualityView.requestFocus();
+                        return true;
+                    } else if (weatherPillMinimalView != null && weatherPillMinimalView.getVisibility() == View.VISIBLE) {
+                        weatherPillMinimalView.requestFocus();
                         return true;
                     }
                     focusTile(lastFocused % COLUMNS);
@@ -1876,6 +1930,60 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             updateWeatherAqi();
         }
 
+        // Minimal Weather Capsule Pill Widget Theme Styling
+        if (weatherPillMinimalView != null) {
+            float minRadius = 18f * density;
+            if (isDark) {
+                StateListDrawable sld = new StateListDrawable();
+                GradientDrawable focused = new GradientDrawable();
+                focused.setColor(0xFF0A0A10);
+                focused.setCornerRadius(minRadius);
+                focused.setStroke(Math.max(1, Math.round(1.25f * density)), 0xFF00F0FF);
+                GradientDrawable normal = new GradientDrawable();
+                normal.setColor(0xEE08080C);
+                normal.setCornerRadius(minRadius);
+                normal.setStroke(Math.max(1, Math.round(1.0f * density)), 0x28FFFFFF);
+                sld.addState(new int[]{android.R.attr.state_focused}, focused);
+                sld.addState(new int[]{}, normal);
+                weatherPillMinimalView.setBackground(sld);
+            } else if (isNeu) {
+                StateListDrawable sld = new StateListDrawable();
+                sld.addState(new int[]{android.R.attr.state_focused},
+                        new NeumorphicDrawable(minRadius, density, NeumorphicDrawable.MODE_RECESSED, false));
+                sld.addState(new int[]{},
+                        new NeumorphicDrawable(minRadius, density, NeumorphicDrawable.MODE_EXTRUDED, true));
+                weatherPillMinimalView.setBackground(sld);
+            } else {
+                StateListDrawable sld = new StateListDrawable();
+                GradientDrawable focused = new GradientDrawable(
+                        GradientDrawable.Orientation.TL_BR,
+                        new int[]{0x732A3140, 0x731C222E});
+                focused.setCornerRadius(minRadius);
+                focused.setStroke(Math.max(2, Math.round(1.5f * density)), 0xF2FFFFFF);
+                GradientDrawable normal = new GradientDrawable(
+                        GradientDrawable.Orientation.TL_BR,
+                        new int[]{0x52252B38, 0x52181C26});
+                normal.setCornerRadius(minRadius);
+                normal.setStroke(Math.max(1, Math.round(1.0f * density)), 0x45FFFFFF);
+                sld.addState(new int[]{android.R.attr.state_focused}, focused);
+                sld.addState(new int[]{}, normal);
+                weatherPillMinimalView.setBackground(sld);
+            }
+            if (minWeaTemp != null) {
+                minWeaTemp.setTextColor(isNeu ? ThemeManager.neu(0xFF1F2429) : 0xFFFFFFFF);
+                if (isNeu) minWeaTemp.setShadowLayer(0, 0, 0, 0);
+                else minWeaTemp.setShadowLayer(3f, 0, 1f, 0x80000000);
+            }
+            if (minWeaCond != null) {
+                minWeaCond.setTextColor(isNeu ? ThemeManager.neu(0xFF363E4A) : 0xE6FFFFFF);
+                if (isNeu) minWeaCond.setShadowLayer(0, 0, 0, 0);
+                else minWeaCond.setShadowLayer(2f, 0, 1f, 0x80000000);
+            }
+            if (minWeaDivider != null) {
+                minWeaDivider.setBackgroundColor(isNeu ? ThemeManager.neu(0x1F000000) : (isDark ? 0x2E00F0FF : 0x28FFFFFF));
+            }
+        }
+
         // Focused Row-1 App Title (above dock left)
         if (heroName != null) {
             heroName.setTextColor(isNeu ? ThemeManager.neu(0xFF232830) : 0xFFFFFFFF);
@@ -1989,8 +2097,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     heroShelf.setX(alignCard.left);
                 }
                 View lb = findViewById(R.id.leftBlock);
-                if (lb != null && gridWrap != null && weatherAirQualityView != null
-                        && weatherAirQualityView.getHeight() > 0 && grid.getPaddingTop() > 0) {
+                View activeWea = (weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE)
+                        ? weatherAirQualityView
+                        : ((weatherPillMinimalView != null && weatherPillMinimalView.getVisibility() == View.VISIBLE) ? weatherPillMinimalView : null);
+                if (lb != null && gridWrap != null && activeWea != null
+                        && activeWea.getHeight() > 0 && grid.getPaddingTop() > 0) {
                     // Use pure layout coordinates inside mainContent (getTop/getBottom ignore translationY
                     // and gridWrap.getTop() + grid.getPaddingTop() is the stationary parked dock top).
                     float clockBottomInMain = lb.getBottom();
@@ -1999,11 +2110,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                             ? heroName.getHeight() : (24f * density);
                     float shelfTopInMain = parkedDockTopInMain - (HERO_GAP_DP * density) - shelfH;
                     float targetCenterY = (clockBottomInMain + shelfTopInMain) * 0.5f;
-                    float desiredTopInMain = targetCenterY - (weatherAirQualityView.getHeight() * 0.5f);
-                    float baseTopInMain = weatherAirQualityView.getTop();
+                    float desiredTopInMain = targetCenterY - (activeWea.getHeight() * 0.5f);
+                    float baseTopInMain = activeWea.getTop();
                     float dy = Math.round(desiredTopInMain - baseTopInMain);
-                    if (Math.abs(weatherAirQualityView.getTranslationY() - dy) >= 1f) {
-                        weatherAirQualityView.setTranslationY(dy);
+                    if (Math.abs(activeWea.getTranslationY() - dy) >= 1f) {
+                        activeWea.setTranslationY(dy);
                     }
                 }
             }
@@ -2565,9 +2676,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
             if (position < COLUMNS) {
-                if (position <= 2 && weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE) {
-                    weatherAirQualityView.requestFocus();
-                    return true;
+                if (position <= 2) {
+                    if (weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE) {
+                        weatherAirQualityView.requestFocus();
+                        return true;
+                    } else if (weatherPillMinimalView != null && weatherPillMinimalView.getVisibility() == View.VISIBLE) {
+                        weatherPillMinimalView.requestFocus();
+                        return true;
+                    }
                 }
                 return false;          // dock row: let focus move to the top bar
             }
@@ -2648,7 +2764,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     private void updateWeatherAqi() {
-        if (weatherAirQualityView == null) return;
+        if (weatherAirQualityView == null && weatherPillMinimalView == null) return;
         WeatherAirQuality.FullWeather fw = WeatherAirQuality.getFullWeather(this);
         if (fw == null) return;
 
@@ -2690,6 +2806,22 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         if (weaPillRain != null) {
             weaPillRain.setText(boldSuffix("Peluang Hujan ", fw.rainChanceToday + "%", ""));
+        }
+
+        // Minimal Weather Capsule Pill
+        if (minWeaTemp != null) {
+            minWeaTemp.setText(fw.temp + "°");
+        }
+        if (minWeaCond != null) {
+            String cond = fw.condition != null && !fw.condition.isEmpty() ? fw.condition : "Cerah";
+            minWeaCond.setText(cond);
+        }
+        if (minWeaIcon != null) {
+            minWeaIcon.setImageDrawable(WeatherAirQuality.createConditionDrawable(
+                    fw.weatherCode, nowHour, iconColor, 22f, 22f, density, false));
+        }
+        if (minWeaAqi != null) {
+            minWeaAqi.setText("AQI " + fw.aqi);
         }
     }
 
@@ -2824,8 +2956,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             open(systemIntent(Settings.ACTION_WIFI_SETTINGS));
         });
 
-        addSeparator(rows);
-
         // Row 2: Pengaturan Wi-Fi
         addInputRow(rows, close, R.drawable.ic_settings, "Pengaturan Wi-Fi", -1, () -> {
             SoundEffects.playSelect();
@@ -2836,6 +2966,84 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         width = Math.max(width, panel.getMeasuredWidth());
 
         showMenu(panel, rows, anchor, width, false);
+    }
+
+    private static final String PREF_WEATHER_WIDGET_MODE = "weather_widget_mode";
+    public static final String WIDGET_MODE_LARGE = "large";
+    public static final String WIDGET_MODE_MINIMAL = "minimal";
+    public static final String WIDGET_MODE_NONE = "none";
+
+    private String getWeatherWidgetMode() {
+        return getSharedPreferences("aura_prefs", MODE_PRIVATE)
+                .getString(PREF_WEATHER_WIDGET_MODE, WIDGET_MODE_LARGE);
+    }
+
+    private void setWeatherWidgetMode(String mode) {
+        getSharedPreferences("aura_prefs", MODE_PRIVATE)
+                .edit()
+                .putString(PREF_WEATHER_WIDGET_MODE, mode)
+                .apply();
+    }
+
+    private void applyWeatherWidgetMode() {
+        String mode = getWeatherWidgetMode();
+        if (WIDGET_MODE_LARGE.equals(mode)) {
+            if (weatherAirQualityView != null) weatherAirQualityView.setVisibility(View.VISIBLE);
+            if (weatherPillMinimalView != null) weatherPillMinimalView.setVisibility(View.GONE);
+        } else if (WIDGET_MODE_MINIMAL.equals(mode)) {
+            if (weatherAirQualityView != null) weatherAirQualityView.setVisibility(View.GONE);
+            if (weatherPillMinimalView != null) weatherPillMinimalView.setVisibility(View.VISIBLE);
+        } else {
+            if (weatherAirQualityView != null) weatherAirQualityView.setVisibility(View.GONE);
+            if (weatherPillMinimalView != null) weatherPillMinimalView.setVisibility(View.GONE);
+        }
+        updateWeatherAqi();
+    }
+
+    private void showWidgetManagerDialog() {
+        String currentMode = getWeatherWidgetMode();
+        boolean isMinimal = WIDGET_MODE_MINIMAL.equals(currentMode);
+        boolean isLarge = WIDGET_MODE_LARGE.equals(currentMode);
+
+        List<ThemedDialogItem> items = new ArrayList<>();
+
+        // 1. Cuaca Minimalis (Kapsul)
+        items.add(new ThemedDialogItem(
+                "🌤️ Cuaca Minimalis",
+                "Tampilkan cuaca ringkas berbentuk kapsul horizontal",
+                isMinimal,
+                isMinimal ? "ON" : "OFF",
+                () -> {
+                    SoundEffects.playSelect();
+                    String next = isMinimal ? WIDGET_MODE_NONE : WIDGET_MODE_MINIMAL;
+                    setWeatherWidgetMode(next);
+                    applyWeatherWidgetMode();
+                    showWidgetManagerDialog();
+                }
+        ));
+
+        // 2. Cuaca Besar (Lengkap)
+        items.add(new ThemedDialogItem(
+                "🌦️ Cuaca Besar",
+                "Tampilkan cuaca lengkap dengan perkiraan jam & kualitas udara (AQI)",
+                isLarge,
+                isLarge ? "ON" : "OFF",
+                () -> {
+                    SoundEffects.playSelect();
+                    String next = isLarge ? WIDGET_MODE_NONE : WIDGET_MODE_LARGE;
+                    setWeatherWidgetMode(next);
+                    applyWeatherWidgetMode();
+                    showWidgetManagerDialog();
+                }
+        ));
+
+        showThemedListDialog(
+                "🧩 Kelola Widget Beranda",
+                "Pilih widget yang ingin ditampilkan di layar utama",
+                items,
+                "Tutup",
+                null
+        );
     }
 
     /** Shows an Apple TV-style frosted glass Candy Box dropdown menu containing all launcher customizations & tools. */
@@ -2862,8 +3070,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             showThemeDialog();
         });
 
-        // Row 3: Lokasi Cuaca
-        String locName = AppLocationManager.getLocationName(this) + " (" + AppLocationManager.getActiveRegion(this) + ")";
+        // Row 3: Lokasi Cuaca (hanya nama kota tanpa zona waktu)
+        String locName = AppLocationManager.getLocationName(this);
         addInputRow(rows, close, R.drawable.ic_location, "Lokasi: " + locName, -1, () -> {
             SoundEffects.playSelect();
             showAsiaCountryDialog();
@@ -2883,10 +3091,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             showNightstandScreensaver();
         });
 
-        // Row 6: Smart Boost TV / Bersih Cache
-        addInputRow(rows, close, R.drawable.ic_trash, "Bersihkan Cache TV", -1, () -> {
+        // Row 6: Kelola Widget Beranda
+        addInputRow(rows, close, R.drawable.ic_candy_box, "Kelola Widget", -1, () -> {
             SoundEffects.playSelect();
-            smartBoostTv();
+            showWidgetManagerDialog();
         });
 
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
@@ -2923,8 +3131,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             showTurnOffDialog();
         });
 
-        // Row 4: Music Notification Access Permission - Izin Now Playing
-        addInputRow(rows, close, R.drawable.ic_music, "Izin Now Playing", -1, () -> {
+        // Row 4: Music Notification Access Permission - Izin Now Playing (dengan status)
+        boolean npGranted = NowPlayingManager.isNotificationAccessGranted(this);
+        String npLabel = "Izin Now Playing : " + (npGranted ? "AKTIF" : "NONAKTIF");
+        addInputRow(rows, close, R.drawable.ic_music, npLabel, -1, () -> {
             SoundEffects.playSelect();
             NowPlayingManager.openNotificationAccessSettings(this);
             Toast.makeText(this, "Buka Akses aplikasi khusus > Akses notifikasi > Aktifkan Aura TV Home", Toast.LENGTH_LONG).show();
@@ -3039,13 +3249,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 null
         ));
 
-        // Item 4: Open TV About Settings
+        // Item 4: Optimalkan & Bersihkan TV
         items.add(new ThemedDialogItem(
-                "⚙️ Buka Pengaturan Tentang TV",
-                "Lihat informasi lengkap perangkat, lisensi, dan status di Pengaturan TV",
+                "🧹 Optimalkan & Bersihkan TV",
+                "Bersihkan cache aplikasi & optimalkan memori RAM perangkat",
                 true,
-                "BUKA",
-                () -> open(systemIntent(Settings.ACTION_DEVICE_INFO_SETTINGS))
+                "BERSIHKAN",
+                () -> {
+                    SoundEffects.playSelect();
+                    smartBoostTv();
+                }
         ));
 
         showThemedListDialog(
@@ -6878,7 +7091,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 if (hdmi && !label.toUpperCase(Locale.ROOT).contains("HDMI")) label = "HDMI " + label;
                 final String id = info.getId();
                 int state = hdmi && hdmiStateBogus ? -1 : tim.getInputState(id);
-                if (!hdmi && rows.getChildCount() > 0 && !sawNonHdmi) addSeparator(rows);
                 if (!hdmi) sawNonHdmi = true;
                 addInputRow(rows, close, hdmi ? R.drawable.ic_hdmi : R.drawable.ic_av, label, state,
                         () -> openInput(id));
@@ -6895,7 +7107,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     .setPackage(liveTvPkg);
         }
         if (liveTv != null && config.showLiveTv) {
-            if (rows.getChildCount() > 0) addSeparator(rows);
             final Intent liveTvIntent = liveTv;
             addInputRow(rows, close, R.drawable.ic_livetv, getString(R.string.live_tv), -1, () -> open(liveTvIntent));
         }
