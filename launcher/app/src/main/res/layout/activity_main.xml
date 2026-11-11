@@ -985,12 +985,16 @@
                 <TextView
                     android:id="@+id/btnInputs"
                     style="@style/TopMenuButton"
+                    android:fontFamily="@font/outfit"
+                    android:fontVariationSettings="'wght' 500"
                     android:text="@string/inputs"
                     android:drawableStart="@drawable/ic_input" />
 
                 <TextView
                     android:id="@+id/btnWifi"
                     style="@style/TopMenuButton"
+                    android:fontFamily="@font/outfit"
+                    android:fontVariationSettings="'wght' 500"
                     android:maxWidth="180dp"
                     android:singleLine="true"
                     android:ellipsize="end"
