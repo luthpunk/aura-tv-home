@@ -139,12 +139,18 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
 
     /** Height of one grid item: the tile, the name label under it and the item's own padding. */
     static int itemHeightPx(int tileHeightPx, float density) {
-        return tileHeightPx + Math.round(45 * density);
+        return itemHeightPx(tileHeightPx, density, 5);
+    }
+
+    static int itemHeightPx(int tileHeightPx, float density, int columns) {
+        int labelAndMargin = Math.round(29 * density);
+        int vPad = (columns >= 7) ? Math.round(4 * density) : (columns >= 6 ? Math.round(6 * density) : Math.round(8 * density));
+        return tileHeightPx + labelAndMargin + (vPad * 2);
     }
 
     private final Context ctx;
     private final TileListener listener;
-    private final int dockSize;
+    private int dockSize;
     /** Dock order (config.xml dock_apps, or a theme's config.json). */
     private final List<String> favourites;
     /** Never shown as tiles (res/values/config.xml, hidden_apps). */
@@ -513,6 +519,11 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         }
     }
 
+    public void setDockSize(int dockSize) {
+        this.dockSize = dockSize;
+        notifyDataSetChanged();
+    }
+
     @NonNull
     @Override
     public Holder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -521,6 +532,10 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         int width = parent.getWidth() > 0 ? parent.getWidth() : parent.getMeasuredWidth();
         int inner = width - parent.getPaddingLeft() - parent.getPaddingRight();
         int w = tileWidthPx(inner, dockSize, density), h = tileHeightPx(w);
+
+        int vPad = (dockSize >= 7) ? Math.round(4 * density) : (dockSize >= 6 ? Math.round(6 * density) : Math.round(8 * density));
+        v.setPadding(v.getPaddingLeft(), vPad, v.getPaddingRight(), vPad);
+
         View card = v.findViewById(R.id.card);
         ViewGroup.LayoutParams cardLp = card.getLayoutParams();
         cardLp.width = w;
@@ -1003,7 +1018,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
                 ctx.startActivity(fallback);
             } catch (Exception ex2) {
-                Toast.makeText(ctx, ctx.getString(R.string.cant_open, e.label), Toast.LENGTH_SHORT).show();
+                TvToast.show(ctx, ctx.getString(R.string.cant_open, e.label));
             }
         }
     }

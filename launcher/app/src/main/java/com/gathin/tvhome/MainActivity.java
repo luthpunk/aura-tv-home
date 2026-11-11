@@ -238,6 +238,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private SurfaceTexture currentSurfaceTexture;
     private View nowPlayingCard;
     private ImageView cardAlbumArt;
+    private DockDecoration dockTray;
     private View cardTrackInfo;
     private TextView cardSubtitle;
     private TextView cardTitle;
@@ -426,12 +427,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
         }
         sInstance = new java.lang.ref.WeakReference<>(this);
+        TvToast.setCurrentActivity(this);
         SoundEffects.init(this);
         setContentView(R.layout.activity_main);
         density = getResources().getDisplayMetrics().density;
         // config.xml, overlaid by config.json from a pushed theme (see Config and tools/theme.sh).
         Config cfg = Config.load(this);
-        COLUMNS = cfg.columns;
+        COLUMNS = getSharedPreferences("dock_prefs", MODE_PRIVATE).getInt("columns", cfg.columns);
         reducedMotion = cfg.reducedMotion;
         liveTvPkg = cfg.liveTvPackage;
         liveTvAction = cfg.liveTvAction;
@@ -818,7 +820,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 SoundEffects.playSelect();
                 if (!NowPlayingManager.isNotificationAccessGranted(this)) {
                     NowPlayingManager.openNotificationAccessSettings(this);
-                    Toast.makeText(this, "Buka Akses aplikasi khusus > Akses notifikasi > Aktifkan Aura TV Home", Toast.LENGTH_LONG).show();
+                    TvToast.show(this, "Buka Akses aplikasi khusus > Akses notifikasi > Aktifkan Aura TV Home", true);
                 } else {
                     showNowPlayingPopup();
                 }
@@ -945,8 +947,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         });
         grid.setHasFixedSize(true);
         grid.setItemAnimator(null);
-        DockDecoration tray = new DockDecoration(COLUMNS, density);
-        grid.addItemDecoration(tray);
+        dockTray = new DockDecoration(COLUMNS, density);
+        grid.addItemDecoration(dockTray);
         // The top-right buttons line up with the dock, which is only known once the tiles are laid out.
         grid.getViewTreeObserver().addOnGlobalLayoutListener(this::alignTopButtons);
         // Glass shows the blurred wallpaper behind it: the dock tray (drawn by the grid) and the
@@ -1869,6 +1871,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onResume() {
         super.onResume();
+        TvToast.setCurrentActivity(this);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(packageReceiver, packageFilter, Context.RECEIVER_NOT_EXPORTED);
         } else {
@@ -3098,8 +3101,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (h <= 0) return false;
         // Item height follows the tile size, which follows the column count (AppAdapter.tileWidthPx).
         int inner = grid.getWidth() - grid.getPaddingLeft() - grid.getPaddingRight();
-        int itemH = AppAdapter.itemHeightPx(AppAdapter.tileHeightPx(AppAdapter.tileWidthPx(inner, COLUMNS, density)), density);
+        int itemH = AppAdapter.itemHeightPx(AppAdapter.tileHeightPx(AppAdapter.tileWidthPx(inner, COLUMNS, density)), density, COLUMNS);
         int dockRow = itemH + (int) ((6 + 12) * density);   // item height plus DockDecoration offsets
+        // Tetap sisakan 30dp agar puncak baris kedua tetap mengintip di dasar layar persis seperti 5 aplikasi
         int want = Math.max(0, h - dockRow - itemH * rowsBelowDockSetting - (int) (30 * density));
         if (grid.getPaddingTop() == want) return true;
         grid.setPadding(grid.getPaddingLeft(), want, grid.getPaddingRight(), grid.getPaddingBottom());
@@ -3294,7 +3298,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         reloadTiles();
                         int nextFocus = Math.max(0, Math.min(pos, adapter.getItemCount() - 1));
                         focusTile(nextFocus);
-                        Toast.makeText(MainActivity.this, removedLabel + " dihapus dari beranda", Toast.LENGTH_SHORT).show();
+                        TvToast.show(MainActivity.this, removedLabel + " dihapus dari beranda");
                     }
                 });
             }
@@ -4248,7 +4252,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     SoundEffects.playSelect();
                     FootballScheduleManager.syncForce(this, () -> handler.post(() -> {
                         updateFootballWidget();
-                        Toast.makeText(this, "⚽ Jadwal bola berhasil diperbarui!", Toast.LENGTH_SHORT).show();
+                        TvToast.show(this, "⚽ Jadwal bola berhasil diperbarui!");
                     }));
                 }
         ));
@@ -4524,7 +4528,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             navigateToSubMenu(panel, rows, () -> buildCandyBoxRows(panel, rows), () -> buildWidgetManagerSubMenu(panel, rows));
         });
 
-        // Row 4: Lokasi Cuaca (hanya nama kota tanpa zona waktu)
+        // Row 4: Dock (Aplikasi Sebaris) - Tepat di bawah Kelola Widget
+        String dockLabel = "Dock : " + COLUMNS + " Aplikasi";
+        addInputRow(rows, null, R.drawable.ic_dock, dockLabel, -1, () -> {
+            SoundEffects.playSelect();
+            navigateToSubMenu(panel, rows, () -> buildCandyBoxRows(panel, rows), () -> buildDockSubMenu(panel, rows));
+        });
+
+        // Row 5: Lokasi Cuaca (hanya nama kota tanpa zona waktu)
         String locName = AppLocationManager.getLocationName(this);
         addInputRow(rows, null, R.drawable.ic_location, "Lokasi : " + locName, -1, () -> {
             SoundEffects.playSelect();
@@ -4532,19 +4543,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             showAsiaCountryDialog();
         });
 
-        // Row 5: Efek Suara
+        // Row 6: Efek Suara
         String currentSoundTheme = SoundEffects.getActiveTheme(this);
         String soundLabel = "Suara : " + SoundEffects.getThemeDisplayName(currentSoundTheme);
         addInputRow(rows, null, R.drawable.ic_sound, soundLabel, -1, () -> {
             SoundEffects.playSelect();
             navigateToSubMenu(panel, rows, () -> buildCandyBoxRows(panel, rows), () -> buildSoundSubMenu(panel, rows));
-        });
-
-        // Row 6: Nightstand / Screensaver
-        addInputRow(rows, null, R.drawable.ic_weather_sun, "Screensaver Jam Meja", -1, () -> {
-            SoundEffects.playSelect();
-            closeMenu(false);
-            showNightstandScreensaver();
         });
     }
 
@@ -4576,7 +4580,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
 
         // Unggah Wallpaper (Di atas Ganti Gambar Lain, tetap menyatu dalam popup)
-        addInputRow(rows, null, R.drawable.ic_input, "Unggah Wallpaper", -1, () -> {
+        addInputRow(rows, null, R.drawable.ic_upload_cloud, "Unggah Wallpaper", -1, () -> {
             SoundEffects.playSelect();
             navigateToSubMenu(panel, rows, () -> buildWallpaperSubMenu(panel, rows), () -> buildUploadWallpaperSubMenu(panel, rows));
         });
@@ -4822,7 +4826,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 FootballScheduleManager.setLeagueFilter(MainActivity.this, code);
                 updateFootballWidget();
                 FootballScheduleManager.syncForce(MainActivity.this, () -> handler.post(MainActivity.this::updateFootballWidget));
-                Toast.makeText(MainActivity.this, "⚽ Kompetisi aktif: " + name, Toast.LENGTH_SHORT).show();
+                showToast("⚽ Kompetisi aktif: " + name);
                 popMenuSubPage(panel, rows);
             });
         }
@@ -4850,6 +4854,62 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 closeMenuAndFocusApp();
             });
         }
+    }
+
+    private void buildDockSubMenu(FrameLayout panel, LinearLayout rows) {
+        addInputRow(rows, null, R.drawable.ic_back, "Kembali", -1, () -> popMenuSubPage(panel, rows));
+
+        int currentCols = COLUMNS;
+        int[][] options = {
+            {5, 5},
+            {6, 6},
+            {7, 7}
+        };
+        String[] labels = {
+            "5 Aplikasi (Standar)",
+            "6 Aplikasi (Sedang)",
+            "7 Aplikasi (Kompak)"
+        };
+
+        for (int i = 0; i < options.length; i++) {
+            final int cols = options[i][0];
+            String label = labels[i];
+            boolean isActive = (cols == currentCols);
+            String title = label + (isActive ? " : AKTIF" : "");
+            addInputRow(rows, null, 0, title, -1, () -> {
+                SoundEffects.playSelect();
+                applyDockColumns(cols);
+                closeMenuAndFocusApp();
+            });
+        }
+    }
+
+    private void applyDockColumns(int cols) {
+        if (cols < 4 || cols > 8) return;
+        COLUMNS = cols;
+        getSharedPreferences("dock_prefs", MODE_PRIVATE).edit().putInt("columns", cols).apply();
+
+        if (grid != null) {
+            RecyclerView.LayoutManager lm = grid.getLayoutManager();
+            if (lm instanceof GridLayoutManager) {
+                ((GridLayoutManager) lm).setSpanCount(cols);
+            }
+        }
+        if (dockTray != null) {
+            dockTray.setDockSize(cols);
+        }
+        if (adapter != null) {
+            adapter.setDockSize(cols);
+        }
+        reloadTiles();
+        parkDock();
+        if (grid != null) {
+            grid.requestLayout();
+            grid.invalidateItemDecorations();
+            grid.invalidate();
+        }
+        alignTopButtons();
+        showToast("Dock diatur ke " + cols + " aplikasi sebaris");
     }
 
     /** Shows an Apple TV-style frosted glass Settings dropdown menu (All Settings, Restart, Turn Off, Now Playing Permission, OTA Update, TV Info). */
@@ -4897,7 +4957,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             SoundEffects.playSelect();
             closeMenuAndFocusApp();
             NowPlayingManager.openNotificationAccessSettings(this);
-            Toast.makeText(this, "Buka Akses aplikasi khusus > Akses notifikasi > Aktifkan Aura TV Home", Toast.LENGTH_LONG).show();
+            showToast("Buka Akses aplikasi khusus > Akses notifikasi > Aktifkan Aura TV Home", true);
         });
 
         // Row 5: Auto-Update (OTA)
@@ -4932,10 +4992,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             closeMenuAndFocusApp();
             boolean success = HomeKeyService.restartTv(MainActivity.this);
             if (!success) {
-                Toast.makeText(MainActivity.this, "⚠️ Aktifkan 'Aura TV Home' di Pengaturan TV > Aksesibilitas agar dapat memulai ulang TV", Toast.LENGTH_LONG).show();
+                showToast("⚠️ Aktifkan 'Aura TV Home' di Pengaturan TV > Aksesibilitas agar dapat memulai ulang TV", true);
                 openAccessibilitySettingsWithFallback();
             } else {
-                Toast.makeText(MainActivity.this, "Memulai ulang TV...", Toast.LENGTH_SHORT).show();
+                showToast("Memulai ulang TV...");
             }
         });
     }
@@ -4947,7 +5007,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             closeMenuAndFocusApp();
             boolean success = HomeKeyService.turnOffTv(MainActivity.this);
             if (!success) {
-                Toast.makeText(MainActivity.this, "⚠️ Aktifkan 'Aura TV Home' di Pengaturan TV > Aksesibilitas agar dapat mematikan TV", Toast.LENGTH_LONG).show();
+                showToast("⚠️ Aktifkan 'Aura TV Home' di Pengaturan TV > Aksesibilitas agar dapat mematikan TV", true);
                 openAccessibilitySettingsWithFallback();
             }
         });
@@ -5683,9 +5743,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 SoundEffects.setTheme(MainActivity.this, chosenKey);
                 String displayName = SoundEffects.getThemeDisplayName(chosenKey);
                 if (SoundEffects.THEME_OFF.equalsIgnoreCase(chosenKey)) {
-                    Toast.makeText(MainActivity.this, "🔇 Efek Suara Dimatikan", Toast.LENGTH_SHORT).show();
+                    showToast("🔇 Efek Suara Dimatikan");
                 } else {
-                    Toast.makeText(MainActivity.this, "🔊 Efek Suara: " + displayName, Toast.LENGTH_SHORT).show();
+                    showToast("🔊 Efek Suara: " + displayName);
                     handler.postDelayed(SoundEffects::playSelect, 120);
                 }
             }));
@@ -5785,7 +5845,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     Azan.schedule(MainActivity.this, zoneCode);
                     SoundEffects.playSelect();
                     updateMasterTag(masterStatusTag, nowOn);
-                    Toast.makeText(MainActivity.this, nowOn ? "✅ Popup Azan TV Diaktifkan" : "⭕ Popup Azan TV Dimatikan", Toast.LENGTH_SHORT).show();
+                    showToast(nowOn ? "✅ Popup Azan TV Diaktifkan" : "⭕ Popup Azan TV Dimatikan");
                 }
         );
         updateMasterTag(masterStatusTag, Azan.isMasterEnabled(this));
@@ -5999,7 +6059,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     () -> {
                         Azan.setSoundChoice(MainActivity.this, chosen);
                         Azan.fetch(MainActivity.this, chosen);
-                        Toast.makeText(MainActivity.this, "Audio Dipilih: " + Azan.soundLabel(chosen), Toast.LENGTH_SHORT).show();
+                        showToast("Audio Dipilih: " + Azan.soundLabel(chosen));
                         if (onUpdated != null) onUpdated.run();
                     }
             ));
@@ -6171,10 +6231,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             dialog.dismiss();
             boolean success = HomeKeyService.restartTv(MainActivity.this);
             if (!success) {
-                Toast.makeText(MainActivity.this, "⚠️ Aktifkan 'Aura TV Home' di Pengaturan TV > Aksesibilitas agar dapat merestart TV", Toast.LENGTH_LONG).show();
+                showToast("⚠️ Aktifkan 'Aura TV Home' di Pengaturan TV > Aksesibilitas agar dapat merestart TV", true);
                 openAccessibilitySettingsWithFallback();
             } else {
-                Toast.makeText(MainActivity.this, "Memulai ulang TV...", Toast.LENGTH_SHORT).show();
+                showToast("Memulai ulang TV...");
             }
         });
         builder.setNegativeButton("Batal", (dialog, which) -> dialog.dismiss());
@@ -6191,7 +6251,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             dialog.dismiss();
             boolean success = HomeKeyService.turnOffTv(MainActivity.this);
             if (!success) {
-                Toast.makeText(MainActivity.this, "⚠️ Aktifkan 'Aura TV Home' di Pengaturan TV > Aksesibilitas agar dapat mematikan TV", Toast.LENGTH_LONG).show();
+                showToast("⚠️ Aktifkan 'Aura TV Home' di Pengaturan TV > Aksesibilitas agar dapat mematikan TV", true);
                 openAccessibilitySettingsWithFallback();
             }
         });
@@ -6221,7 +6281,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 () -> {
                     boolean newState = !isAutoEnabled;
                     AppUpdateManager.setAutoUpdateEnabled(MainActivity.this, newState);
-                    Toast.makeText(MainActivity.this, newState ? "✅ Update Otomatis Diaktifkan (" + schedTime + ")" : "⭕ Update Otomatis Dimatikan", Toast.LENGTH_SHORT).show();
+                    showToast(newState ? "✅ Update Otomatis Diaktifkan (" + schedTime + ")" : "⭕ Update Otomatis Dimatikan");
                 }
         ));
         items.add(new ThemedDialogItem(
@@ -6239,7 +6299,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 () -> {
                     boolean newState = !isAutoEnabled;
                     AppUpdateManager.setAutoUpdateEnabled(MainActivity.this, newState);
-                    Toast.makeText(MainActivity.this, newState ? "✅ Update Otomatis Diaktifkan (" + schedTime + ")" : "⭕ Update Otomatis Dimatikan", Toast.LENGTH_SHORT).show();
+                    showToast(newState ? "✅ Update Otomatis Diaktifkan (" + schedTime + ")" : "⭕ Update Otomatis Dimatikan");
                 }
         ));
 
@@ -6278,7 +6338,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             items.add(new ThemedDialogItem(times[i], null, active, active ? "AKTIF" : null, () -> {
                 AppUpdateManager.setAutoUpdateTime(MainActivity.this, chosen);
                 AppUpdateManager.setAutoUpdateEnabled(MainActivity.this, true);
-                Toast.makeText(MainActivity.this, "Waktu Update Otomatis diatur ke: " + chosen, Toast.LENGTH_SHORT).show();
+                showToast("Waktu Update Otomatis diatur ke: " + chosen);
             }));
         }
 
@@ -7245,7 +7305,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         }
                         if (glider != null) glider.invalidate();
                         if (glass != null) glass.invalidate();
-                        Toast.makeText(MainActivity.this, "Tema diaktifkan: " + opt.title, Toast.LENGTH_SHORT).show();
+                        showToast("Tema diaktifkan: " + opt.title);
                     }
             ));
         }
@@ -7304,7 +7364,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         if ("NEXT".equals(chosenKey)) {
                             if (wallpapers != null && !wallpapers.isEmpty()) {
                                 showNextWallpaper(true);
-                                Toast.makeText(MainActivity.this, "Mengganti ke gambar berikutnya...", Toast.LENGTH_SHORT).show();
+                                showToast("Mengganti ke gambar berikutnya...");
                             }
                         } else if ("MANAGE_CUSTOM".equals(chosenKey)) {
                             showCustomWallpaperManagerDialog();
@@ -7375,8 +7435,24 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);
         } catch (Exception e) {
-            Toast.makeText(this, "Google Assistant tidak dapat dibuka", Toast.LENGTH_SHORT).show();
+            showToast("Google Assistant tidak dapat dibuka");
         }
+    }
+
+    public void showToast(CharSequence text) {
+        TvToast.show(this, text, false);
+    }
+
+    public void showToast(CharSequence text, boolean isLong) {
+        TvToast.show(this, text, isLong);
+    }
+
+    public void showToast(int resId) {
+        TvToast.show(this, resId, false);
+    }
+
+    public void showToast(int resId, boolean isLong) {
+        TvToast.show(this, resId, isLong);
     }
 
     private void styleGlassDialog(AlertDialog dialog) {
@@ -7537,7 +7613,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         } else {
             displayLabel = category;
         }
-        Toast.makeText(this, "Kategori: " + displayLabel, Toast.LENGTH_SHORT).show();
+        showToast("Kategori: " + displayLabel);
 
         if ("Custom".equalsIgnoreCase(category)) {
             placesMode = false;
@@ -7563,7 +7639,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             String toastText = "Live".equalsIgnoreCase(category)
                     ? "Mengunduh Live Wallpaper Video..."
                     : "Mengunduh Wallpaper 4K " + displayLabel + "...";
-            Toast.makeText(this, toastText, Toast.LENGTH_SHORT).show();
+            showToast(toastText);
         }
         if (matching.size() < OnlineWallpapers.countForCategory(category)) {
             new Thread(() -> {
@@ -7645,7 +7721,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
             Backdrop.trim();
             System.gc();
-            handler.post(() -> Toast.makeText(this, "🚀 Memori TV berhasil dioptimalkan! Aplikasi latar belakang dibersihkan.", Toast.LENGTH_SHORT).show());
+            handler.post(() -> showToast("🚀 Memori TV berhasil dioptimalkan! Aplikasi latar belakang dibersihkan."));
         }, "cache-boost").start();
     }
 
@@ -7667,7 +7743,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
 
         if (!started) {
-            Toast.makeText(this, "Gagal: Tidak dapat memulai server unggah lokal.", Toast.LENGTH_LONG).show();
+            showToast("Gagal: Tidak dapat memulai server unggah lokal.", true);
             return;
         }
 
@@ -7892,7 +7968,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void onCustomWallpaperUploaded(File file) {
         runOnUiThread(() -> {
             SoundEffects.playSelect();
-            Toast.makeText(this, "✅ Wallpaper berhasil diunggah dari HP!", Toast.LENGTH_LONG).show();
+            showToast("✅ Wallpaper berhasil diunggah dari HP!", true);
 
             getSharedPreferences("wallpaper_prefs", MODE_PRIVATE).edit()
                     .putString("active_category", "Custom")
@@ -7952,7 +8028,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             wallpapers = Collections.singletonList(file);
             getSharedPreferences("wallpaper", MODE_PRIVATE).edit().putInt("index", -1).apply();
             showNextWallpaper(true);
-            Toast.makeText(this, "📌 Kunci 1 Wallpaper: " + file.getName(), Toast.LENGTH_SHORT).show();
+            showToast("📌 Kunci 1 Wallpaper: " + file.getName());
         });
     }
 
@@ -7974,7 +8050,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 wallpapers = new ArrayList<>(Arrays.asList(files));
                 getSharedPreferences("wallpaper", MODE_PRIVATE).edit().putInt("index", -1).apply();
                 showNextWallpaper(true);
-                Toast.makeText(this, "🔄 Mode Putar Semua Wallpaper Aktif (" + files.length + " foto)", Toast.LENGTH_SHORT).show();
+                showToast("🔄 Mode Putar Semua Wallpaper Aktif (" + files.length + " foto)");
             } else {
                 switchWallpaperCategory("Natural");
             }
@@ -8001,13 +8077,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     wallpapers = new ArrayList<>(Arrays.asList(files));
                     getSharedPreferences("wallpaper", MODE_PRIVATE).edit().putInt("index", -1).apply();
                     showNextWallpaper(true);
-                    Toast.makeText(this, "🗑️ Gambar dihapus. Tersisa " + files.length + " foto.", Toast.LENGTH_SHORT).show();
+                    showToast("🗑️ Gambar dihapus. Tersisa " + files.length + " foto.");
                 } else {
-                    Toast.makeText(this, "Semua gambar telah dihapus. Beralih ke Alam.", Toast.LENGTH_SHORT).show();
+                    showToast("Semua gambar telah dihapus. Beralih ke Alam.");
                     switchWallpaperCategory("Natural");
                 }
             } else {
-                Toast.makeText(this, "🗑️ Gambar dihapus dari penyimpanan.", Toast.LENGTH_SHORT).show();
+                showToast("🗑️ Gambar dihapus dari penyimpanan.");
             }
         });
     }
@@ -8023,7 +8099,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if ("Custom".equalsIgnoreCase(activeCat)) {
                 switchWallpaperCategory("Natural");
             }
-            Toast.makeText(this, "🧹 Semua gambar unggahan telah dibersihkan.", Toast.LENGTH_SHORT).show();
+            showToast("🧹 Semua gambar unggahan telah dibersihkan.");
         });
     }
 
@@ -8141,7 +8217,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         }
                     }
                     onCustomWallpaperSelected(file);
-                    Toast.makeText(this, "🧹 Gambar lain dihapus. Gambar ini dipertahankan.", Toast.LENGTH_SHORT).show();
+                    showToast("🧹 Gambar lain dihapus. Gambar ini dipertahankan.");
                 }
         ));
         items.add(new ThemedDialogItem(
@@ -8414,7 +8490,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         try {
             startService(i);
         } catch (Exception e) {
-            Toast.makeText(this, R.string.not_available, Toast.LENGTH_SHORT).show();
+            showToast(R.string.not_available);
         }
     }
 
@@ -8424,7 +8500,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         try {
             startActivity(i);
         } catch (ActivityNotFoundException e) {
-            Toast.makeText(this, R.string.not_available, Toast.LENGTH_SHORT).show();
+            showToast(R.string.not_available);
         }
     }
 
@@ -8440,7 +8516,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return;
         } catch (ActivityNotFoundException e) {
             if (inputAction.isEmpty()) {
-                Toast.makeText(this, R.string.not_available, Toast.LENGTH_SHORT).show();
+                showToast(R.string.not_available);
                 return;
             }
         }
@@ -8759,7 +8835,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                             fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                             startActivity(fallback);
                         } else {
-                            Toast.makeText(MainActivity.this, getString(R.string.cant_open, item.label), Toast.LENGTH_SHORT).show();
+                            showToast(getString(R.string.cant_open, item.label));
                         }
                     }
                 });
@@ -9170,7 +9246,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     int idx = rowViews.indexOf(row);
                     adapter.addPackageToHome(item.pkg, item.component.flattenToShortString());
                     reloadTiles();
-                    Toast.makeText(MainActivity.this, item.label + " ditambahkan ke beranda", Toast.LENGTH_SHORT).show();
+                    showToast(item.label + " ditambahkan ke beranda");
 
                     rowViews.remove(row);
                     listContainer.removeView(row);
@@ -9344,7 +9420,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             addInputRow(rows, close, R.drawable.ic_livetv, getString(R.string.live_tv), -1, () -> open(liveTvIntent));
         }
         if (rows.getChildCount() == 0) {
-            Toast.makeText(this, R.string.no_inputs, Toast.LENGTH_SHORT).show();
+            showToast(R.string.no_inputs);
             return;
         }
 
@@ -9730,14 +9806,21 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             subValue = title.substring(colonIdx + 1).trim();
         }
         titleView.setText(mainTitle);
+        titleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f);
+        try {
+            titleView.setTypeface(outfit);
+            titleView.setFontVariationSettings("'wght' 600");
+        } catch (Exception ignored) {}
 
         if (subValue != null) {
             status.setVisibility(View.VISIBLE);
             status.setText(subValue);
-            status.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f);
-            status.setTypeface(outfit, Typeface.BOLD);
-            status.setFontVariationSettings("'wght' 700");
-            status.getPaint().setFakeBoldText(true);
+            status.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
+            try {
+                status.setTypeface(outfit);
+                status.setFontVariationSettings("'wght' 500");
+            } catch (Exception ignored) {}
+            status.getPaint().setFakeBoldText(false);
             dot.setVisibility(View.GONE);
         } else if (state == TvInputManager.INPUT_STATE_CONNECTED) {
             status.setVisibility(View.GONE);
@@ -9762,20 +9845,20 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             iconView.setColorFilter(ThemeManager.neu(0xFF2B3036));
             titleView.setTextColor(ThemeManager.neu(0xFF2B3036));
             titleView.setShadowLayer(0, 0, 0, 0);
-            titleView.getPaint().setFakeBoldText(true);
+            titleView.getPaint().setFakeBoldText(false);
             if (status != null) {
                 boolean isDarkNeu = ThemeManager.isNeuDarkCached();
                 status.setTextColor(isDarkNeu ? 0xFFFFFFFF : 0xFF000000);
                 status.setShadowLayer(0, 0, 0, 0);
                 status.setAlpha(1.0f);
-                status.getPaint().setFakeBoldText(true);
+                status.getPaint().setFakeBoldText(false);
             }
         } else {
             if (status != null) {
                 status.setTextColor(0xFFFFFFFF);
-                status.setShadowLayer(3f, 0, 1f, 0xCC000000);
+                status.setShadowLayer(2f, 0, 1f, 0x80000000);
                 status.setAlpha(1.0f);
-                status.getPaint().setFakeBoldText(true);
+                status.getPaint().setFakeBoldText(false);
             }
         }
 
@@ -9810,11 +9893,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             status.setTextColor(textColor);
             status.setShadowLayer(0, 0, 0, 0);
             status.setAlpha(1.0f);
+            status.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
             try {
                 Typeface outfit = getResources().getFont(R.font.outfit);
-                status.setTypeface(outfit, Typeface.BOLD);
-                status.setFontVariationSettings("'wght' 700");
-                status.getPaint().setFakeBoldText(true);
+                status.setTypeface(outfit);
+                status.setFontVariationSettings("'wght' 500");
+                status.getPaint().setFakeBoldText(false);
             } catch (Exception ignored) {}
         }
     }
@@ -9898,7 +9982,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void decideCard(Cards.Card card, boolean show) {
         boolean saved = CardFeature.run(() -> Cards.decide(Cards.storeFile(this), card, show), false);
         if (!saved) {
-            Toast.makeText(this, R.string.card_not_saved, Toast.LENGTH_SHORT).show();
+            showToast(R.string.card_not_saved);
             promptsPaused = true;
         }
         reloadTiles();
@@ -9907,7 +9991,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** Dropdown under the Settings pill (hold OK): every discovered card, its package and key; OK toggles Shown and Hidden. */
     private void showModuleCards() {
         if (cards.isEmpty() || !CardFeature.working()) {
-            Toast.makeText(this, R.string.no_module_cards, Toast.LENGTH_SHORT).show();
+            showToast(R.string.no_module_cards);
             return;
         }
         CardFeature.run(() -> {

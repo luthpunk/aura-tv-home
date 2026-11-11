@@ -171,7 +171,7 @@ public class WeatherActivity extends Activity {
                     isActive ? "AKTIF" : null,
                     () -> {
                         p.edit().putString("atmosphere_mode", key).apply();
-                        Toast.makeText(this, "Suasana diatur ke: " + label, Toast.LENGTH_SHORT).show();
+                        TvToast.show(this, "Suasana diatur ke: " + label);
                         populateUi();
                     }
             ));

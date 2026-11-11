@@ -284,7 +284,7 @@ public final class CitySearchDialog {
                     SoundEffects.playSelect();
                     AppLocationManager.setStation(activity, station);
                     HomeWeather.forget(activity);
-                    Toast.makeText(activity, "Lokasi diubah ke: " + station.name, Toast.LENGTH_SHORT).show();
+                    TvToast.show(activity, "Lokasi diubah ke: " + station.name);
                     dialog.dismiss();
                     if (onCityChanged != null) {
                         onCityChanged.run();

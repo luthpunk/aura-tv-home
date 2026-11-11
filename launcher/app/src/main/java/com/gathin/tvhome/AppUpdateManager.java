@@ -94,7 +94,7 @@ public final class AppUpdateManager {
         if (activity == null || activity.isFinishing()) return;
 
         if (manualCheck) {
-            Toast.makeText(activity, "🔄 Memeriksa pembaruan terbaru...", Toast.LENGTH_SHORT).show();
+            TvToast.show(activity, "🔄 Memeriksa pembaruan terbaru...");
         }
 
         executor.execute(() -> {
@@ -109,7 +109,7 @@ public final class AppUpdateManager {
                 int responseCode = conn.getResponseCode();
                 if (responseCode != HttpURLConnection.HTTP_OK) {
                     if (manualCheck) {
-                        mainHandler.post(() -> Toast.makeText(activity, "❌ Gagal memeriksa server pembaruan (HTTP " + responseCode + ")", Toast.LENGTH_SHORT).show());
+                        mainHandler.post(() -> TvToast.show(activity, "❌ Gagal memeriksa server pembaruan (HTTP " + responseCode + ")"));
                     }
                     return;
                 }
@@ -145,7 +145,7 @@ public final class AppUpdateManager {
                         showUpdateDialog(activity, remoteVersionName, currentVersionName, changelog, apkUrl);
                     } else {
                         if (manualCheck) {
-                            Toast.makeText(activity, "✅ Aura TV Home sudah versi terbaru (v" + currentVersionName + ")!", Toast.LENGTH_LONG).show();
+                            TvToast.show(activity, "✅ Aura TV Home sudah versi terbaru (v" + currentVersionName + ")!", true);
                         }
                     }
                 });
@@ -153,7 +153,7 @@ public final class AppUpdateManager {
             } catch (Exception e) {
                 Log.e(TAG, "Error checking updates: " + e.getMessage());
                 if (manualCheck) {
-                    mainHandler.post(() -> Toast.makeText(activity, "❌ Gagal memeriksa pembaruan. Pastikan Wi-Fi terhubung.", Toast.LENGTH_SHORT).show());
+                    mainHandler.post(() -> TvToast.show(activity, "❌ Gagal memeriksa pembaruan. Pastikan Wi-Fi terhubung."));
                 }
             }
         });
@@ -194,7 +194,7 @@ public final class AppUpdateManager {
                                 Uri.parse("package:" + activity.getPackageName()));
                         activity.startActivity(intent);
                     } catch (Exception e) {
-                        Toast.makeText(activity, "Buka Pengaturan > Keamanan > Install Unknown Apps", Toast.LENGTH_LONG).show();
+                        TvToast.show(activity, "Buka Pengaturan > Keamanan > Install Unknown Apps", true);
                     }
                 });
                 permDialog.setNegativeButton("Batal", (d, w) -> d.dismiss());
@@ -263,7 +263,7 @@ public final class AppUpdateManager {
                     if (progressDialog.isShowing()) {
                         progressDialog.dismiss();
                     }
-                    Toast.makeText(activity, "❌ Gagal mengunduh pembaruan: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    TvToast.show(activity, "❌ Gagal mengunduh pembaruan: " + e.getMessage(), true);
                 });
             } finally {
                 try {
@@ -278,7 +278,7 @@ public final class AppUpdateManager {
 
     private static void installApk(Activity activity, File apkFile) {
         if (!apkFile.exists()) {
-            Toast.makeText(activity, "File APK pembaruan tidak ditemukan.", Toast.LENGTH_SHORT).show();
+            TvToast.show(activity, "File APK pembaruan tidak ditemukan.");
             return;
         }
 
@@ -291,7 +291,7 @@ public final class AppUpdateManager {
             activity.startActivity(intent);
         } catch (Exception e) {
             Log.e(TAG, "Install error: " + e.getMessage());
-            Toast.makeText(activity, "❌ Gagal memulai pemasangan: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            TvToast.show(activity, "❌ Gagal memulai pemasangan: " + e.getMessage(), true);
         }
     }
 }

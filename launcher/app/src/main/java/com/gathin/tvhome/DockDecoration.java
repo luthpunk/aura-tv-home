@@ -22,8 +22,12 @@ import androidx.recyclerview.widget.RecyclerView;
  */
 public class DockDecoration extends RecyclerView.ItemDecoration {
 
-    private final int dockSize;
+    private int dockSize;
     private final float density;
+
+    public void setDockSize(int dockSize) {
+        this.dockSize = dockSize;
+    }
     private final Paint band = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint trayShadowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final GlassRim edge;

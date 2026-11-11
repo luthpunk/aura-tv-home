@@ -54,14 +54,14 @@ public class LocationBroadcastReceiver extends BroadcastReceiver {
             AppLocationManager.setStation(context, matched);
             final String name = matched.getDisplayName();
             new Handler(Looper.getMainLooper()).post(() -> {
-                Toast.makeText(context, "📍 Lokasi TV: " + name, Toast.LENGTH_LONG).show();
+                TvToast.show(context, "📍 Lokasi TV: " + name, true);
             });
         } else if (lat != 0.0 && lon != 0.0) {
             PrayerTimes.clearManualZone(context);
             String customName = query != null ? query : "Lokasi Tersuai";
             AppLocationManager.setCustomLocation(context, "CUSTOM", customName, customName, lat, lon);
             new Handler(Looper.getMainLooper()).post(() -> {
-                Toast.makeText(context, "📍 Lokasi TV: " + customName, Toast.LENGTH_LONG).show();
+                TvToast.show(context, "📍 Lokasi TV: " + customName, true);
             });
         } else {
             Log.w(TAG, "No matching station found for: query=" + query + ", stationId=" + stationId);

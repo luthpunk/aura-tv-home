@@ -14,9 +14,9 @@ public class HomeSettingsActivity extends Activity {
         super.onCreate(state);
         try {
             startActivity(new Intent(Settings.ACTION_HOME_SETTINGS));
-            Toast.makeText(this, R.string.home_settings_help, Toast.LENGTH_LONG).show();
+            TvToast.show(this, R.string.home_settings_help, true);
         } catch (ActivityNotFoundException | SecurityException unavailable) {
-            Toast.makeText(this, R.string.not_available, Toast.LENGTH_LONG).show();
+            TvToast.show(this, R.string.not_available, true);
         } finally {
             finish();
         }
