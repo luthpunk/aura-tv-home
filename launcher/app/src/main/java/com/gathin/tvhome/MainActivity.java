@@ -640,7 +640,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     }
                 }
                 if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-                    View target = (btnSettings != null && btnSettings.getVisibility() == View.VISIBLE) ? btnSettings
+                    View target = (topSettings != null && topSettings.getVisibility() == View.VISIBLE) ? topSettings
                             : (btnWifi != null && btnWifi.getVisibility() == View.VISIBLE) ? btnWifi
                             : findViewById(R.id.btnSettings);
                     if (target != null) {
@@ -686,7 +686,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     }
                 }
                 if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-                    View target = (btnSettings != null && btnSettings.getVisibility() == View.VISIBLE) ? btnSettings
+                    View target = (topSettings != null && topSettings.getVisibility() == View.VISIBLE) ? topSettings
                             : (btnWifi != null && btnWifi.getVisibility() == View.VISIBLE) ? btnWifi
                             : findViewById(R.id.btnSettings);
                     if (target != null) {
@@ -4019,7 +4019,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         final View[] rowFootMinHolder = new View[1];
         final View[] rowFootLrgHolder = new View[1];
 
-        rowFootMinHolder[0] = addInputRow(rows, null, R.drawable.ic_cards, "Bola Marquee : " + (FootballScheduleManager.MODE_MINIMAL.equals(FootballScheduleManager.getWidgetMode(this)) ? "ON" : "OFF"), -1, () -> {
+        rowFootMinHolder[0] = addInputRow(rows, null, R.drawable.ic_football, "Bola Marquee : " + (FootballScheduleManager.MODE_MINIMAL.equals(FootballScheduleManager.getWidgetMode(this)) ? "ON" : "OFF"), -1, () -> {
             SoundEffects.playSelect();
             boolean curMin = FootballScheduleManager.MODE_MINIMAL.equals(FootballScheduleManager.getWidgetMode(this));
             String next = curMin ? FootballScheduleManager.MODE_NONE : FootballScheduleManager.MODE_MINIMAL;
@@ -4029,7 +4029,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             updateRowStatus(rowFootLrgHolder[0], "OFF");
         });
 
-        rowFootLrgHolder[0] = addInputRow(rows, null, R.drawable.ic_cards, "Bola Besar : " + (FootballScheduleManager.MODE_LARGE.equals(FootballScheduleManager.getWidgetMode(this)) ? "ON" : "OFF"), -1, () -> {
+        rowFootLrgHolder[0] = addInputRow(rows, null, R.drawable.ic_football, "Bola Besar : " + (FootballScheduleManager.MODE_LARGE.equals(FootballScheduleManager.getWidgetMode(this)) ? "ON" : "OFF"), -1, () -> {
             SoundEffects.playSelect();
             boolean curLrg = FootballScheduleManager.MODE_LARGE.equals(FootballScheduleManager.getWidgetMode(this));
             String next = curLrg ? FootballScheduleManager.MODE_NONE : FootballScheduleManager.MODE_LARGE;
@@ -4040,7 +4040,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         });
 
         String activeLeague = FootballScheduleManager.getLeagueDisplayName(FootballScheduleManager.getLeagueFilter(this));
-        addInputRow(rows, null, R.drawable.ic_cards, "Pilih Liga : " + activeLeague, -1, () -> {
+        addInputRow(rows, null, R.drawable.ic_football, "Pilih Liga : " + activeLeague, -1, () -> {
             SoundEffects.playSelect();
             showFootballLeagueFilterDialog();
         });
