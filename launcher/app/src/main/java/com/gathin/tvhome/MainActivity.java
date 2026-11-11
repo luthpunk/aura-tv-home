@@ -19,6 +19,7 @@ import android.graphics.BitmapShader;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ColorFilter;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PixelFormat;
@@ -26,12 +27,15 @@ import android.graphics.RadialGradient;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
+import android.graphics.SurfaceTexture;
 import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
+import android.media.MediaPlayer;
+import android.media.MediaMetadataRetriever;
 import android.media.tv.TvContract;
 import android.media.tv.TvInputInfo;
 import android.media.tv.TvInputManager;
@@ -45,6 +49,8 @@ import android.net.Uri;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.view.Surface;
+import android.view.TextureView;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -288,6 +294,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private long wallShownAt;
     private android.widget.ImageView wallView;
     private android.graphics.Bitmap wallBitmap;
+    private TextureView liveWallView;
+    private MediaPlayer livePlayer;
+    private View liveDimOverlay;
+    private File currentLiveFile;
     /** Settings kept for the places refresh, which runs after onCreate. */
     private Config config;
     /** Pictures of places are on (see PlaceWallpapers); they are dimmed behind the tiles. */
@@ -1076,6 +1086,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** Theme-dependent wallpaper filter. Neumorphism Light gets high-key porcelain wash. */
     private void applyWallpaperColorFilter() {
+        updateLiveDimOverlay();
         if (wallView == null) return;
         if (wallpaperFullscreen) {
             wallView.clearColorFilter();
@@ -1153,6 +1164,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** Shows the next picture from the wallpapers folder; the position survives restarts. */
     private void showNextWallpaper(boolean fade) {
+        if (wallpapers == null || wallpapers.isEmpty()) return;
         android.content.SharedPreferences prefs = getSharedPreferences("wallpaper", MODE_PRIVATE);
         int next = (prefs.getInt("index", -1) + 1) % wallpapers.size();
         prefs.edit().putInt("index", next).apply();
@@ -1162,6 +1174,20 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // at full size and shrank it a moment later. After that the name changes with the picture,
         // or it would name the next place over the last one's picture while that one decodes.
         if (placeName == null) setPlace(file);
+
+        if (file != null && file.getName().toLowerCase(java.util.Locale.ROOT).endsWith(".mp4")) {
+            handler.post(() -> {
+                if (isDestroyed()) return;
+                playLiveWallpaper(file);
+                setPlace(file);
+            });
+            return;
+        }
+
+        if (currentLiveFile != null) {
+            stopLiveWallpaper();
+        }
+
         final boolean firstPicture = wallBitmap == null;
         wallDecoder.execute(() -> {
             android.graphics.Bitmap bmp = decodeWallpaper(file);
@@ -1177,6 +1203,164 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 setPlace(file);
             });
         });
+    }
+
+    private void playLiveWallpaper(File file) {
+        if (file == null || !file.exists()) return;
+        currentLiveFile = file;
+
+        if (liveWallView == null) {
+            liveWallView = new TextureView(this);
+            root.addView(liveWallView, 0, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        }
+        liveWallView.setVisibility(View.VISIBLE);
+
+        if (liveDimOverlay == null) {
+            liveDimOverlay = new View(this);
+            int idx = root.indexOfChild(liveWallView);
+            root.addView(liveDimOverlay, Math.max(0, idx + 1), new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        }
+        updateLiveDimOverlay();
+
+        if (wallView != null) {
+            wallView.setVisibility(View.GONE);
+        }
+
+        if (liveWallView.isAvailable()) {
+            startMediaPlayer(liveWallView.getSurfaceTexture(), file);
+        } else {
+            liveWallView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
+                @Override
+                public void onSurfaceTextureAvailable(@NonNull SurfaceTexture surface, int width, int height) {
+                    startMediaPlayer(surface, currentLiveFile);
+                }
+                @Override
+                public void onSurfaceTextureSizeChanged(@NonNull SurfaceTexture surface, int width, int height) {
+                    if (livePlayer != null) {
+                        adjustVideoAspect(liveWallView, livePlayer.getVideoWidth(), livePlayer.getVideoHeight());
+                    }
+                }
+                @Override
+                public boolean onSurfaceTextureDestroyed(@NonNull SurfaceTexture surface) {
+                    releaseLivePlayer();
+                    return true;
+                }
+                @Override
+                public void onSurfaceTextureUpdated(@NonNull SurfaceTexture surface) {}
+            });
+        }
+
+        wallDecoder.execute(() -> {
+            File thumb = new File(file.getParentFile(), file.getName().replace(".mp4", ".jpg"));
+            Bitmap bmp = null;
+            if (thumb.exists()) {
+                bmp = decodeWallpaper(thumb);
+            }
+            if (bmp == null) {
+                try {
+                    MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+                    mmr.setDataSource(file.getAbsolutePath());
+                    bmp = mmr.getFrameAtTime(0);
+                    mmr.release();
+                    if (bmp != null) {
+                        try (java.io.FileOutputStream fos = new java.io.FileOutputStream(thumb)) {
+                            bmp.compress(Bitmap.CompressFormat.JPEG, 80, fos);
+                        } catch (Exception ignored) {}
+                    }
+                } catch (Throwable ignored) {}
+            }
+            if (bmp != null) {
+                android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+                Bitmap blur = Backdrop.blur(bmp, dm.widthPixels, dm.heightPixels, getWallpaperDimColor());
+                handler.post(() -> {
+                    if (isDestroyed()) return;
+                    if (blur != null) Backdrop.present(blur, 400);
+                });
+            }
+        });
+    }
+
+    private void startMediaPlayer(SurfaceTexture surfaceTexture, File file) {
+        if (surfaceTexture == null || file == null || !file.exists()) return;
+        releaseLivePlayer();
+        try {
+            livePlayer = new MediaPlayer();
+            livePlayer.setSurface(new Surface(surfaceTexture));
+            livePlayer.setDataSource(file.getAbsolutePath());
+            livePlayer.setLooping(true);
+            livePlayer.setVolume(0f, 0f); // Wallpaper latar selalu senyap (mute)
+            livePlayer.setOnVideoSizeChangedListener((mp, w, h) -> adjustVideoAspect(liveWallView, w, h));
+            livePlayer.setOnPreparedListener(mp -> {
+                if (!isDestroyed()) {
+                    adjustVideoAspect(liveWallView, mp.getVideoWidth(), mp.getVideoHeight());
+                    mp.start();
+                }
+            });
+            livePlayer.prepareAsync();
+        } catch (Exception e) {
+            Log.e("TvHome.Live", "Gagal memutar video live wallpaper: " + e);
+            releaseLivePlayer();
+        }
+    }
+
+    private void releaseLivePlayer() {
+        if (livePlayer != null) {
+            try {
+                if (livePlayer.isPlaying()) livePlayer.stop();
+                livePlayer.release();
+            } catch (Exception ignored) {}
+            livePlayer = null;
+        }
+    }
+
+    private void stopLiveWallpaper() {
+        releaseLivePlayer();
+        currentLiveFile = null;
+        if (liveWallView != null) {
+            liveWallView.setVisibility(View.GONE);
+        }
+        if (liveDimOverlay != null) {
+            liveDimOverlay.setVisibility(View.GONE);
+        }
+        if (wallView != null) {
+            wallView.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void updateLiveDimOverlay() {
+        if (liveDimOverlay == null) return;
+        if (wallpaperFullscreen || currentLiveFile == null) {
+            liveDimOverlay.setVisibility(View.GONE);
+            return;
+        }
+        liveDimOverlay.setVisibility(View.VISIBLE);
+        if (ThemeManager.isCandybox(this)) {
+            liveDimOverlay.setBackgroundColor(0x66000000);
+        } else if (ThemeManager.isDarkGlow(this)) {
+            liveDimOverlay.setBackgroundColor(0x77171A22);
+        } else if (ThemeManager.isNeumorphism(this)) {
+            liveDimOverlay.setBackgroundColor(0x88EDEAE4);
+        } else {
+            liveDimOverlay.setBackgroundColor(0x44000000);
+        }
+    }
+
+    private void adjustVideoAspect(TextureView tv, int videoWidth, int videoHeight) {
+        if (tv == null || videoWidth <= 0 || videoHeight <= 0) return;
+        int viewWidth = tv.getWidth();
+        int viewHeight = tv.getHeight();
+        if (viewWidth <= 0 || viewHeight <= 0) return;
+        float sx = 1.0f, sy = 1.0f;
+        float viewRatio = (float) viewWidth / viewHeight;
+        float videoRatio = (float) videoWidth / videoHeight;
+        if (viewRatio > videoRatio) {
+            sy = viewRatio / videoRatio;
+        } else {
+            sx = videoRatio / viewRatio;
+        }
+        Matrix matrix = new Matrix();
+        matrix.setScale(sx, sy, viewWidth / 2f, viewHeight / 2f);
+        tv.setTransform(matrix);
     }
 
     /** Switches to the next picture every wallpaper interval while Home is in front. */
@@ -1347,6 +1531,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         handler.removeCallbacks(cacheClean);
         handler.postDelayed(cacheClean, CacheCleaner.IDLE_MS);
         hiddenSinceResume = false;
+        if (livePlayer != null && currentLiveFile != null) {
+            try {
+                livePlayer.start();
+            } catch (Exception ignored) {}
+        }
     }
 
     /** Rebuilds the tiles (and the module cards), then puts focus back where it was. */
@@ -1428,6 +1617,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onPause() {
         super.onPause();
+        if (livePlayer != null && livePlayer.isPlaying()) {
+            try {
+                livePlayer.pause();
+            } catch (Exception ignored) {}
+        }
         unregisterReceiver(packageReceiver);
         handler.removeCallbacks(minuteTick);
         handler.removeCallbacks(wallTick);
@@ -1460,6 +1654,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        releaseLivePlayer();
         if (sInstance != null && sInstance.get() == this) {
             sInstance = null;
         }
@@ -1557,6 +1752,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             ambient.animate().alpha(0f).setDuration(duration).start();
         }
 
+        updateLiveDimOverlay();
         if (wallView != null) {
             if (fullscreen) {
                 wallView.clearColorFilter();
@@ -3220,10 +3416,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             {"Indonesia", "🇮🇩 Pesona Nusantara"},
             {"Anime", "🎌 Anime HD"},
             {"Natural", "🌿 Alam & Pemandangan"},
-            {"Skyscraper", "🏙️ Metropolis Modern"},
-            {"Space", "🌌 Luar Angkasa 4K"},
             {"Ocean", "🌊 Lautan & Pantai"},
-            {"Minimalist", "🔲 Minimalis Gelap"}
+            {"Minimalist", "🔲 Minimalis Gelap"},
+            {"Live", "🎬 Live Wallpaper"}
         };
 
         for (String[] cat : categories) {
@@ -3238,12 +3433,120 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             });
         }
 
-        // Ganti Gambar Lain
+        // Unggah Wallpaper (Di atas Ganti Gambar Lain, tetap menyatu dalam popup)
+        addInputRow(rows, null, R.drawable.ic_input, "Unggah Wallpaper", -1, () -> {
+            SoundEffects.playSelect();
+            navigateToSubMenu(panel, rows, () -> buildWallpaperSubMenu(panel, rows), () -> buildUploadWallpaperSubMenu(panel, rows));
+        });
+
+        // Ganti Gambar Lain (Paling bawah)
         addInputRow(rows, null, R.drawable.ic_restart, "Ganti Gambar Lain", -1, () -> {
             SoundEffects.playSelect();
             showNextWallpaper(true);
             closeMenuAndFocusApp();
         });
+    }
+
+    private void buildUploadWallpaperSubMenu(FrameLayout panel, LinearLayout rows) {
+        addInputRow(rows, null, R.drawable.ic_back, "Kembali", -1, () -> {
+            if (uploadServer != null) {
+                uploadServer.stop();
+                uploadServer = null;
+            }
+            popMenuSubPage(panel, rows);
+        });
+
+        if (uploadServer != null) {
+            uploadServer.stop();
+            uploadServer = null;
+        }
+
+        String localIp = WallpaperUploadServer.getLocalIpAddress();
+        int port = 8080;
+        WallpaperUploadServer.UploadListener listener = createUploadListener();
+        uploadServer = new WallpaperUploadServer(this, port, listener);
+        boolean started = uploadServer.start();
+        if (!started) {
+            port = 8888;
+            uploadServer = new WallpaperUploadServer(this, port, listener);
+            started = uploadServer.start();
+        }
+
+        boolean isNeu = ThemeManager.isNeumorphism(this);
+        Typeface outfit = getResources().getFont(R.font.outfit);
+
+        // Keterangan singkat agar bersih
+        TextView info = new TextView(this);
+        info.setText("Hubungkan HP ke Wi-Fi yang sama,\nlalu scan kode QR untuk unggah foto:");
+        info.setTextColor(isNeu ? ThemeManager.neu(0xFF434B56) : 0xCCFFFFFF);
+        info.setTypeface(outfit, Typeface.BOLD);
+        info.setFontVariationSettings("'wght' 600");
+        info.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
+        info.setGravity(Gravity.CENTER);
+        info.setPadding(Math.round(12 * density), Math.round(10 * density), Math.round(12 * density), Math.round(8 * density));
+        rows.addView(info);
+
+        if (started) {
+            String uploadUrl = "http://" + localIp + ":" + port;
+            Bitmap qrBmp = QrBitmapUtil.createQrBitmap(uploadUrl, Math.round(170 * density));
+
+            FrameLayout qrCard = new FrameLayout(this);
+            GradientDrawable qrCardBg = new GradientDrawable();
+            qrCardBg.setColor(0xFFFFFFFF);
+            qrCardBg.setCornerRadius(14 * density);
+            if (isNeu) {
+                qrCardBg.setStroke(Math.max(1, Math.round(1.0f * density)), ThemeManager.neu(0x22000000));
+            } else if (ThemeManager.isDarkGlow(this)) {
+                qrCardBg.setStroke(Math.max(1, Math.round(1.2f * density)), 0x8800F0FF);
+            }
+            qrCard.setBackground(qrCardBg);
+            int qrPad = Math.round(8 * density);
+            qrCard.setPadding(qrPad, qrPad, qrPad, qrPad);
+            LinearLayout.LayoutParams qrLp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            qrLp.gravity = Gravity.CENTER_HORIZONTAL;
+            qrCard.setLayoutParams(qrLp);
+
+            ImageView qrImg = new ImageView(this);
+            if (qrBmp != null) {
+                qrImg.setImageBitmap(qrBmp);
+            }
+            int qrDim = Math.round(170 * density);
+            FrameLayout.LayoutParams imgLp = new FrameLayout.LayoutParams(qrDim, qrDim);
+            imgLp.gravity = Gravity.CENTER;
+            qrImg.setLayoutParams(imgLp);
+            qrCard.addView(qrImg);
+            rows.addView(qrCard);
+
+            TextView urlView = new TextView(this);
+            urlView.setText(uploadUrl);
+            urlView.setTextColor(isNeu ? ThemeManager.neu(0xFF1F2429) : 0xFFFFFFFF);
+            urlView.setTypeface(outfit, Typeface.BOLD);
+            urlView.setFontVariationSettings("'wght' 700");
+            urlView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
+            urlView.setGravity(Gravity.CENTER);
+            urlView.setPadding(0, Math.round(6 * density), 0, Math.round(8 * density));
+            rows.addView(urlView);
+
+            File customDir = new File(getFilesDir(), "custom_wallpapers");
+            File[] files = customDir.listFiles((dir, name) -> name.endsWith(".jpg") || name.endsWith(".png") || name.endsWith(".jpeg"));
+            if (files != null && files.length > 0) {
+                addInputRow(rows, null, R.drawable.ic_trash, "Hapus Foto (" + files.length + " Foto)", -1, () -> {
+                    SoundEffects.playSelect();
+                    for (File f : files) f.delete();
+                    onCustomWallpaperCleared();
+                    popMenuSubPage(panel, rows);
+                });
+            }
+        } else {
+            TextView err = new TextView(this);
+            err.setText("Gagal memulai server lokal.\nPastikan TV terhubung ke Wi-Fi.");
+            err.setTextColor(0xFFFF453A);
+            err.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
+            err.setGravity(Gravity.CENTER);
+            err.setPadding(0, Math.round(12 * density), 0, Math.round(12 * density));
+            rows.addView(err);
+        }
     }
 
     private void buildThemeSubMenu(FrameLayout panel, LinearLayout rows) {
@@ -5990,7 +6293,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void switchWallpaperCategory(String category) {
         getSharedPreferences("wallpaper_prefs", MODE_PRIVATE).edit().putString("active_category", category).apply();
-        String displayLabel = ("Indonesia".equalsIgnoreCase(category) || "Malaysia".equalsIgnoreCase(category)) ? "Pesona Nusantara" : category;
+        String displayLabel;
+        if ("Indonesia".equalsIgnoreCase(category) || "Malaysia".equalsIgnoreCase(category)) {
+            displayLabel = "Pesona Nusantara";
+        } else if ("Live".equalsIgnoreCase(category)) {
+            displayLabel = "Live Wallpaper";
+        } else {
+            displayLabel = category;
+        }
         Toast.makeText(this, "Kategori: " + displayLabel, Toast.LENGTH_SHORT).show();
 
         if ("Custom".equalsIgnoreCase(category)) {
@@ -6014,7 +6324,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             wallpapers = matching;
             showNextWallpaper(true);
         } else {
-            Toast.makeText(this, "Mengunduh Wallpaper 4K " + displayLabel + "...", Toast.LENGTH_SHORT).show();
+            String toastText = "Live".equalsIgnoreCase(category)
+                    ? "Mengunduh Live Wallpaper Video..."
+                    : "Mengunduh Wallpaper 4K " + displayLabel + "...";
+            Toast.makeText(this, toastText, Toast.LENGTH_SHORT).show();
         }
         if (matching.size() < OnlineWallpapers.countForCategory(category)) {
             new Thread(() -> {
@@ -8031,6 +8344,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** Closes the open menu; with {@code toAnchor}, focus and the selection go back to what it opened from. */
     private void closeMenu(boolean toAnchor) {
+        if (uploadServer != null) {
+            uploadServer.stop();
+            uploadServer = null;
+        }
         View panel = openMenu;
         if (panel == null) return;
         SoundEffects.playNav();

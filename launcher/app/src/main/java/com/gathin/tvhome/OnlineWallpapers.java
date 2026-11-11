@@ -64,7 +64,8 @@ final class OnlineWallpapers {
             new WallpaperItem("https://images.unsplash.com/photo-1513415756790-2ac1db1297d0?auto=format&fit=crop&w=3840&h=2160&q=85", "Indonesia 6", "", "Indonesia"),
             new WallpaperItem("https://images.unsplash.com/photo-1604999333679-b86d54738315?auto=format&fit=crop&w=3840&h=2160&q=85", "Indonesia 7", "", "Indonesia"),
             new WallpaperItem("https://images.unsplash.com/photo-1605752696606-0abcfc95ba5f?auto=format&fit=crop&w=3840&h=2160&q=85", "Indonesia 8", "", "Indonesia"),
-            new WallpaperItem("https://images.unsplash.com/photo-1566559532224-6d65e9fc0f37?auto=format&fit=crop&w=3840&h=2160&q=85", "Indonesia 9", "", "Indonesia"),
+            new WallpaperItem("https://images.unsplash.com/photo-1620549146260-938c38c31c13?auto=format&fit=crop&w=3840&h=2160&q=85", "Indonesia 9", "", "Indonesia"),
+            new WallpaperItem("https://images.unsplash.com/photo-1518070588484-2b53926cba76?auto=format&fit=crop&w=3840&h=2160&q=85", "Indonesia 10", "", "Indonesia"),
 
             // Nature & Landscapes (Alam Semula Jadi - Pexels & Unsplash 4K)
             new WallpaperItem("https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=3840&h=2160&q=80",
@@ -102,29 +103,35 @@ final class OnlineWallpapers {
             new WallpaperItem("https://images.unsplash.com/photo-1494548162494-384bba4ab999?auto=format&fit=crop&w=3840&h=2160&q=80",
                     "Jembatan Gantung Berkabut", "Menara jembatan yang muncul di balik kabut senja yang dramatis", "Architecture"),
 
-            // Space & Astronomy (Luar Angkasa & Kosmos - Unsplash 4K)
-            new WallpaperItem("https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=3840&h=2160&q=80",
-                    "Orbit Bumi Malam Hari", "Pemandangan planet Bumi yang berpendar dari orbit luar angkasa", "Space"),
-            new WallpaperItem("https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=3840&h=2160&q=80",
-                    "Galaksi Bima Sakti", "Langit malam pekat yang dipenuhi gugusan bintang Bima Sakti", "Astronomy"),
-            new WallpaperItem("https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&w=3840&h=2160&q=80",
-                    "Nebula Antariksa", "Awan gas antarbintang dan taburan bintang di kedalaman kosmos", "Cosmos"),
-            new WallpaperItem("https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?auto=format&fit=crop&w=3840&h=2160&q=80",
-                    "Hamparan Bintang Kosmik", "Ruang angkasa gelap yang dihiasi galaksi-galaksi jauh", "Space"),
+            // Live Wallpaper (Video Wallpaper - MoeWalls H.264)
+            new WallpaperItem("https://go.moewalls.com/download.php?video=DfKLZFsXpeRlAM3ImPaTitnT4sIq4iehV7yot%2FAGlHpx6k5E%2BtJ%2FVtnM144%3D",
+                    "Cat Sunlight Garden", "Kucing berjemur di taman dengan semilir cahaya matahari hangat", "Live"),
+            new WallpaperItem("https://go.moewalls.com/download.php?video=58sgEDhBalS7LFiUyq8AToL8urVnkl%2FrHfcaCGFjieAm1MwK4zjV4169Eb3qkyQUJjSVp4OhP9AVcYus",
+                    "Amiya x Doctor Fireworks", "Amiya dan Doctor menikmati indahnya kembang api malam hari", "Live"),
+            new WallpaperItem("https://go.moewalls.com/download.php?video=pMJG%2BbhC1yOxNsNHM4pyagbg37hKlgPwVmCPGDS7nxOHCW7LVXge9oMqzY6ozeh3HGokOqHknO%2BYAa8RC5OjcjgufUslmr%2FIng9u7w%3D%3D",
+                    "Arona Cloud Sky Classroom", "Arona tersenyum di dalam kelas berlatar langit biru dan awan cerah", "Live"),
 
-            // Ocean & Water (Lautan & Pantai - Pexels & Unsplash 4K)
-            new WallpaperItem("https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=3840&h=2160&q=80",
-                    "Kedalaman Samudra Biru", "Berkas cahaya matahari menembus ke dalam lautan biru yang tenang", "Underwater"),
-            new WallpaperItem("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=3840&h=2160&q=80",
-                    "Ombak Laut Malam", "Gulungan ombak biru tua yang menyapu pesisir pantai yang teduh", "Oceans"),
-            new WallpaperItem("https://images.pexels.com/photos/1001682/pexels-photo-1001682.jpeg?auto=compress&cs=tinysrgb&w=3840&h=2160",
-                    "Gulungan Ombak Samudra", "Alunan ombak laut dalam dengan gradasi warna biru toska gelap", "Oceans"),
-            new WallpaperItem("https://images.pexels.com/photos/1032650/pexels-photo-1032650.jpeg?auto=compress&cs=tinysrgb&w=3840&h=2160",
-                    "Perairan Tropis Tenang", "Pemandangan udara gradasi air laut tropis dan terumbu karang", "Oceans"),
-            new WallpaperItem("https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=3840&h=2160&q=80",
-                    "Palung Laut Dalam", "Pendaran cahaya biru lembut di kedalaman samudra", "Underwater"),
-            new WallpaperItem("https://images.pexels.com/photos/1295138/pexels-photo-1295138.jpeg?auto=compress&cs=tinysrgb&w=3840&h=2160",
-                    "Tebing Karang Pesisir", "Tebing batu gelap yang berpadu dengan deburan ombak laut", "Coast"),
+            // Ocean & Water (Lautan & Pantai - Unsplash 4K Pilihan Pengguna)
+            new WallpaperItem("https://images.unsplash.com/photo-1505699261378-c372af38134c?auto=format&fit=crop&w=3840&h=2160&q=85",
+                    "Jembatan Xinghai Saat Senja", "Pemandangan jembatan laut Xinghai di Dalian saat senja", "Ocean"),
+            new WallpaperItem("https://images.unsplash.com/photo-1475598322381-f1b499717dda?auto=format&fit=crop&w=3840&h=2160&q=85",
+                    "Lava Mengalir ke Lautan", "Aliran lava cair gunung berapi yang mengalir ke samudra Kalapana", "Ocean"),
+            new WallpaperItem("https://images.unsplash.com/photo-1545605114-7b82dad7b990?auto=format&fit=crop&w=3840&h=2160&q=85",
+                    "Pemandangan Bawah Air", "Cahaya matahari menembus keindahan bawah laut samudra", "Underwater"),
+            new WallpaperItem("https://images.unsplash.com/photo-1505683040473-85e66a1ca54d?auto=format&fit=crop&w=3840&h=2160&q=85",
+                    "Tebing Batu & Ombak Biru", "Pemandangan udara deburan ombak laut biru di dekat bebatuan karang", "Coast"),
+            new WallpaperItem("https://images.unsplash.com/photo-1708649290066-5f617003b93f?auto=format&fit=crop&w=3840&h=2160&q=85",
+                    "Terumbu Karang Penuh Warna", "Pemandangan bawah laut terumbu karang tropis beraneka warna", "Underwater"),
+            new WallpaperItem("https://images.unsplash.com/photo-1496594501676-1fd9b70a89b7?auto=format&fit=crop&w=3840&h=2160&q=85",
+                    "Gunung Batu di Pesisir Laut", "Pegunungan batu megah di tepi perairan laut yang tenang", "Coast"),
+            new WallpaperItem("https://images.unsplash.com/photo-1429734956993-8a9b0555e122?auto=format&fit=crop&w=3840&h=2160&q=85",
+                    "Matahari Terbit di Samudra", "Kilau keemasan fajar matahari terbit di atas permukaan laut", "Ocean"),
+            new WallpaperItem("https://images.unsplash.com/photo-1563738068154-8d2e9f19ed62?auto=format&fit=crop&w=3840&h=2160&q=85",
+                    "Senja di Pesisir Pantai", "Pemandangan eksotis pantai berpasir saat matahari terbenam", "Coast"),
+            new WallpaperItem("https://images.unsplash.com/photo-1682687982167-d7fb3ed8541d?auto=format&fit=crop&w=3840&h=2160&q=85",
+                    "Gua Bawah Laut", "Penyelam scuba menjelajahi gua karang misterius di bawah samudra", "Underwater"),
+            new WallpaperItem("https://images.unsplash.com/photo-1525467187333-8e3f68b8e742?auto=format&fit=crop&w=3840&h=2160&q=85",
+                    "Ubur-Ubur Neon Menyala", "Keindahan ubur-ubur bercahaya neon di kedalaman laut gelap", "Underwater"),
 
             // Minimalist & Dark Abstract OLED (Koleksi Pilihan Pengguna 4K)
             new WallpaperItem("https://images.unsplash.com/photo-1439792675105-701e6a4ab6f0?auto=format&fit=crop&w=3840&h=2160&q=85",
@@ -157,7 +164,8 @@ final class OnlineWallpapers {
             new WallpaperItem("https://w.wallhaven.cc/full/xe/wallhaven-xe127v.png", "Anime 6", "", "Anime"),
             new WallpaperItem("https://w.wallhaven.cc/full/po/wallhaven-po3o93.jpg", "Anime 7", "", "Anime"),
             new WallpaperItem("https://w.wallhaven.cc/full/x6/wallhaven-x6xqj3.png", "Anime 8", "", "Anime"),
-            new WallpaperItem("https://w.wallhaven.cc/full/we/wallhaven-we9pgq.png", "Anime 9", "", "Anime")
+            new WallpaperItem("https://w.wallhaven.cc/full/we/wallhaven-we9pgq.png", "Anime 9", "", "Anime"),
+            new WallpaperItem("https://w.wallhaven.cc/full/xe/wallhaven-xez13v.jpg", "Anime 10", "", "Anime")
     };
 
     private OnlineWallpapers() {
@@ -177,7 +185,7 @@ final class OnlineWallpapers {
         for (File f : files) {
             if (f.isFile() && f.length() > 0) {
                 String name = f.getName().toLowerCase(Locale.ROOT);
-                if (name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png")) {
+                if (name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") || name.endsWith(".mp4")) {
                     out.add(f);
                 }
             }
@@ -197,6 +205,9 @@ final class OnlineWallpapers {
         }
         if (sc.equals("indonesia") || sc.equals("indonesia_all") || sc.equals("malaysia") || sc.equals("malaysia_all")) {
             return ic.contains("indonesia");
+        }
+        if (sc.contains("live") || sc.contains("video")) {
+            return ic.contains("live") || ic.contains("video");
         }
         if (sc.contains("sky") || sc.contains("arch") || sc.contains("city")) {
             return ic.contains("sky") || ic.contains("arch") || ic.contains("city") || ic.contains("urban");
@@ -238,10 +249,12 @@ final class OnlineWallpapers {
         for (WallpaperItem item : CURATED_CATALOG) {
             validHashes.add(hashFilename(item.url));
         }
-        File[] files = d.listFiles((dir, name) -> name.endsWith(".jpg"));
+        File[] files = d.listFiles((dir, name) -> name.endsWith(".jpg") || name.endsWith(".mp4"));
         if (files == null) return;
         for (File f : files) {
-            String base = f.getName().replace(".jpg", "");
+            String name = f.getName();
+            int dot = name.lastIndexOf('.');
+            String base = dot > 0 ? name.substring(0, dot) : name;
             if (!validHashes.contains(base)) {
                 f.delete();
                 File txt = new File(d, base + ".txt");
@@ -291,14 +304,17 @@ final class OnlineWallpapers {
 
         for (WallpaperItem item : candidates) {
             if (count >= targetNew) break;
-            String fileName = hashFilename(item.url) + ".jpg";
+            boolean isLive = item.category != null && item.category.equalsIgnoreCase("Live");
+            String ext = isLive ? ".mp4" : ".jpg";
+            String baseName = hashFilename(item.url);
+            String fileName = baseName + ext;
             File targetFile = new File(d, fileName);
             String itemTitle = (item.title != null && !item.title.trim().isEmpty()) ? item.title.trim() : "Wallpaper";
             String itemCat = (item.category != null && !item.category.trim().isEmpty()) ? item.category.trim() : category;
 
             if (targetFile.exists() && targetFile.length() > 50_000) {
                 // Ensure valid companion txt exists with category info
-                File finalTxt = new File(d, fileName.replace(".jpg", ".txt"));
+                File finalTxt = new File(d, baseName + ".txt");
                 if (!finalTxt.exists() || finalTxt.length() == 0 || describe(targetFile) == null) {
                     String meta = itemTitle + "\n"
                             + (item.description != null ? item.description : "") + "\n"
@@ -312,7 +328,7 @@ final class OnlineWallpapers {
             }
 
             File tempFile = new File(d, fileName + ".tmp");
-            File tempTxt = new File(d, fileName.replace(".jpg", ".txt") + ".tmp");
+            File tempTxt = new File(d, baseName + ".txt.tmp");
             try {
                 if (downloadUrlToFile(item.url, tempFile)) {
                     String meta = itemTitle + "\n"
@@ -321,7 +337,7 @@ final class OnlineWallpapers {
                     try (OutputStream os = new FileOutputStream(tempTxt)) {
                         os.write(meta.getBytes(StandardCharsets.UTF_8));
                     }
-                    File finalTxt = new File(d, fileName.replace(".jpg", ".txt"));
+                    File finalTxt = new File(d, baseName + ".txt");
                     if (tempFile.renameTo(targetFile)) {
                         tempTxt.renameTo(finalTxt);
                         anyDownloaded = true;
@@ -468,8 +484,11 @@ final class OnlineWallpapers {
             URL url = new URL(strUrl);
             conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(10_000);
-            conn.setReadTimeout(15_000);
+            conn.setReadTimeout(30_000);
             conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10; TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 GlassTV/2.4 (https://github.com/aqmangge/glass-tv-home)");
+            if (strUrl.contains("moewalls.com")) {
+                conn.setRequestProperty("Referer", "https://moewalls.com/");
+            }
             conn.setInstanceFollowRedirects(true);
             conn.connect();
 
