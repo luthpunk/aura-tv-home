@@ -225,6 +225,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private ImageView minFootIcon;
     private TextView footballMarqueeText;
     private Surface liveSurface;
+    private SurfaceTexture currentSurfaceTexture;
     private View nowPlayingCard;
     private ImageView cardAlbumArt;
     private View cardTrackInfo;
@@ -1356,6 +1357,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 @Override
                 public boolean onSurfaceTextureDestroyed(@NonNull SurfaceTexture surface) {
                     releaseLivePlayer();
+                    if (liveSurface != null) {
+                        try {
+                            liveSurface.release();
+                        } catch (Exception ignored) {}
+                        liveSurface = null;
+                    }
+                    currentSurfaceTexture = null;
                     return true;
                 }
                 @Override
@@ -1414,7 +1422,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (surfaceTexture == null || file == null || !file.exists()) return;
         releaseLivePlayer();
         try {
-            liveSurface = new Surface(surfaceTexture);
+            if (currentSurfaceTexture != surfaceTexture || liveSurface == null || !liveSurface.isValid()) {
+                if (liveSurface != null) {
+                    try { liveSurface.release(); } catch (Exception ignored) {}
+                }
+                currentSurfaceTexture = surfaceTexture;
+                liveSurface = new Surface(surfaceTexture);
+            }
             livePlayer = new MediaPlayer();
             livePlayer.setSurface(liveSurface);
             livePlayer.setDataSource(file.getAbsolutePath());
@@ -1453,16 +1467,19 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             } catch (Exception ignored) {}
             livePlayer = null;
         }
+        // Note: liveSurface is kept alive as long as currentSurfaceTexture is valid.
+        // Surface.release() should only happen when SurfaceTexture is destroyed.
+    }
+
+    private void stopLiveWallpaper() {
+        releaseLivePlayer();
         if (liveSurface != null) {
             try {
                 liveSurface.release();
             } catch (Exception ignored) {}
             liveSurface = null;
         }
-    }
-
-    private void stopLiveWallpaper() {
-        releaseLivePlayer();
+        currentSurfaceTexture = null;
         currentLiveFile = null;
         if (liveWallView != null) {
             liveWallView.setVisibility(View.GONE);
@@ -1483,17 +1500,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         liveDimOverlay.setVisibility(View.VISIBLE);
         if (ThemeManager.isDarkGlow(this)) {
-            // Dark Glow: 85% deep OLED black-blue tint to preserve neon atmosphere
-            liveDimOverlay.setBackgroundColor(0xD906080C);
+            // Dark Glow: deep OLED black-blue tint to preserve neon atmosphere
+            liveDimOverlay.setBackgroundColor(0xCC06080C);
         } else if (ThemeManager.isNeumorphismDark(this)) {
-            // Neumorphism Dark: 80% charcoal-navy tint
-            liveDimOverlay.setBackgroundColor(0xCC12151D);
+            // Neumorphism Dark: 70% charcoal-navy tint
+            liveDimOverlay.setBackgroundColor(0xB312151D);
         } else if (ThemeManager.isNeumorphism(this)) {
-            // Neumorphism Light: 85% warm porcelain wash
-            liveDimOverlay.setBackgroundColor(0xD9EDEAE4);
+            // Neumorphism Light: soft translucent porcelain wash
+            liveDimOverlay.setBackgroundColor(0x55EDEAE4);
         } else {
             // Frosted Glass: comfortable 35% dark tint
-            liveDimOverlay.setBackgroundColor(0x55000000);
+            liveDimOverlay.setBackgroundColor(0x4D000000);
         }
     }
 
@@ -1555,15 +1572,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             handler.post(() -> {
                 onlineRefreshRunning = false;
                 if (!changed || isDestroyed()) return;
-                List<File> fresh = OnlineWallpapers.list(this);
-                if (fresh.isEmpty()) return;
-                List<File> combined = new ArrayList<>(config.wallpapers);
-                for (File f : fresh) {
-                    if (!combined.contains(f)) combined.add(f);
+                String activeCat = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE).getString("active_category", "Natural");
+                if ("Custom".equalsIgnoreCase(activeCat)) return;
+                List<File> fresh = OnlineWallpapers.listByCategory(MainActivity.this, activeCat);
+                if (!fresh.isEmpty()) {
+                    wallpapers = fresh;
+                    if (wallBitmap == null && currentLiveFile == null) showNextWallpaper(false);
                 }
-                wallpapers = combined;
-                if (wallBitmap == null) showNextWallpaper(false);
-                if (!isFinishing() && hasWindowFocus()) startWallpaperRotation();
             });
         }, "online-wallpapers").start();
     }
@@ -2636,6 +2651,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         : null;
                 if (lb != null && gridWrap != null && activeWea != null
                         && activeWea.getHeight() > 0 && grid.getPaddingTop() > 0) {
+                    // Synchronize football widget height to match weather widget height exactly
+                    if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE) {
+                        int targetH = activeWea.getHeight();
+                        if (targetH > 0 && footballCardView.getLayoutParams().height != targetH) {
+                            footballCardView.getLayoutParams().height = targetH;
+                            footballCardView.requestLayout();
+                        }
+                    }
+
                     // Use pure layout coordinates inside mainContent (getTop/getBottom ignore translationY
                     // and gridWrap.getTop() + grid.getPaddingTop() is the stationary parked dock top).
                     float clockBottomInMain = lb.getBottom();
@@ -2658,6 +2682,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         if (Math.abs(footballCardView.getTranslationY() - fDy) >= 1f) {
                             footballCardView.setTranslationY(fDy);
                         }
+                    }
+                } else if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE) {
+                    int defaultH = Math.round(144f * density);
+                    if (footballCardView.getLayoutParams().height != defaultH) {
+                        footballCardView.getLayoutParams().height = defaultH;
+                        footballCardView.requestLayout();
                     }
                 }
                 if (weatherPillMinimalView != null && weatherPillMinimalView.getTranslationY() != 0f) {
@@ -3640,6 +3670,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
 
         if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE) {
+            boolean isNeu = ThemeManager.isNeumorphism(this);
+            boolean isDark = ThemeManager.isDarkGlow(this);
+            int timeColor = isNeu ? ThemeManager.neu(0xFF1E5BB5) : (isDark ? 0xFF00F0FF : 0xFF38BDF8);
+            int liveColor = isNeu ? 0xFFD32F2F : 0xFFFF3B30;
+
             if (footballLeagueTitle != null) {
                 footballLeagueTitle.setText("⚽ " + leagueName.toUpperCase(Locale.ROOT));
             }
@@ -3650,10 +3685,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 }
                 if (hasLive) {
                     footballStatusBadge.setText("🔴 LIVE");
-                    footballStatusBadge.setTextColor(0xFFFF3B30);
+                    footballStatusBadge.setTextColor(liveColor);
                 } else {
                     footballStatusBadge.setText("JADWAL");
-                    footballStatusBadge.setTextColor(0xFFFFA726);
+                    footballStatusBadge.setTextColor(isNeu ? ThemeManager.neu(0xFFE65100) : 0xFFFFA726);
                 }
             }
 
@@ -3665,7 +3700,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 if (footballRow1Away != null) footballRow1Away.setText(m1.awayTeam);
                 if (footballRow1Time != null) {
                     footballRow1Time.setText(m1.getScoreOrVs());
-                    footballRow1Time.setTextColor(m1.isLive ? 0xFFFF3B30 : 0xFF00F0FF);
+                    footballRow1Time.setTextColor(m1.isLive ? liveColor : timeColor);
                 }
             } else {
                 if (footballRow1Home != null) footballRow1Home.setText("Tidak ada jadwal");
@@ -3682,7 +3717,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 if (footballRow2Away != null) footballRow2Away.setText(m2.awayTeam);
                 if (footballRow2Time != null) {
                     footballRow2Time.setText(m2.getScoreOrVs());
-                    footballRow2Time.setTextColor(m2.isLive ? 0xFFFF3B30 : 0xFF00F0FF);
+                    footballRow2Time.setTextColor(m2.isLive ? liveColor : timeColor);
                 }
             } else {
                 if (footballDiv1 != null) footballDiv1.setVisibility(View.GONE);
@@ -3698,7 +3733,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 if (footballRow3Away != null) footballRow3Away.setText(m3.awayTeam);
                 if (footballRow3Time != null) {
                     footballRow3Time.setText(m3.getScoreOrVs());
-                    footballRow3Time.setTextColor(m3.isLive ? 0xFFFF3B30 : 0xFF00F0FF);
+                    footballRow3Time.setTextColor(m3.isLive ? liveColor : timeColor);
                 }
             } else {
                 if (footballDiv2 != null) footballDiv2.setVisibility(View.GONE);
@@ -3734,7 +3769,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 null,
                 () -> {
                     SoundEffects.playSelect();
-                    FootballScheduleManager.syncIfDue(this, () -> handler.post(() -> {
+                    FootballScheduleManager.syncForce(this, () -> handler.post(() -> {
                         updateFootballWidget();
                         Toast.makeText(this, "⚽ Jadwal bola berhasil diperbarui!", Toast.LENGTH_SHORT).show();
                     }));
@@ -3772,12 +3807,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         List<ThemedDialogItem> items = new ArrayList<>();
 
         String[][] leagues = {
-                {FootballScheduleManager.LEAGUE_ALL, "🌟 Semua Liga Populer (Otomatis)"},
-                {FootballScheduleManager.LEAGUE_IDN, "🇮🇩 Liga 1 Indonesia"},
+                {FootballScheduleManager.LEAGUE_ALL, "🌟 Semua Jadwal Populer (Otomatis)"},
+                {FootballScheduleManager.LEAGUE_UEFA, "🇪🇺 UEFA Nations League"},
                 {FootballScheduleManager.LEAGUE_EPL, "🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League (Inggris)"},
                 {FootballScheduleManager.LEAGUE_UCL, "🏆 UEFA Champions League"},
                 {FootballScheduleManager.LEAGUE_LALIGA, "🇪🇸 La Liga (Spanyol)"},
-                {FootballScheduleManager.LEAGUE_SERIEA, "🇮🇹 Serie A (Italia)"}
+                {FootballScheduleManager.LEAGUE_SERIEA, "🇮🇹 Serie A (Italia)"},
+                {FootballScheduleManager.LEAGUE_IDN, "🇮🇩 Liga 1 Indonesia"}
         };
 
         for (String[] l : leagues) {

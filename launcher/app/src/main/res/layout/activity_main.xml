@@ -1092,170 +1092,183 @@
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:layout_marginTop="5dp"
-                    android:layout_marginBottom="6dp"
+                    android:layout_marginBottom="4dp"
                     android:background="#22FFFFFF" />
 
-                <!-- Match 1 -->
+                <!-- Rows Container (Equal Distribution across 3 matches) -->
                 <LinearLayout
-                    android:id="@+id/footballRow1"
+                    android:id="@+id/footballRowsContainer"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center">
 
-                    <TextView
-                        android:id="@+id/footballRow1Home"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
+                    <!-- Match 1 -->
+                    <LinearLayout
+                        android:id="@+id/footballRow1"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
                         android:layout_weight="1"
-                        android:gravity="end"
-                        android:text="Arsenal"
-                        android:textColor="#FFFFFFFF"
-                        android:textSize="13sp"
-                        android:fontFamily="@font/outfit"
-                        android:fontVariationSettings="'wght' 600"
-                        android:singleLine="true" />
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
-                    <TextView
-                        android:id="@+id/footballRow1Time"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:layout_marginEnd="8dp"
-                        android:gravity="center"
-                        android:text="21:00"
-                        android:textColor="#00F0FF"
-                        android:textSize="12.5sp"
-                        android:fontFamily="@font/outfit"
-                        android:fontVariationSettings="'wght' 700"
-                        android:textStyle="bold" />
+                        <TextView
+                            android:id="@+id/footballRow1Home"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="end"
+                            android:text="Arsenal"
+                            android:textColor="#FFFFFFFF"
+                            android:textSize="13sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 600"
+                            android:singleLine="true" />
 
-                    <TextView
-                        android:id="@+id/footballRow1Away"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
+                        <TextView
+                            android:id="@+id/footballRow1Time"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:layout_marginEnd="8dp"
+                            android:gravity="center"
+                            android:text="21:00"
+                            android:textColor="#00F0FF"
+                            android:textSize="12sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 700"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/footballRow1Away"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="start"
+                            android:text="Chelsea"
+                            android:textColor="#FFFFFFFF"
+                            android:textSize="13sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 600"
+                            android:singleLine="true" />
+                    </LinearLayout>
+
+                    <View
+                        android:id="@+id/footballDiv1"
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginTop="2dp"
+                        android:layout_marginBottom="2dp"
+                        android:background="#1AFFFFFF" />
+
+                    <!-- Match 2 -->
+                    <LinearLayout
+                        android:id="@+id/footballRow2"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
                         android:layout_weight="1"
-                        android:gravity="start"
-                        android:text="Chelsea"
-                        android:textColor="#FFFFFFFF"
-                        android:textSize="13sp"
-                        android:fontFamily="@font/outfit"
-                        android:fontVariationSettings="'wght' 600"
-                        android:singleLine="true" />
-                </LinearLayout>
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
-                <View
-                    android:id="@+id/footballDiv1"
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginTop="5dp"
-                    android:layout_marginBottom="5dp"
-                    android:background="#1AFFFFFF" />
+                        <TextView
+                            android:id="@+id/footballRow2Home"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="end"
+                            android:text="Liverpool"
+                            android:textColor="#E6FFFFFF"
+                            android:textSize="13sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 600"
+                            android:singleLine="true" />
 
-                <!-- Match 2 -->
-                <LinearLayout
-                    android:id="@+id/footballRow2"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
+                        <TextView
+                            android:id="@+id/footballRow2Time"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:layout_marginEnd="8dp"
+                            android:gravity="center"
+                            android:text="23:30"
+                            android:textColor="#00F0FF"
+                            android:textSize="12sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 700"
+                            android:textStyle="bold" />
 
-                    <TextView
-                        android:id="@+id/footballRow2Home"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
+                        <TextView
+                            android:id="@+id/footballRow2Away"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="start"
+                            android:text="Man City"
+                            android:textColor="#E6FFFFFF"
+                            android:textSize="13sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 600"
+                            android:singleLine="true" />
+                    </LinearLayout>
+
+                    <View
+                        android:id="@+id/footballDiv2"
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginTop="2dp"
+                        android:layout_marginBottom="2dp"
+                        android:background="#1AFFFFFF" />
+
+                    <!-- Match 3 -->
+                    <LinearLayout
+                        android:id="@+id/footballRow3"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
                         android:layout_weight="1"
-                        android:gravity="end"
-                        android:text="Liverpool"
-                        android:textColor="#E6FFFFFF"
-                        android:textSize="13sp"
-                        android:fontFamily="@font/outfit"
-                        android:fontVariationSettings="'wght' 600"
-                        android:singleLine="true" />
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
-                    <TextView
-                        android:id="@+id/footballRow2Time"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:layout_marginEnd="8dp"
-                        android:gravity="center"
-                        android:text="23:30"
-                        android:textColor="#00F0FF"
-                        android:textSize="12.5sp"
-                        android:fontFamily="@font/outfit"
-                        android:fontVariationSettings="'wght' 700"
-                        android:textStyle="bold" />
+                        <TextView
+                            android:id="@+id/footballRow3Home"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="end"
+                            android:text="Man United"
+                            android:textColor="#E6FFFFFF"
+                            android:textSize="13sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 600"
+                            android:singleLine="true" />
 
-                    <TextView
-                        android:id="@+id/footballRow2Away"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:gravity="start"
-                        android:text="Man City"
-                        android:textColor="#E6FFFFFF"
-                        android:textSize="13sp"
-                        android:fontFamily="@font/outfit"
-                        android:fontVariationSettings="'wght' 600"
-                        android:singleLine="true" />
-                </LinearLayout>
+                        <TextView
+                            android:id="@+id/footballRow3Time"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:layout_marginEnd="8dp"
+                            android:gravity="center"
+                            android:text="Minggu"
+                            android:textColor="#00F0FF"
+                            android:textSize="12sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 700"
+                            android:textStyle="bold" />
 
-                <View
-                    android:id="@+id/footballDiv2"
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginTop="5dp"
-                    android:layout_marginBottom="5dp"
-                    android:background="#1AFFFFFF" />
-
-                <!-- Match 3 -->
-                <LinearLayout
-                    android:id="@+id/footballRow3"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        android:id="@+id/footballRow3Home"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:gravity="end"
-                        android:text="Man United"
-                        android:textColor="#E6FFFFFF"
-                        android:textSize="13sp"
-                        android:fontFamily="@font/outfit"
-                        android:fontVariationSettings="'wght' 600"
-                        android:singleLine="true" />
-
-                    <TextView
-                        android:id="@+id/footballRow3Time"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:layout_marginEnd="8dp"
-                        android:gravity="center"
-                        android:text="Minggu"
-                        android:textColor="#00F0FF"
-                        android:textSize="12.5sp"
-                        android:fontFamily="@font/outfit"
-                        android:fontVariationSettings="'wght' 700"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/footballRow3Away"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:gravity="start"
-                        android:text="Tottenham"
-                        android:textColor="#E6FFFFFF"
-                        android:textSize="13sp"
-                        android:fontFamily="@font/outfit"
-                        android:fontVariationSettings="'wght' 600"
-                        android:singleLine="true" />
+                        <TextView
+                            android:id="@+id/footballRow3Away"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="start"
+                            android:text="Tottenham"
+                            android:textColor="#E6FFFFFF"
+                            android:textSize="13sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 600"
+                            android:singleLine="true" />
+                    </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
 
