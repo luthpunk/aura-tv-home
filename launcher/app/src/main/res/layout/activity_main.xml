@@ -1080,7 +1080,7 @@
                         android:paddingEnd="6dp"
                         android:paddingTop="2dp"
                         android:paddingBottom="2dp"
-                        android:background="@drawable/weather_sub_pill_bg" />
+                        android:background="@drawable/pill_bg" />
                 </LinearLayout>
 
                 <!-- Main Match Display: Home vs Away + Score/Time -->
