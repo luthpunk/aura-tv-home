@@ -4047,9 +4047,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             List<FootballScheduleManager.MatchItem> upcomingList = new ArrayList<>();
             List<FootballScheduleManager.MatchItem> finishedList = new ArrayList<>();
 
-            Calendar calNow = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta"));
-            int curDay = calNow.get(Calendar.DAY_OF_YEAR);
-            int curYear = calNow.get(Calendar.YEAR);
+            java.util.Calendar calNow = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("Asia/Jakarta"));
+            int curDay = calNow.get(java.util.Calendar.DAY_OF_YEAR);
+            int curYear = calNow.get(java.util.Calendar.YEAR);
 
             for (FootballScheduleManager.MatchItem m : matches) {
                 if (m.isLive) {
@@ -4058,9 +4058,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     finishedList.add(m);
                 } else {
                     if (m.timestamp > 0) {
-                        Calendar calM = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta"));
+                        java.util.Calendar calM = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("Asia/Jakarta"));
                         calM.setTimeInMillis(m.timestamp);
-                        if (calM.get(Calendar.YEAR) == curYear && calM.get(Calendar.DAY_OF_YEAR) == curDay) {
+                        if (calM.get(java.util.Calendar.YEAR) == curYear && calM.get(java.util.Calendar.DAY_OF_YEAR) == curDay) {
                             todayList.add(m);
                         } else {
                             upcomingList.add(m);
