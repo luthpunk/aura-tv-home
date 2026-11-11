@@ -581,7 +581,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 }
                 boolean isNeu = ThemeManager.isNeumorphism(MainActivity.this);
                 float scale = (hasFocus && !isNeu) ? 1.025f : 1.0f;
-                v.animate().scaleX(scale).scaleY(scale).setDuration(150).start();
+                float targetAlpha = (lastFocused < COLUMNS) ? 1.0f : 0.0f;
+                v.animate().scaleX(scale).scaleY(scale).alpha(targetAlpha).setDuration(150).start();
             });
         }
 
@@ -635,7 +636,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 }
                 boolean isNeu = ThemeManager.isNeumorphism(MainActivity.this);
                 float scale = (hasFocus && !isNeu) ? 1.03f : 1.0f;
-                v.animate().scaleX(scale).scaleY(scale).setDuration(150).start();
+                float targetAlpha = (lastFocused < COLUMNS) ? 1.0f : 0.0f;
+                v.animate().scaleX(scale).scaleY(scale).alpha(targetAlpha).setDuration(150).start();
             });
         }
 
@@ -667,10 +669,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
             footballCardView.setOnClickListener(v -> {
                 SoundEffects.playSelect();
-                String next = FootballScheduleManager.cycleNextLeague(MainActivity.this);
-                Toast.makeText(MainActivity.this, "⚽ Liga: " + FootballScheduleManager.getLeagueDisplayName(next), Toast.LENGTH_SHORT).show();
-                FootballScheduleManager.syncForce(MainActivity.this, MainActivity.this::updateFootballWidget);
-                updateFootballWidget();
+                showFootballFixturesDialog();
             });
             footballCardView.setOnLongClickListener(v -> {
                 SoundEffects.playSelect();
@@ -712,7 +711,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 }
                 boolean isNeu = ThemeManager.isNeumorphism(MainActivity.this);
                 float scale = (hasFocus && !isNeu) ? 1.025f : 1.0f;
-                v.animate().scaleX(scale).scaleY(scale).setDuration(150).start();
+                float targetAlpha = (lastFocused < COLUMNS) ? 1.0f : 0.0f;
+                v.animate().scaleX(scale).scaleY(scale).alpha(targetAlpha).setDuration(150).start();
             });
         }
 
@@ -723,10 +723,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
             footballPillMinimalView.setOnClickListener(v -> {
                 SoundEffects.playSelect();
-                String next = FootballScheduleManager.cycleNextLeague(MainActivity.this);
-                Toast.makeText(MainActivity.this, "⚽ Liga: " + FootballScheduleManager.getLeagueDisplayName(next), Toast.LENGTH_SHORT).show();
-                FootballScheduleManager.syncForce(MainActivity.this, MainActivity.this::updateFootballWidget);
-                updateFootballWidget();
+                showFootballFixturesDialog();
             });
             footballPillMinimalView.setOnLongClickListener(v -> {
                 SoundEffects.playSelect();
@@ -768,7 +765,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 }
                 boolean isNeu = ThemeManager.isNeumorphism(MainActivity.this);
                 float scale = (hasFocus && !isNeu) ? 1.03f : 1.0f;
-                v.animate().scaleX(scale).scaleY(scale).setDuration(150).start();
+                float targetAlpha = (lastFocused < COLUMNS) ? 1.0f : 0.0f;
+                v.animate().scaleX(scale).scaleY(scale).alpha(targetAlpha).setDuration(150).start();
             });
         }
 
@@ -2151,17 +2149,26 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         View item = (View) card.getParent();
         if (position < COLUMNS) {
             // Dock: park it at the bottom of the screen and show the top shelf for this app.
-            if (weatherAirQualityView != null && weatherAirQualityView.getAlpha() < 1f) {
-                weatherAirQualityView.animate().alpha(1f).setDuration(reducedMotion ? 100 : 160).start();
+            int dur = reducedMotion ? 100 : 160;
+            if (weatherAirQualityView != null) {
+                weatherAirQualityView.animate().alpha(1f).setDuration(dur).start();
+                weatherAirQualityView.setFocusable(true);
+                weatherAirQualityView.setClickable(true);
             }
-            if (weatherPillMinimalView != null && weatherPillMinimalView.getAlpha() < 1f) {
-                weatherPillMinimalView.animate().alpha(1f).setDuration(reducedMotion ? 100 : 160).start();
+            if (weatherPillMinimalView != null) {
+                weatherPillMinimalView.animate().alpha(1f).setDuration(dur).start();
+                weatherPillMinimalView.setFocusable(true);
+                weatherPillMinimalView.setClickable(true);
             }
-            if (footballCardView != null && footballCardView.getAlpha() < 1f) {
-                footballCardView.animate().alpha(1f).setDuration(reducedMotion ? 100 : 160).start();
+            if (footballCardView != null) {
+                footballCardView.animate().alpha(1f).setDuration(dur).start();
+                footballCardView.setFocusable(true);
+                footballCardView.setClickable(true);
             }
-            if (footballPillMinimalView != null && footballPillMinimalView.getAlpha() < 1f) {
-                footballPillMinimalView.animate().alpha(1f).setDuration(reducedMotion ? 100 : 160).start();
+            if (footballPillMinimalView != null) {
+                footballPillMinimalView.animate().alpha(1f).setDuration(dur).start();
+                footballPillMinimalView.setFocusable(true);
+                footballPillMinimalView.setClickable(true);
             }
             int decoratedTop = item.getTop() - (int) (6 * density);
             int dy = decoratedTop - grid.getPaddingTop();
@@ -2177,28 +2184,26 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             // Below the dock there is no shelf, but the glow still takes this app's colour, so every
             // tile lights the room the same way the dock does.
             hideShelf();
-            if (weatherAirQualityView != null && weatherAirQualityView.getAlpha() > 0f) {
-                weatherAirQualityView.animate().alpha(0f).setDuration(reducedMotion ? 100 : 160).start();
+            int dur = reducedMotion ? 100 : 160;
+            if (weatherAirQualityView != null) {
+                weatherAirQualityView.animate().alpha(0f).setDuration(dur).start();
+                weatherAirQualityView.setFocusable(false);
+                weatherAirQualityView.setClickable(false);
             }
-            if (footballCardView != null && footballCardView.getAlpha() > 0f) {
-                footballCardView.animate().alpha(0f).setDuration(reducedMotion ? 100 : 160).start();
+            if (footballCardView != null) {
+                footballCardView.animate().alpha(0f).setDuration(dur).start();
+                footballCardView.setFocusable(false);
+                footballCardView.setClickable(false);
             }
-            if (position < 2 * COLUMNS) {
-                // Baris ke-2: widget kecil tetap terlihat rapi di bawah jam karena belum bertabrakan
-                if (weatherPillMinimalView != null && weatherPillMinimalView.getAlpha() < 1f) {
-                    weatherPillMinimalView.animate().alpha(1f).setDuration(reducedMotion ? 100 : 160).start();
-                }
-                if (footballPillMinimalView != null && footballPillMinimalView.getAlpha() < 1f) {
-                    footballPillMinimalView.animate().alpha(1f).setDuration(reducedMotion ? 100 : 160).start();
-                }
-            } else {
-                // Baris ke-3 dst: widget kecil otomatis pudar agar tidak bertumpuk dengan kartu aplikasi yang naik ke atas
-                if (weatherPillMinimalView != null && weatherPillMinimalView.getAlpha() > 0f) {
-                    weatherPillMinimalView.animate().alpha(0f).setDuration(reducedMotion ? 100 : 160).start();
-                }
-                if (footballPillMinimalView != null && footballPillMinimalView.getAlpha() > 0f) {
-                    footballPillMinimalView.animate().alpha(0f).setDuration(reducedMotion ? 100 : 160).start();
-                }
+            if (weatherPillMinimalView != null) {
+                weatherPillMinimalView.animate().alpha(0f).setDuration(dur).start();
+                weatherPillMinimalView.setFocusable(false);
+                weatherPillMinimalView.setClickable(false);
+            }
+            if (footballPillMinimalView != null) {
+                footballPillMinimalView.animate().alpha(0f).setDuration(dur).start();
+                footballPillMinimalView.setFocusable(false);
+                footballPillMinimalView.setClickable(false);
             }
             showAmbient(adapter.ambientColorAt(position));
             // Scroll just enough so the whole glass (not only the tile) is visible.
@@ -3842,17 +3847,23 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void applyWeatherWidgetMode() {
         String mode = getWeatherWidgetMode();
+        boolean isDockRow = (lastFocused < COLUMNS);
+        float alpha = isDockRow ? 1f : 0f;
         if (WIDGET_MODE_LARGE.equals(mode)) {
             if (weatherAirQualityView != null) {
                 weatherAirQualityView.setVisibility(View.VISIBLE);
-                weatherAirQualityView.setAlpha(1f);
+                weatherAirQualityView.setAlpha(alpha);
+                weatherAirQualityView.setFocusable(isDockRow);
+                weatherAirQualityView.setClickable(isDockRow);
             }
             if (weatherPillMinimalView != null) weatherPillMinimalView.setVisibility(View.GONE);
         } else if (WIDGET_MODE_MINIMAL.equals(mode)) {
             if (weatherAirQualityView != null) weatherAirQualityView.setVisibility(View.GONE);
             if (weatherPillMinimalView != null) {
                 weatherPillMinimalView.setVisibility(View.VISIBLE);
-                weatherPillMinimalView.setAlpha(1f);
+                weatherPillMinimalView.setAlpha(alpha);
+                weatherPillMinimalView.setFocusable(isDockRow);
+                weatherPillMinimalView.setClickable(isDockRow);
             }
         } else {
             if (weatherAirQualityView != null) weatherAirQualityView.setVisibility(View.GONE);
@@ -3863,17 +3874,23 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void applyFootballWidgetMode() {
         String mode = FootballScheduleManager.getWidgetMode(this);
+        boolean isDockRow = (lastFocused < COLUMNS);
+        float alpha = isDockRow ? 1f : 0f;
         if (FootballScheduleManager.MODE_LARGE.equals(mode)) {
             if (footballCardView != null) {
                 footballCardView.setVisibility(View.VISIBLE);
-                footballCardView.setAlpha(1f);
+                footballCardView.setAlpha(alpha);
+                footballCardView.setFocusable(isDockRow);
+                footballCardView.setClickable(isDockRow);
             }
             if (footballPillMinimalView != null) footballPillMinimalView.setVisibility(View.GONE);
         } else if (FootballScheduleManager.MODE_MINIMAL.equals(mode)) {
             if (footballCardView != null) footballCardView.setVisibility(View.GONE);
             if (footballPillMinimalView != null) {
                 footballPillMinimalView.setVisibility(View.VISIBLE);
-                footballPillMinimalView.setAlpha(1f);
+                footballPillMinimalView.setAlpha(alpha);
+                footballPillMinimalView.setFocusable(isDockRow);
+                footballPillMinimalView.setClickable(isDockRow);
                 if (footballMarqueeText != null) footballMarqueeText.setSelected(true);
             }
         } else {
@@ -3923,10 +3940,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     footballStatusBadge.setBackground(bBg);
                 }
                 if (hasLive) {
-                    footballStatusBadge.setText("🔴 LIVE");
+                    footballStatusBadge.setText("🔴 LIVE • DETAIL ▸");
                     footballStatusBadge.setTextColor(liveColor);
                 } else {
-                    footballStatusBadge.setText("GANTI LIGA ▸");
+                    footballStatusBadge.setText("SELENGKAPNYA ▸");
                     footballStatusBadge.setTextColor(isNeu ? (isNeuDark ? 0xFFFBBF24 : 0xFFB45309) : (isDark ? 0xFF00F0FF : 0xFFFFB74D));
                 }
             }
@@ -4000,22 +4017,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         String activeFilter = FootballScheduleManager.getLeagueFilter(this);
         String leagueName = FootballScheduleManager.getLeagueDisplayName(activeFilter);
 
-        // Option 1: Ubah Pilihan Liga
-        items.add(new ThemedDialogItem(
-                "🏆 Filter Liga : " + leagueName,
-                "Klik untuk mengganti liga (EPL, UCL, La Liga, Serie A, Bundesliga, Liga 1)",
-                false,
-                null,
-                () -> {
-                    SoundEffects.playSelect();
-                    showFootballLeagueFilterDialog();
-                }
-        ));
-
-        // Option 2: Refresh Jadwal
+        // Option: Refresh Jadwal
         items.add(new ThemedDialogItem(
                 "🔄 Segarkan Jadwal Sekarang",
-                "Sinkronisasi ulang skor dan jadwal terkini",
+                "Sinkronisasi ulang skor dan jadwal terkini (" + leagueName + ")",
                 false,
                 null,
                 () -> {
@@ -4031,7 +4036,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (matches.isEmpty()) {
             items.add(new ThemedDialogItem(
                     "Belum ada pertandingan terjadwal",
-                    "Jadwal sedang dimuat atau tidak ada laga terdekat",
+                    "Tidak ada laga hari ini atau jadwal sedang dimuat. Tekan Segarkan untuk memuat ulang.",
                     false,
                     null,
                     null
@@ -4045,7 +4050,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
 
         showThemedListDialog(
-                "⚽ Jadwal Pertandingan Bola",
+                "⚽ Jadwal Pertandingan (" + leagueName + ")",
                 "Jadwal dan skor pertandingan resmi terkini",
                 items,
                 null,
@@ -4492,15 +4497,42 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             updateRowStatus(rowFootMinHolder[0], "OFF");
         });
 
-        final View[] rowLeagueHolder = new View[1];
         String activeLeague = FootballScheduleManager.getLeagueDisplayName(FootballScheduleManager.getLeagueFilter(this));
-        rowLeagueHolder[0] = addInputRow(rows, null, R.drawable.ic_football, "Pilih Liga : " + activeLeague, -1, () -> {
+        addInputRow(rows, null, R.drawable.ic_football, "Pilih Kompetisi : " + activeLeague, -1, () -> {
             SoundEffects.playSelect();
-            String nextLeague = FootballScheduleManager.cycleNextLeague(this);
-            updateRowStatus(rowLeagueHolder[0], FootballScheduleManager.getLeagueDisplayName(nextLeague));
-            updateFootballWidget();
-            FootballScheduleManager.syncForce(this, this::updateFootballWidget);
+            navigateToSubMenu(panel, rows, () -> buildWidgetManagerSubMenu(panel, rows), () -> buildFootballLeagueSubMenu(panel, rows));
         });
+    }
+
+    private void buildFootballLeagueSubMenu(FrameLayout panel, LinearLayout rows) {
+        addInputRow(rows, null, R.drawable.ic_back, "Kembali", -1, () -> popMenuSubPage(panel, rows));
+
+        String current = FootballScheduleManager.getLeagueFilter(this);
+        String[][] leagues = {
+            {FootballScheduleManager.LEAGUE_ALL, "🌟 Semua Jadwal Populer"},
+            {FootballScheduleManager.LEAGUE_EPL, "🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League"},
+            {FootballScheduleManager.LEAGUE_UCL, "🏆 Champions League"},
+            {FootballScheduleManager.LEAGUE_LALIGA, "🇪🇸 La Liga"},
+            {FootballScheduleManager.LEAGUE_SERIEA, "🇮🇹 Serie A"},
+            {FootballScheduleManager.LEAGUE_BUNDESLIGA, "🇩🇪 Bundesliga"},
+            {FootballScheduleManager.LEAGUE_IDN, "🇮🇩 Liga 1 Indonesia"},
+            {FootballScheduleManager.LEAGUE_UEFA, "🇪🇺 UEFA Nations League"}
+        };
+
+        for (String[] l : leagues) {
+            final String code = l[0];
+            final String name = l[1];
+            boolean isActive = code.equalsIgnoreCase(current);
+            String title = name + (isActive ? " : AKTIF" : "");
+            addInputRow(rows, null, 0, title, -1, () -> {
+                SoundEffects.playSelect();
+                FootballScheduleManager.setLeagueFilter(MainActivity.this, code);
+                updateFootballWidget();
+                FootballScheduleManager.syncForce(MainActivity.this, () -> handler.post(MainActivity.this::updateFootballWidget));
+                Toast.makeText(MainActivity.this, "⚽ Kompetisi aktif: " + name, Toast.LENGTH_SHORT).show();
+                popMenuSubPage(panel, rows);
+            });
+        }
     }
 
     private void buildSoundSubMenu(FrameLayout panel, LinearLayout rows) {
