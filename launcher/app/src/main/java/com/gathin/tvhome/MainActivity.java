@@ -1380,7 +1380,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 handler.postDelayed(() -> {
                     if (g != liveGen || isDestroyed() || !tv.isAvailable()) return;
                     startMediaPlayer(tv, tv.getSurfaceTexture(), file, g);
-                }, 120);
+                }, 250);
             }
             @Override
             public void onSurfaceTextureSizeChanged(@NonNull SurfaceTexture surface, int width, int height) {
@@ -1398,7 +1398,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             public void onSurfaceTextureUpdated(@NonNull SurfaceTexture surface) {
                 if (g != liveGen) return;
                 liveFrames++;
-                if (liveFrames == 1) onLiveFirstFrame(tv);
+                // Called in the middle of a draw pass: removing views here crashed the whole
+                // launcher (NPE in ViewGroup.dispatchDraw). Do it on the next loop instead.
+                if (liveFrames == 1) handler.post(() -> onLiveFirstFrame(tv));
             }
         });
 
@@ -1447,6 +1449,27 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         staleLiveViews.clear();
         if (wallView != null) wallView.setVisibility(View.GONE);
         if (livePlayer != null) adjustVideoAspect(tv, livePlayer.getVideoWidth(), livePlayer.getVideoHeight());
+        // The dock and Candy Box glass follow the video: take a small frame from the view itself
+        // (no second decoder, which this TV does not have) and blur it for the backdrop.
+        final int g = liveGen;
+        handler.postDelayed(() -> {
+            if (g != liveGen || tv != liveWallView || !tv.isAvailable()) return;
+            Bitmap frame;
+            try {
+                frame = tv.getBitmap(Math.max(1, tv.getWidth() / 4), Math.max(1, tv.getHeight() / 4));
+            } catch (Exception | OutOfMemoryError e) {
+                return;
+            }
+            if (frame == null) return;
+            wallDecoder.execute(() -> {
+                DisplayMetrics dm = getResources().getDisplayMetrics();
+                Bitmap blur = Backdrop.blur(frame, dm.widthPixels, dm.heightPixels, getWallpaperDimColor());
+                handler.post(() -> {
+                    if (isDestroyed() || g != liveGen) return;
+                    if (blur != null) Backdrop.present(blur, 400);
+                });
+            });
+        }, 400);
     }
 
     /**
@@ -1528,8 +1551,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             });
             mp.setOnErrorListener((player, what, extra) -> {
                 Log.w("TvHome.Live", "MediaPlayer error: " + what + ", " + extra);
-                if (livePlayer == player) releaseLivePlayer();
-                // The watchdog sees no frames and starts the video over.
+                if (livePlayer == player) {
+                    releaseLivePlayer();
+                    // Decoder still busy with the previous video: try again shortly, without
+                    // waiting for the watchdog (that was the "press next twice" delay).
+                    if (g == liveGen && liveRetries < LIVE_MAX_RETRIES) {
+                        liveRetries++;
+                        handler.postDelayed(() -> {
+                            if (g == liveGen && currentLiveFile != null) playLiveWallpaper(currentLiveFile);
+                        }, 400);
+                    }
+                }
                 return true;
             });
             mp.prepareAsync();
