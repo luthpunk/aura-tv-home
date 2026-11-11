@@ -3720,8 +3720,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         addInputRow(rows, null, R.drawable.ic_restart, "Konfirmasi Mulai Ulang TV", -1, () -> {
             SoundEffects.playSelect();
             closeMenuAndFocusApp();
-            Toast.makeText(MainActivity.this, "Memulai ulang TV...", Toast.LENGTH_SHORT).show();
-            handler.postDelayed(() -> HomeKeyService.restartTv(MainActivity.this), 300);
+            boolean success = HomeKeyService.restartTv(MainActivity.this);
+            if (!success) {
+                Toast.makeText(MainActivity.this, "⚠️ Aktifkan 'Aura TV Home' di Pengaturan TV > Aksesibilitas agar dapat memulai ulang TV", Toast.LENGTH_LONG).show();
+                try {
+                    startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+                } catch (Exception ignored) {}
+            } else {
+                Toast.makeText(MainActivity.this, "Memulai ulang TV...", Toast.LENGTH_SHORT).show();
+            }
         });
     }
 
@@ -3730,7 +3737,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         addInputRow(rows, null, R.drawable.ic_power, "Konfirmasi Matikan TV", -1, () -> {
             SoundEffects.playSelect();
             closeMenuAndFocusApp();
-            HomeKeyService.turnOffTv(MainActivity.this);
+            boolean success = HomeKeyService.turnOffTv(MainActivity.this);
+            if (!success) {
+                Toast.makeText(MainActivity.this, "⚠️ Aktifkan 'Aura TV Home' di Pengaturan TV > Aksesibilitas agar dapat mematikan TV", Toast.LENGTH_LONG).show();
+                try {
+                    startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+                } catch (Exception ignored) {}
+            }
         });
     }
 
@@ -4950,8 +4963,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         builder.setMessage("Apakah Anda yakin ingin memulai ulang (restart) TV ini?");
         builder.setPositiveButton("Ya, Mulai Ulang", (dialog, which) -> {
             dialog.dismiss();
-            Toast.makeText(MainActivity.this, "Memulai ulang TV...", Toast.LENGTH_SHORT).show();
-            handler.postDelayed(() -> HomeKeyService.restartTv(MainActivity.this), 300);
+            boolean success = HomeKeyService.restartTv(MainActivity.this);
+            if (!success) {
+                Toast.makeText(MainActivity.this, "⚠️ Aktifkan 'Aura TV Home' di Pengaturan TV > Aksesibilitas agar dapat merestart TV", Toast.LENGTH_LONG).show();
+                try {
+                    startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+                } catch (Exception ignored) {}
+            } else {
+                Toast.makeText(MainActivity.this, "Memulai ulang TV...", Toast.LENGTH_SHORT).show();
+            }
         });
         builder.setNegativeButton("Batal", (dialog, which) -> dialog.dismiss());
         AlertDialog dialog = builder.create();
@@ -4965,7 +4985,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         builder.setMessage("Apakah Anda ingin mematikan / mengistirahatkan TV?");
         builder.setPositiveButton("Matikan TV", (dialog, which) -> {
             dialog.dismiss();
-            HomeKeyService.turnOffTv(MainActivity.this);
+            boolean success = HomeKeyService.turnOffTv(MainActivity.this);
+            if (!success) {
+                Toast.makeText(MainActivity.this, "⚠️ Aktifkan 'Aura TV Home' di Pengaturan TV > Aksesibilitas agar dapat mematikan TV", Toast.LENGTH_LONG).show();
+                try {
+                    startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+                } catch (Exception ignored) {}
+            }
         });
         builder.setNegativeButton("Batal", (dialog, which) -> dialog.dismiss());
         AlertDialog dialog = builder.create();
@@ -6349,15 +6375,40 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void smartBoostTv() {
         new Thread(() -> {
             try {
+                // Tutup aplikasi pihak ketiga di latar belakang (Netflix, YouTube, Spotify, games, dll.)
+                ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+                if (am != null) {
+                    List<ActivityManager.RunningAppProcessInfo> procs = am.getRunningAppProcesses();
+                    if (procs != null) {
+                        String myPkg = getPackageName();
+                        for (ActivityManager.RunningAppProcessInfo proc : procs) {
+                            if (proc.pkgList != null) {
+                                for (String pkg : proc.pkgList) {
+                                    if (!pkg.equals(myPkg)
+                                            && !pkg.startsWith("android")
+                                            && !pkg.startsWith("com.android.")
+                                            && !pkg.startsWith("com.google.android.")
+                                            && !pkg.startsWith("com.droidlogic.")) {
+                                        am.killBackgroundProcesses(pkg);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
+
+            try {
                 File cache = getCacheDir();
                 if (cache != null && cache.isDirectory()) {
                     File[] files = cache.listFiles();
                     if (files != null) for (File f : files) f.delete();
                 }
             } catch (Exception ignored) {}
-            CacheCleaner.maybeRun(getApplicationContext(), 1);
+
+            Backdrop.trim();
             System.gc();
-            handler.post(() -> Toast.makeText(this, "🚀 Memori & cache TV berhasil dioptimalkan!", Toast.LENGTH_SHORT).show());
+            handler.post(() -> Toast.makeText(this, "🚀 Memori TV berhasil dioptimalkan! Aplikasi latar belakang dibersihkan.", Toast.LENGTH_SHORT).show());
         }, "cache-boost").start();
     }
 

@@ -89,10 +89,12 @@ public class HomeKeyService extends AccessibilityService {
     public static boolean turnOffTv(Context context) {
         if (instance != null) {
             Log.i(TAG, "Attempting TV power off / sleep via accessibility service");
-            boolean done = instance.performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN);
-            if (done) return true;
+            // 1. Tampilkan dialog power resmi TV (Universal untuk Sharp, TCL, Xiaomi, Sony, dll.)
             boolean dialog = instance.performGlobalAction(GLOBAL_ACTION_POWER_DIALOG);
             if (dialog) return true;
+            // 2. Fallback: Lock screen / sleep display
+            boolean done = instance.performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN);
+            if (done) return true;
         }
         try {
             Intent intent = new Intent("android.intent.action.ACTION_REQUEST_SHUTDOWN");
