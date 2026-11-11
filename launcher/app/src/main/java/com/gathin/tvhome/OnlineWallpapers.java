@@ -276,7 +276,12 @@ final class OnlineWallpapers {
         List<File> all = list(ctx);
         if (category == null || category.equalsIgnoreCase("All")) return all;
         List<File> filtered = new ArrayList<>();
+        boolean wantLive = category.equalsIgnoreCase("Live");
         for (File f : all) {
+            if (wantLive && f.getName().toLowerCase(Locale.ROOT).endsWith(".mp4")) {
+                filtered.add(f);
+                continue;
+            }
             String[] desc = describe(f);
             if (desc != null && desc.length >= 3) {
                 if (matchesCategory(desc[2], category)) {

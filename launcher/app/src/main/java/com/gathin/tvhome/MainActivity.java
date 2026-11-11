@@ -1372,6 +1372,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             root.addView(liveWallView, 0, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         }
         liveWallView.setVisibility(View.VISIBLE);
+        liveWallView.setAlpha(1f);
 
         if (liveDimOverlay == null) {
             liveDimOverlay = new View(this);
@@ -1388,34 +1389,20 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             startMediaPlayer(liveWallView.getSurfaceTexture(), file);
         }
 
-        wallDecoder.execute(() -> {
-            File thumb = new File(file.getParentFile(), file.getName().replace(".mp4", ".jpg"));
-            Bitmap bmp = null;
-            if (thumb.exists()) {
-                bmp = decodeWallpaper(thumb);
-            }
-            if (bmp == null) {
-                try {
-                    MediaMetadataRetriever mmr = new MediaMetadataRetriever();
-                    mmr.setDataSource(file.getAbsolutePath());
-                    bmp = mmr.getFrameAtTime(0);
-                    mmr.release();
-                    if (bmp != null) {
-                        try (java.io.FileOutputStream fos = new java.io.FileOutputStream(thumb)) {
-                            bmp.compress(Bitmap.CompressFormat.JPEG, 80, fos);
-                        } catch (Exception ignored) {}
-                    }
-                } catch (Throwable ignored) {}
-            }
-            if (bmp != null) {
-                android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
-                Bitmap blur = Backdrop.blur(bmp, dm.widthPixels, dm.heightPixels, getWallpaperDimColor());
-                handler.post(() -> {
-                    if (isDestroyed()) return;
-                    if (blur != null) Backdrop.present(blur, 400);
-                });
-            }
-        });
+        File thumb = new File(file.getParentFile(), file.getName().replace(".mp4", ".jpg"));
+        if (thumb.exists()) {
+            wallDecoder.execute(() -> {
+                Bitmap bmp = decodeWallpaper(thumb);
+                if (bmp != null) {
+                    DisplayMetrics dm = getResources().getDisplayMetrics();
+                    Bitmap blur = Backdrop.blur(bmp, dm.widthPixels, dm.heightPixels, getWallpaperDimColor());
+                    handler.post(() -> {
+                        if (isDestroyed() || currentLiveFile != file) return;
+                        if (blur != null) Backdrop.present(blur, 400);
+                    });
+                }
+            });
+        }
     }
 
     private void startMediaPlayer(SurfaceTexture surfaceTexture, File file) {
@@ -1429,29 +1416,29 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 currentSurfaceTexture = surfaceTexture;
                 liveSurface = new Surface(surfaceTexture);
             }
-            livePlayer = new MediaPlayer();
-            livePlayer.setSurface(liveSurface);
-            livePlayer.setDataSource(file.getAbsolutePath());
-            livePlayer.setLooping(true);
-            livePlayer.setVolume(0f, 0f); // Wallpaper latar selalu senyap (mute)
-            livePlayer.setOnVideoSizeChangedListener((mp, w, h) -> adjustVideoAspect(liveWallView, w, h));
-            livePlayer.setOnPreparedListener(mp -> {
-                if (!isDestroyed()) {
-                    adjustVideoAspect(liveWallView, mp.getVideoWidth(), mp.getVideoHeight());
-                    mp.start();
+            MediaPlayer mp = new MediaPlayer();
+            livePlayer = mp;
+            mp.setSurface(liveSurface);
+            mp.setDataSource(file.getAbsolutePath());
+            mp.setLooping(true);
+            mp.setVolume(0f, 0f); // Wallpaper latar selalu senyap (mute)
+            mp.setOnVideoSizeChangedListener((player, w, h) -> adjustVideoAspect(liveWallView, w, h));
+            mp.setOnPreparedListener(player -> {
+                if (isDestroyed() || livePlayer != player) {
+                    try { player.release(); } catch (Exception ignored) {}
+                    return;
                 }
+                adjustVideoAspect(liveWallView, player.getVideoWidth(), player.getVideoHeight());
+                player.start();
             });
-            livePlayer.setOnErrorListener((mp, what, extra) -> {
+            mp.setOnErrorListener((player, what, extra) -> {
                 Log.w("TvHome.Live", "MediaPlayer error: " + what + ", " + extra);
-                releaseLivePlayer();
-                handler.postDelayed(() -> {
-                    if (!isDestroyed() && currentLiveFile != null && liveWallView != null && liveWallView.isAvailable()) {
-                        startMediaPlayer(liveWallView.getSurfaceTexture(), currentLiveFile);
-                    }
-                }, 500);
+                if (livePlayer == player) {
+                    releaseLivePlayer();
+                }
                 return true;
             });
-            livePlayer.prepareAsync();
+            mp.prepareAsync();
         } catch (Exception e) {
             Log.e("TvHome.Live", "Gagal memutar video live wallpaper: " + e);
             releaseLivePlayer();
@@ -1461,28 +1448,25 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void releaseLivePlayer() {
         if (livePlayer != null) {
             try {
-                if (livePlayer.isPlaying()) livePlayer.stop();
+                livePlayer.setOnPreparedListener(null);
+                livePlayer.setOnVideoSizeChangedListener(null);
+                livePlayer.setOnErrorListener(null);
+                if (livePlayer.isPlaying()) {
+                    livePlayer.stop();
+                }
                 livePlayer.reset();
+                livePlayer.setSurface(null);
                 livePlayer.release();
             } catch (Exception ignored) {}
             livePlayer = null;
         }
-        // Note: liveSurface is kept alive as long as currentSurfaceTexture is valid.
-        // Surface.release() should only happen when SurfaceTexture is destroyed.
     }
 
     private void stopLiveWallpaper() {
         releaseLivePlayer();
-        if (liveSurface != null) {
-            try {
-                liveSurface.release();
-            } catch (Exception ignored) {}
-            liveSurface = null;
-        }
-        currentSurfaceTexture = null;
         currentLiveFile = null;
         if (liveWallView != null) {
-            liveWallView.setVisibility(View.GONE);
+            liveWallView.setAlpha(0f);
         }
         if (liveDimOverlay != null) {
             liveDimOverlay.setVisibility(View.GONE);
@@ -1661,6 +1645,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onStop() {
         hiddenSinceResume = true;
+        if (livePlayer != null) {
+            try {
+                if (livePlayer.isPlaying()) livePlayer.pause();
+            } catch (Exception ignored) {}
+        }
         handler.removeCallbacks(cacheClean);
         handler.removeCallbacks(nowPlayingPoll);
         super.onStop();
@@ -1784,10 +1773,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onPause() {
         super.onPause();
-        if (livePlayer != null && livePlayer.isPlaying()) {
-            try {
-                livePlayer.pause();
-            } catch (Exception ignored) {}
+        if (isFinishing()) {
+            releaseLivePlayer();
         }
         unregisterReceiver(packageReceiver);
         handler.removeCallbacks(minuteTick);
@@ -1805,7 +1792,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if (hasFocus) showCardPrompt();
+        if (hasFocus) {
+            showCardPrompt();
+            if (livePlayer != null && currentLiveFile != null) {
+                try {
+                    if (!livePlayer.isPlaying()) livePlayer.start();
+                } catch (Exception ignored) {}
+            }
+        }
     }
 
     /**
