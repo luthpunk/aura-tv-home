@@ -658,6 +658,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Football Schedule Widget Views (Right side)
         footballCardView = findViewById(R.id.footballCardView);
         if (footballCardView != null) {
+            footballCardView.setClipToOutline(true);
             footballRowsContainer = findViewById(R.id.footballRowsContainer);
             footballExpandedScroll = findViewById(R.id.footballExpandedScroll);
             footballExpandedList = findViewById(R.id.footballExpandedList);
@@ -3101,10 +3102,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (h <= 0) return false;
         // Item height follows the tile size, which follows the column count (AppAdapter.tileWidthPx).
         int inner = grid.getWidth() - grid.getPaddingLeft() - grid.getPaddingRight();
+        int vPad = (COLUMNS >= 7) ? Math.round(4 * density) : (COLUMNS >= 6 ? Math.round(6 * density) : Math.round(8 * density));
         int itemH = AppAdapter.itemHeightPx(AppAdapter.tileHeightPx(AppAdapter.tileWidthPx(inner, COLUMNS, density)), density, COLUMNS);
         int dockRow = itemH + (int) ((6 + 12) * density);   // item height plus DockDecoration offsets
         // Tetap sisakan 30dp agar puncak baris kedua tetap mengintip di dasar layar persis seperti 5 aplikasi
-        int want = Math.max(0, h - dockRow - itemH * rowsBelowDockSetting - (int) (30 * density));
+        int want = Math.max(0, h - dockRow - vPad - (int) (30 * density));
         if (grid.getPaddingTop() == want) return true;
         grid.setPadding(grid.getPaddingLeft(), want, grid.getPaddingRight(), grid.getPaddingBottom());
         return false;
@@ -4065,19 +4067,42 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         SoundEffects.playSelect();
 
-        int startH = expand ? Math.round(153f * density) : Math.round(380f * density);
-        int endH = expand ? Math.round(380f * density) : Math.round(153f * density);
-
+        View tb = findViewById(R.id.topButtons);
         View lb = findViewById(R.id.leftBlock);
-        float calcCenterY = footballCardView.getTop() + (footballCardView.getHeight() * 0.5f) + footballCardView.getTranslationY();
-        if (lb != null && gridWrap != null && grid.getPaddingTop() > 0) {
-            float clockBottomInMain = lb.getBottom();
-            float parkedDockTopInMain = gridWrap.getTop() + grid.getPaddingTop();
-            float shelfH = (heroName != null && heroName.getHeight() > 0) ? heroName.getHeight() : (24f * density);
-            float shelfTopInMain = parkedDockTopInMain - (HERO_GAP_DP * density) - shelfH;
-            calcCenterY = (clockBottomInMain + shelfTopInMain) * 0.5f;
+
+        // Safe boundaries:
+        // Top limit: strictly below the top menu bar (topButtons / leftBlock)
+        float topLimit = 0;
+        if (tb != null && tb.getVisibility() == View.VISIBLE) {
+            topLimit = Math.max(topLimit, tb.getBottom() + Math.round(14 * density));
         }
-        final float targetCenterY = calcCenterY;
+        if (lb != null && lb.getVisibility() == View.VISIBLE) {
+            topLimit = Math.max(topLimit, lb.getBottom() + Math.round(14 * density));
+        }
+        if (topLimit <= 0) {
+            topLimit = Math.round(108 * density);
+        }
+
+        // Bottom limit: strictly above the first dock row & dock tray rim
+        float bottomLimit = getResources().getDisplayMetrics().heightPixels - Math.round(200 * density);
+        if (gridWrap != null && grid != null && grid.getPaddingTop() > 0) {
+            float dockTrayTopInMain = gridWrap.getTop() + grid.getPaddingTop() - Math.round(14 * density);
+            float shelfH = (heroName != null && heroName.getHeight() > 0) ? heroName.getHeight() : 0;
+            float shelfTopInMain = dockTrayTopInMain - (HERO_GAP_DP * density) - shelfH;
+            bottomLimit = Math.min(dockTrayTopInMain, shelfTopInMain) - Math.round(16 * density);
+        }
+
+        int maxAllowedH = Math.max(Math.round(180 * density), Math.round(bottomLimit - topLimit));
+        int targetExpandedH = Math.min(Math.round(270f * density), maxAllowedH);
+        int defaultH = Math.round(153f * density);
+
+        int startH = expand ? defaultH : (footballCardView.getLayoutParams().height > 0 ? footballCardView.getLayoutParams().height : defaultH);
+        int endH = expand ? targetExpandedH : defaultH;
+
+        // Position strictly between topLimit and bottomLimit
+        float targetExpandedTop = topLimit + Math.max(0, (bottomLimit - topLimit - targetExpandedH) * 0.5f);
+        float startDy = footballCardView.getTranslationY();
+        float endDy = expand ? (targetExpandedTop - footballCardView.getTop()) : 0f;
 
         if (expand) {
             populateFootballExpandedList();
@@ -4111,9 +4136,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 footballCardView.getLayoutParams().height = curH;
                 footballCardView.requestLayout();
             }
-            float desiredTop = targetCenterY - (curH * 0.5f);
-            float fDy = Math.round(desiredTop - footballCardView.getTop());
-            footballCardView.setTranslationY(fDy);
+            float curDy = startDy + (endDy - startDy) * frac;
+            footballCardView.setTranslationY(curDy);
         });
         anim.addListener(new AnimatorListenerAdapter() {
             @Override
@@ -4122,6 +4146,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 if (!expand) {
                     if (footballRowsContainer != null) footballRowsContainer.setVisibility(View.VISIBLE);
                     if (footballExpandedScroll != null) footballExpandedScroll.setVisibility(View.GONE);
+                    footballCardView.setTranslationY(0f);
+                    footballCardView.getLayoutParams().height = defaultH;
+                    footballCardView.requestLayout();
                     updateFootballWidget();
                 } else {
                     footballCardView.requestFocus();
@@ -4894,6 +4921,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (lm instanceof GridLayoutManager) {
                 ((GridLayoutManager) lm).setSpanCount(cols);
             }
+            grid.getRecycledViewPool().clear();
         }
         if (dockTray != null) {
             dockTray.setDockSize(cols);

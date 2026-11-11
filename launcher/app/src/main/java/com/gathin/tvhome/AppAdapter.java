@@ -530,6 +530,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_app, parent, false);
         float density = parent.getResources().getDisplayMetrics().density;
         int width = parent.getWidth() > 0 ? parent.getWidth() : parent.getMeasuredWidth();
+        if (width <= 0) {
+            width = parent.getResources().getDisplayMetrics().widthPixels - Math.round(112 * density);
+        }
         int inner = width - parent.getPaddingLeft() - parent.getPaddingRight();
         int w = tileWidthPx(inner, dockSize, density), h = tileHeightPx(w);
 
@@ -560,8 +563,34 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         h.card.setScaleX(focused ? FOCUS_SCALE : 1f);
         h.card.setScaleY(focused ? FOCUS_SCALE : 1f);
         float density = ctx.getResources().getDisplayMetrics().density;
-        int wPx = h.card.getLayoutParams() != null && h.card.getLayoutParams().width > 0
-                ? h.card.getLayoutParams().width : Math.round(DESIGN_W_DP * density);
+
+        View parentView = (View) h.itemView.getParent();
+        int parentW = parentView != null && parentView.getWidth() > 0 ? parentView.getWidth() : ctx.getResources().getDisplayMetrics().widthPixels - Math.round(112 * density);
+        int padL = parentView != null ? parentView.getPaddingLeft() : 0;
+        int padR = parentView != null ? parentView.getPaddingRight() : 0;
+        int innerW = parentW - padL - padR;
+        int targetW = tileWidthPx(innerW, dockSize, density);
+        int targetH = tileHeightPx(targetW);
+        int vPad = (dockSize >= 7) ? Math.round(4 * density) : (dockSize >= 6 ? Math.round(6 * density) : Math.round(8 * density));
+
+        if (h.card.getLayoutParams().width != targetW || h.card.getLayoutParams().height != targetH) {
+            h.card.getLayoutParams().width = targetW;
+            h.card.getLayoutParams().height = targetH;
+            h.card.requestLayout();
+        }
+        if (h.itemView.getPaddingTop() != vPad || h.itemView.getPaddingBottom() != vPad) {
+            h.itemView.setPadding(h.itemView.getPaddingLeft(), vPad, h.itemView.getPaddingRight(), vPad);
+        }
+        if (h.name.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+            ViewGroup.MarginLayoutParams nLp = (ViewGroup.MarginLayoutParams) h.name.getLayoutParams();
+            if (nLp.width != targetW || nLp.topMargin != (targetH + Math.round(7 * density))) {
+                nLp.width = targetW;
+                nLp.topMargin = targetH + Math.round(7 * density);
+                h.name.setLayoutParams(nLp);
+            }
+        }
+
+        int wPx = targetW;
         float radius = cornerRadius(wPx, density);
 
         boolean isDark = ThemeManager.isDarkGlow(ctx);
