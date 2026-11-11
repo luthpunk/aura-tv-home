@@ -217,9 +217,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private View footballCardView;
     private View footballPillMinimalView;
     private TextView footballLeagueTitle, footballStatusBadge;
-    private TextView footballHomeTeam, footballScoreOrVs, footballAwayTeam;
-    private TextView footballSubTicker;
+    private View footballHeaderDiv;
+    private View footballRow1, footballDiv1, footballRow2, footballDiv2, footballRow3;
+    private TextView footballRow1Home, footballRow1Time, footballRow1Away;
+    private TextView footballRow2Home, footballRow2Time, footballRow2Away;
+    private TextView footballRow3Home, footballRow3Time, footballRow3Away;
+    private ImageView minFootIcon;
     private TextView footballMarqueeText;
+    private Surface liveSurface;
     private View nowPlayingCard;
     private ImageView cardAlbumArt;
     private View cardTrackInfo;
@@ -615,14 +620,28 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (footballCardView != null) {
             footballLeagueTitle = findViewById(R.id.footballLeagueTitle);
             footballStatusBadge = findViewById(R.id.footballStatusBadge);
-            footballHomeTeam = findViewById(R.id.footballHomeTeam);
-            footballScoreOrVs = findViewById(R.id.footballScoreOrVs);
-            footballAwayTeam = findViewById(R.id.footballAwayTeam);
-            footballSubTicker = findViewById(R.id.footballSubTicker);
+            footballHeaderDiv = findViewById(R.id.footballHeaderDiv);
+            footballRow1 = findViewById(R.id.footballRow1);
+            footballRow1Home = findViewById(R.id.footballRow1Home);
+            footballRow1Time = findViewById(R.id.footballRow1Time);
+            footballRow1Away = findViewById(R.id.footballRow1Away);
+            footballDiv1 = findViewById(R.id.footballDiv1);
+            footballRow2 = findViewById(R.id.footballRow2);
+            footballRow2Home = findViewById(R.id.footballRow2Home);
+            footballRow2Time = findViewById(R.id.footballRow2Time);
+            footballRow2Away = findViewById(R.id.footballRow2Away);
+            footballDiv2 = findViewById(R.id.footballDiv2);
+            footballRow3 = findViewById(R.id.footballRow3);
+            footballRow3Home = findViewById(R.id.footballRow3Home);
+            footballRow3Time = findViewById(R.id.footballRow3Time);
+            footballRow3Away = findViewById(R.id.footballRow3Away);
 
             footballCardView.setOnClickListener(v -> {
                 SoundEffects.playSelect();
-                showFootballFixturesDialog();
+                String next = FootballScheduleManager.cycleNextLeague(MainActivity.this);
+                Toast.makeText(MainActivity.this, "⚽ Liga: " + FootballScheduleManager.getLeagueDisplayName(next), Toast.LENGTH_SHORT).show();
+                updateFootballWidget();
+                FootballScheduleManager.syncForce(MainActivity.this, MainActivity.this::updateFootballWidget);
             });
             footballCardView.setOnKeyListener((v, keyCode, event) -> {
                 if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
@@ -664,11 +683,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         footballPillMinimalView = findViewById(R.id.footballPillMinimal);
         if (footballPillMinimalView != null) {
+            minFootIcon = findViewById(R.id.minFootIcon);
             footballMarqueeText = findViewById(R.id.footballMarqueeText);
 
             footballPillMinimalView.setOnClickListener(v -> {
                 SoundEffects.playSelect();
-                showFootballFixturesDialog();
+                String next = FootballScheduleManager.cycleNextLeague(MainActivity.this);
+                Toast.makeText(MainActivity.this, "⚽ Liga: " + FootballScheduleManager.getLeagueDisplayName(next), Toast.LENGTH_SHORT).show();
+                updateFootballWidget();
+                FootballScheduleManager.syncForce(MainActivity.this, MainActivity.this::updateFootballWidget);
             });
             footballPillMinimalView.setOnKeyListener((v, keyCode, event) -> {
                 if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
@@ -1317,6 +1340,27 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         if (liveWallView == null) {
             liveWallView = new TextureView(this);
+            liveWallView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
+                @Override
+                public void onSurfaceTextureAvailable(@NonNull SurfaceTexture surface, int width, int height) {
+                    if (currentLiveFile != null) {
+                        startMediaPlayer(surface, currentLiveFile);
+                    }
+                }
+                @Override
+                public void onSurfaceTextureSizeChanged(@NonNull SurfaceTexture surface, int width, int height) {
+                    if (livePlayer != null) {
+                        adjustVideoAspect(liveWallView, livePlayer.getVideoWidth(), livePlayer.getVideoHeight());
+                    }
+                }
+                @Override
+                public boolean onSurfaceTextureDestroyed(@NonNull SurfaceTexture surface) {
+                    releaseLivePlayer();
+                    return true;
+                }
+                @Override
+                public void onSurfaceTextureUpdated(@NonNull SurfaceTexture surface) {}
+            });
             root.addView(liveWallView, 0, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         }
         liveWallView.setVisibility(View.VISIBLE);
@@ -1334,26 +1378,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         if (liveWallView.isAvailable()) {
             startMediaPlayer(liveWallView.getSurfaceTexture(), file);
-        } else {
-            liveWallView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
-                @Override
-                public void onSurfaceTextureAvailable(@NonNull SurfaceTexture surface, int width, int height) {
-                    startMediaPlayer(surface, currentLiveFile);
-                }
-                @Override
-                public void onSurfaceTextureSizeChanged(@NonNull SurfaceTexture surface, int width, int height) {
-                    if (livePlayer != null) {
-                        adjustVideoAspect(liveWallView, livePlayer.getVideoWidth(), livePlayer.getVideoHeight());
-                    }
-                }
-                @Override
-                public boolean onSurfaceTextureDestroyed(@NonNull SurfaceTexture surface) {
-                    releaseLivePlayer();
-                    return true;
-                }
-                @Override
-                public void onSurfaceTextureUpdated(@NonNull SurfaceTexture surface) {}
-            });
         }
 
         wallDecoder.execute(() -> {
@@ -1390,8 +1414,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (surfaceTexture == null || file == null || !file.exists()) return;
         releaseLivePlayer();
         try {
+            liveSurface = new Surface(surfaceTexture);
             livePlayer = new MediaPlayer();
-            livePlayer.setSurface(new Surface(surfaceTexture));
+            livePlayer.setSurface(liveSurface);
             livePlayer.setDataSource(file.getAbsolutePath());
             livePlayer.setLooping(true);
             livePlayer.setVolume(0f, 0f); // Wallpaper latar selalu senyap (mute)
@@ -1401,6 +1426,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     adjustVideoAspect(liveWallView, mp.getVideoWidth(), mp.getVideoHeight());
                     mp.start();
                 }
+            });
+            livePlayer.setOnErrorListener((mp, what, extra) -> {
+                Log.w("TvHome.Live", "MediaPlayer error: " + what + ", " + extra);
+                releaseLivePlayer();
+                handler.postDelayed(() -> {
+                    if (!isDestroyed() && currentLiveFile != null && liveWallView != null && liveWallView.isAvailable()) {
+                        startMediaPlayer(liveWallView.getSurfaceTexture(), currentLiveFile);
+                    }
+                }, 500);
+                return true;
             });
             livePlayer.prepareAsync();
         } catch (Exception e) {
@@ -1413,9 +1448,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (livePlayer != null) {
             try {
                 if (livePlayer.isPlaying()) livePlayer.stop();
+                livePlayer.reset();
                 livePlayer.release();
             } catch (Exception ignored) {}
             livePlayer = null;
+        }
+        if (liveSurface != null) {
+            try {
+                liveSurface.release();
+            } catch (Exception ignored) {}
+            liveSurface = null;
         }
     }
 
@@ -1441,12 +1483,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         liveDimOverlay.setVisibility(View.VISIBLE);
         if (ThemeManager.isDarkGlow(this)) {
-            liveDimOverlay.setBackgroundColor(0x88222222);
+            // Dark Glow: 85% deep OLED black-blue tint to preserve neon atmosphere
+            liveDimOverlay.setBackgroundColor(0xD906080C);
         } else if (ThemeManager.isNeumorphismDark(this)) {
-            liveDimOverlay.setBackgroundColor(0x88171A22);
+            // Neumorphism Dark: 80% charcoal-navy tint
+            liveDimOverlay.setBackgroundColor(0xCC12151D);
         } else if (ThemeManager.isNeumorphism(this)) {
-            liveDimOverlay.setBackgroundColor(0x88EDEAE4);
+            // Neumorphism Light: 85% warm porcelain wash
+            liveDimOverlay.setBackgroundColor(0xD9EDEAE4);
         } else {
+            // Frosted Glass: comfortable 35% dark tint
             liveDimOverlay.setBackgroundColor(0x55000000);
         }
     }
@@ -2332,28 +2378,74 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         // Football Card & Pill Theme Styling (Right side)
         if (footballCardView != null) {
-            float cardRadius = 18f * density;
+            float cardRadius = 20f * density;
             if (isDark) {
-                GradientDrawable cBg = new GradientDrawable();
-                cBg.setColor(0xFF101420);
-                cBg.setCornerRadius(cardRadius);
-                cBg.setStroke(Math.max(1, Math.round(1f * density)), 0x3300F0FF);
-                footballCardView.setBackground(cBg);
+                StateListDrawable sld = new StateListDrawable();
+                GradientDrawable focused = new GradientDrawable();
+                focused.setColor(0xFF0A0A10);
+                focused.setCornerRadius(cardRadius);
+                focused.setStroke(Math.max(1, Math.round(1.25f * density)), 0xFF00F0FF);
+                GradientDrawable normal = new GradientDrawable();
+                normal.setColor(0xEE08080C);
+                normal.setCornerRadius(cardRadius);
+                normal.setStroke(Math.max(1, Math.round(1.0f * density)), 0x28FFFFFF);
+                sld.addState(new int[]{android.R.attr.state_focused}, focused);
+                sld.addState(new int[]{}, normal);
+                footballCardView.setBackground(sld);
             } else if (isNeu) {
-                footballCardView.setBackground(new NeumorphicDrawable(cardRadius, density, NeumorphicDrawable.MODE_EXTRUDED, false));
+                StateListDrawable sld = new StateListDrawable();
+                sld.addState(new int[]{android.R.attr.state_focused},
+                        new NeumorphicDrawable(cardRadius, density, NeumorphicDrawable.MODE_RECESSED, false));
+                sld.addState(new int[]{},
+                        new NeumorphicDrawable(cardRadius, density, NeumorphicDrawable.MODE_EXTRUDED, true));
+                footballCardView.setBackground(sld);
             } else {
                 StateListDrawable sld = new StateListDrawable();
-                GradientDrawable focused = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0x732A3140, 0x731C222E});
+                GradientDrawable focused = new GradientDrawable(
+                        GradientDrawable.Orientation.TL_BR,
+                        new int[]{0x732A3140, 0x731C222E});
                 focused.setCornerRadius(cardRadius);
                 focused.setStroke(Math.max(2, Math.round(1.5f * density)), 0xF2FFFFFF);
-                GradientDrawable normal = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0x4D2A3244, 0x3D1E2432});
+                GradientDrawable normal = new GradientDrawable(
+                        GradientDrawable.Orientation.TL_BR,
+                        new int[]{0x52252B38, 0x52181C26});
                 normal.setCornerRadius(cardRadius);
-                normal.setStroke(Math.max(1, Math.round(1.0f * density)), 0x38FFFFFF);
+                normal.setStroke(Math.max(1, Math.round(1.0f * density)), 0x45FFFFFF);
                 sld.addState(new int[]{android.R.attr.state_focused}, focused);
                 sld.addState(new int[]{}, normal);
                 footballCardView.setBackground(sld);
             }
+
+            int headerColor = isNeu ? ThemeManager.neu(0xFF363E4A) : 0xFFFFFFFF;
+            int teamColor = isNeu ? ThemeManager.neu(0xFF1F2632) : 0xFFFFFFFF;
+            int subTeamColor = isNeu ? ThemeManager.neu(0xFF4A5360) : 0xE6FFFFFF;
+            int divColor = isNeu ? ThemeManager.neu(0x1F000000) : (isDark ? 0x2E00F0FF : 0x22FFFFFF);
+
+            if (footballLeagueTitle != null) {
+                footballLeagueTitle.setTextColor(headerColor);
+                if (isNeu) footballLeagueTitle.setShadowLayer(0, 0, 0, 0);
+                else footballLeagueTitle.setShadowLayer(2.5f, 0, 1f, 0x80000000);
+            }
+            if (footballHeaderDiv != null) footballHeaderDiv.setBackgroundColor(divColor);
+            if (footballDiv1 != null) footballDiv1.setBackgroundColor(divColor);
+            if (footballDiv2 != null) footballDiv2.setBackgroundColor(divColor);
+
+            for (TextView t : new TextView[]{footballRow1Home, footballRow1Away}) {
+                if (t != null) {
+                    t.setTextColor(teamColor);
+                    if (isNeu) t.setShadowLayer(0, 0, 0, 0);
+                    else t.setShadowLayer(2f, 0, 1f, 0x80000000);
+                }
+            }
+            for (TextView t : new TextView[]{footballRow2Home, footballRow2Away, footballRow3Home, footballRow3Away}) {
+                if (t != null) {
+                    t.setTextColor(subTeamColor);
+                    if (isNeu) t.setShadowLayer(0, 0, 0, 0);
+                    else t.setShadowLayer(2f, 0, 1f, 0x80000000);
+                }
+            }
         }
+
         if (footballPillMinimalView != null) {
             float minRadius = 14f * density;
             if (isDark) {
@@ -2388,6 +2480,23 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
             if (footballMarqueeText != null) {
                 footballMarqueeText.setTextColor(isNeu ? ThemeManager.neu(0xFF1F2429) : 0xFFFFFFFF);
+                if (isNeu) footballMarqueeText.setShadowLayer(0, 0, 0, 0);
+                else footballMarqueeText.setShadowLayer(2f, 0, 1f, 0x80000000);
+            }
+            if (minFootIcon != null) {
+                int iconTint = isNeu ? ThemeManager.neu(0xFF636C78) : 0xFFFFFFFF;
+                minFootIcon.setImageTintList(android.content.res.ColorStateList.valueOf(iconTint));
+            }
+        }
+
+        if (currentLiveFile != null) {
+            updateLiveDimOverlay();
+            if (livePlayer != null) {
+                try {
+                    if (!livePlayer.isPlaying()) livePlayer.start();
+                } catch (Exception ignored) {}
+            } else if (liveWallView != null && liveWallView.isAvailable()) {
+                startMediaPlayer(liveWallView.getSurfaceTexture(), currentLiveFile);
             }
         }
         updateFootballWidget();
@@ -2495,6 +2604,23 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         float shift = alignCard.right - alignButton.right;
         if (Math.abs(topRow.getTranslationX() - shift) >= 1f) topRow.setTranslationX(shift);
 
+        if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE && footballCardView.getWidth() > 0) {
+            alignButton.set(0, 0, footballCardView.getWidth(), footballCardView.getHeight());
+            root.offsetDescendantRectToMyCoords(footballCardView, alignButton);
+            float fShift = alignCard.right - alignButton.right;
+            if (Math.abs(footballCardView.getTranslationX() - fShift) >= 1f) {
+                footballCardView.setTranslationX(fShift);
+            }
+        }
+        if (footballPillMinimalView != null && footballPillMinimalView.getVisibility() == View.VISIBLE && footballPillMinimalView.getWidth() > 0) {
+            alignButton.set(0, 0, footballPillMinimalView.getWidth(), footballPillMinimalView.getHeight());
+            root.offsetDescendantRectToMyCoords(footballPillMinimalView, alignButton);
+            float fShift = alignCard.right - alignButton.right;
+            if (Math.abs(footballPillMinimalView.getTranslationX() - fShift) >= 1f) {
+                footballPillMinimalView.setTranslationX(fShift);
+            }
+        }
+
         RecyclerView.ViewHolder first = grid.findViewHolderForAdapterPosition(0);
         if (first != null && heroShelf != null) {
             View firstCard = first.itemView.findViewById(R.id.card);
@@ -2524,9 +2650,21 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     if (Math.abs(activeWea.getTranslationY() - dy) >= 1f) {
                         activeWea.setTranslationY(dy);
                     }
+                    if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE
+                            && footballCardView.getHeight() > 0) {
+                        float fDesiredTopInMain = targetCenterY - (footballCardView.getHeight() * 0.5f);
+                        float fBaseTopInMain = footballCardView.getTop();
+                        float fDy = Math.round(fDesiredTopInMain - fBaseTopInMain);
+                        if (Math.abs(footballCardView.getTranslationY() - fDy) >= 1f) {
+                            footballCardView.setTranslationY(fDy);
+                        }
+                    }
                 }
                 if (weatherPillMinimalView != null && weatherPillMinimalView.getTranslationY() != 0f) {
                     weatherPillMinimalView.setTranslationY(0f);
+                }
+                if (footballPillMinimalView != null && footballPillMinimalView.getTranslationY() != 0f) {
+                    footballPillMinimalView.setTranslationY(0f);
                 }
             }
         }
@@ -3491,6 +3629,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void updateFootballWidget() {
         if (footballCardView == null && footballPillMinimalView == null) return;
         List<FootballScheduleManager.MatchItem> matches = FootballScheduleManager.getCachedMatches(this);
+        String filter = FootballScheduleManager.getLeagueFilter(this);
+        String leagueName = FootballScheduleManager.getLeagueDisplayName(filter);
 
         if (footballPillMinimalView != null && footballPillMinimalView.getVisibility() == View.VISIBLE) {
             if (footballMarqueeText != null) {
@@ -3500,44 +3640,69 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
 
         if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE) {
+            if (footballLeagueTitle != null) {
+                footballLeagueTitle.setText("⚽ " + leagueName.toUpperCase(Locale.ROOT));
+            }
+            if (footballStatusBadge != null) {
+                boolean hasLive = false;
+                for (FootballScheduleManager.MatchItem m : matches) {
+                    if (m.isLive) { hasLive = true; break; }
+                }
+                if (hasLive) {
+                    footballStatusBadge.setText("🔴 LIVE");
+                    footballStatusBadge.setTextColor(0xFFFF3B30);
+                } else {
+                    footballStatusBadge.setText("JADWAL");
+                    footballStatusBadge.setTextColor(0xFFFFA726);
+                }
+            }
+
+            // Populate Match 1
             if (!matches.isEmpty()) {
-                FootballScheduleManager.MatchItem top = matches.get(0);
-                if (footballLeagueTitle != null) {
-                    footballLeagueTitle.setText("⚽ " + top.leagueName.toUpperCase(Locale.ROOT));
-                }
-                if (footballStatusBadge != null) {
-                    if (top.isLive) {
-                        footballStatusBadge.setText("🔴 LIVE " + top.statusDetail);
-                        footballStatusBadge.setTextColor(0xFFFF3B30);
-                    } else if (top.isFinished) {
-                        footballStatusBadge.setText("SELESAI (FT)");
-                        footballStatusBadge.setTextColor(0xFF4CD964);
-                    } else {
-                        footballStatusBadge.setText(top.timeStr);
-                        footballStatusBadge.setTextColor(0xFFFFA726);
-                    }
-                }
-                if (footballHomeTeam != null) footballHomeTeam.setText(top.homeTeam);
-                if (footballAwayTeam != null) footballAwayTeam.setText(top.awayTeam);
-                if (footballScoreOrVs != null) {
-                    footballScoreOrVs.setText(top.getScoreOrVs());
-                    if (top.isLive) footballScoreOrVs.setTextColor(0xFFFF3B30);
-                    else footballScoreOrVs.setTextColor(0xFF00F0FF);
-                }
-                if (footballSubTicker != null) {
-                    if (matches.size() > 1) {
-                        FootballScheduleManager.MatchItem next = matches.get(1);
-                        footballSubTicker.setText("Lainnya: " + next.homeShort + " vs " + next.awayShort + " (" + next.getScoreOrVs() + ")");
-                    } else {
-                        footballSubTicker.setText("Jadwal resmi " + top.leagueName);
-                    }
+                FootballScheduleManager.MatchItem m1 = matches.get(0);
+                if (footballRow1 != null) footballRow1.setVisibility(View.VISIBLE);
+                if (footballRow1Home != null) footballRow1Home.setText(m1.homeTeam);
+                if (footballRow1Away != null) footballRow1Away.setText(m1.awayTeam);
+                if (footballRow1Time != null) {
+                    footballRow1Time.setText(m1.getScoreOrVs());
+                    footballRow1Time.setTextColor(m1.isLive ? 0xFFFF3B30 : 0xFF00F0FF);
                 }
             } else {
-                if (footballLeagueTitle != null) footballLeagueTitle.setText("⚽ JADWAL BOLA");
-                if (footballHomeTeam != null) footballHomeTeam.setText("Memuat");
-                if (footballAwayTeam != null) footballAwayTeam.setText("Jadwal...");
-                if (footballScoreOrVs != null) footballScoreOrVs.setText("vs");
-                if (footballSubTicker != null) footballSubTicker.setText("Menghubungkan ke server ESPN...");
+                if (footballRow1Home != null) footballRow1Home.setText("Tidak ada jadwal");
+                if (footballRow1Away != null) footballRow1Away.setText("-");
+                if (footballRow1Time != null) footballRow1Time.setText("-");
+            }
+
+            // Populate Match 2
+            if (matches.size() > 1) {
+                FootballScheduleManager.MatchItem m2 = matches.get(1);
+                if (footballDiv1 != null) footballDiv1.setVisibility(View.VISIBLE);
+                if (footballRow2 != null) footballRow2.setVisibility(View.VISIBLE);
+                if (footballRow2Home != null) footballRow2Home.setText(m2.homeTeam);
+                if (footballRow2Away != null) footballRow2Away.setText(m2.awayTeam);
+                if (footballRow2Time != null) {
+                    footballRow2Time.setText(m2.getScoreOrVs());
+                    footballRow2Time.setTextColor(m2.isLive ? 0xFFFF3B30 : 0xFF00F0FF);
+                }
+            } else {
+                if (footballDiv1 != null) footballDiv1.setVisibility(View.GONE);
+                if (footballRow2 != null) footballRow2.setVisibility(View.GONE);
+            }
+
+            // Populate Match 3
+            if (matches.size() > 2) {
+                FootballScheduleManager.MatchItem m3 = matches.get(2);
+                if (footballDiv2 != null) footballDiv2.setVisibility(View.VISIBLE);
+                if (footballRow3 != null) footballRow3.setVisibility(View.VISIBLE);
+                if (footballRow3Home != null) footballRow3Home.setText(m3.homeTeam);
+                if (footballRow3Away != null) footballRow3Away.setText(m3.awayTeam);
+                if (footballRow3Time != null) {
+                    footballRow3Time.setText(m3.getScoreOrVs());
+                    footballRow3Time.setTextColor(m3.isLive ? 0xFFFF3B30 : 0xFF00F0FF);
+                }
+            } else {
+                if (footballDiv2 != null) footballDiv2.setVisibility(View.GONE);
+                if (footballRow3 != null) footballRow3.setVisibility(View.GONE);
             }
         }
     }
@@ -4039,10 +4204,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             updateRowStatus(rowFootMinHolder[0], "OFF");
         });
 
+        final View[] rowLeagueHolder = new View[1];
         String activeLeague = FootballScheduleManager.getLeagueDisplayName(FootballScheduleManager.getLeagueFilter(this));
-        addInputRow(rows, null, R.drawable.ic_football, "Pilih Liga : " + activeLeague, -1, () -> {
+        rowLeagueHolder[0] = addInputRow(rows, null, R.drawable.ic_football, "Pilih Liga : " + activeLeague, -1, () -> {
             SoundEffects.playSelect();
-            showFootballLeagueFilterDialog();
+            String nextLeague = FootballScheduleManager.cycleNextLeague(this);
+            updateRowStatus(rowLeagueHolder[0], FootballScheduleManager.getLeagueDisplayName(nextLeague));
+            updateFootballWidget();
+            FootballScheduleManager.syncForce(this, this::updateFootballWidget);
         });
     }
 
@@ -6739,6 +6908,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void switchWallpaperCategory(String category) {
         getSharedPreferences("wallpaper_prefs", MODE_PRIVATE).edit().putString("active_category", category).apply();
+        getSharedPreferences("wallpaper", MODE_PRIVATE).edit().putInt("index", -1).apply();
         String displayLabel;
         if ("Indonesia".equalsIgnoreCase(category) || "Malaysia".equalsIgnoreCase(category)) {
             displayLabel = "Pesona Nusantara";

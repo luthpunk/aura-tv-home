@@ -1028,7 +1028,7 @@
                     android:drawableStart="@drawable/ic_settings" />
             </LinearLayout>
 
-            <!-- Football Schedule Card Widget (Mode Besar) -->
+            <!-- Football Schedule Card Widget (Mode Besar - 332dp matching weatherAirQuality) -->
             <LinearLayout
                 android:id="@+id/footballCardView"
                 android:layout_width="332dp"
@@ -1043,8 +1043,10 @@
                 android:background="@drawable/weather_pill_bg"
                 android:paddingStart="14dp"
                 android:paddingEnd="14dp"
-                android:paddingTop="12dp"
-                android:paddingBottom="12dp"
+                android:paddingTop="11dp"
+                android:paddingBottom="11dp"
+                android:clipChildren="false"
+                android:clipToPadding="false"
                 android:visibility="gone">
 
                 <!-- Header: League Name & Live/Status Badge -->
@@ -1061,19 +1063,21 @@
                         android:layout_weight="1"
                         android:text="⚽ PREMIER LEAGUE"
                         android:textColor="#CCFFFFFF"
-                        android:textSize="12sp"
+                        android:textSize="11sp"
                         android:fontFamily="@font/outfit"
                         android:fontVariationSettings="'wght' 700"
-                        android:textStyle="bold"
+                        android:letterSpacing="0.02"
+                        android:textAllCaps="true"
+                        android:includeFontPadding="false"
                         android:singleLine="true" />
 
                     <TextView
                         android:id="@+id/footballStatusBadge"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="HARI INI"
+                        android:text="JADWAL"
                         android:textColor="#FFA726"
-                        android:textSize="10.5sp"
+                        android:textSize="9.5sp"
                         android:fontFamily="@font/outfit"
                         android:fontVariationSettings="'wght' 700"
                         android:paddingStart="6dp"
@@ -1083,75 +1087,179 @@
                         android:background="@drawable/pill_bg" />
                 </LinearLayout>
 
-                <!-- Main Match Display: Home vs Away + Score/Time -->
+                <View
+                    android:id="@+id/footballHeaderDiv"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="5dp"
+                    android:layout_marginBottom="6dp"
+                    android:background="#22FFFFFF" />
+
+                <!-- Match 1 -->
                 <LinearLayout
+                    android:id="@+id/footballRow1"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
                     android:gravity="center_vertical"
                     android:orientation="horizontal">
 
-                    <!-- Home Team -->
                     <TextView
-                        android:id="@+id/footballHomeTeam"
+                        android:id="@+id/footballRow1Home"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:gravity="end"
                         android:text="Arsenal"
                         android:textColor="#FFFFFFFF"
-                        android:textSize="15sp"
+                        android:textSize="13sp"
                         android:fontFamily="@font/outfit"
                         android:fontVariationSettings="'wght' 600"
                         android:singleLine="true" />
 
-                    <!-- Score or Kick-off Time -->
                     <TextView
-                        android:id="@+id/footballScoreOrVs"
+                        android:id="@+id/footballRow1Time"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="10dp"
-                        android:layout_marginEnd="10dp"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
                         android:gravity="center"
                         android:text="21:00"
                         android:textColor="#00F0FF"
-                        android:textSize="16sp"
+                        android:textSize="12.5sp"
                         android:fontFamily="@font/outfit"
                         android:fontVariationSettings="'wght' 700"
                         android:textStyle="bold" />
 
-                    <!-- Away Team -->
                     <TextView
-                        android:id="@+id/footballAwayTeam"
+                        android:id="@+id/footballRow1Away"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:gravity="start"
                         android:text="Chelsea"
                         android:textColor="#FFFFFFFF"
-                        android:textSize="15sp"
+                        android:textSize="13sp"
                         android:fontFamily="@font/outfit"
                         android:fontVariationSettings="'wght' 600"
                         android:singleLine="true" />
                 </LinearLayout>
 
-                <!-- Secondary Ticker (Next match / subtitle) -->
-                <TextView
-                    android:id="@+id/footballSubTicker"
+                <View
+                    android:id="@+id/footballDiv1"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="5dp"
+                    android:layout_marginBottom="5dp"
+                    android:background="#1AFFFFFF" />
+
+                <!-- Match 2 -->
+                <LinearLayout
+                    android:id="@+id/footballRow2"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:gravity="center"
-                    android:singleLine="true"
-                    android:ellipsize="end"
-                    android:text="Laga Lain: Real Madrid vs Barcelona (02:00)"
-                    android:textColor="#99FFFFFF"
-                    android:textSize="11sp"
-                    android:fontFamily="@font/outfit"
-                    android:fontVariationSettings="'wght' 400" />
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/footballRow2Home"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="end"
+                        android:text="Liverpool"
+                        android:textColor="#E6FFFFFF"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/outfit"
+                        android:fontVariationSettings="'wght' 600"
+                        android:singleLine="true" />
+
+                    <TextView
+                        android:id="@+id/footballRow2Time"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:gravity="center"
+                        android:text="23:30"
+                        android:textColor="#00F0FF"
+                        android:textSize="12.5sp"
+                        android:fontFamily="@font/outfit"
+                        android:fontVariationSettings="'wght' 700"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/footballRow2Away"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="start"
+                        android:text="Man City"
+                        android:textColor="#E6FFFFFF"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/outfit"
+                        android:fontVariationSettings="'wght' 600"
+                        android:singleLine="true" />
+                </LinearLayout>
+
+                <View
+                    android:id="@+id/footballDiv2"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="5dp"
+                    android:layout_marginBottom="5dp"
+                    android:background="#1AFFFFFF" />
+
+                <!-- Match 3 -->
+                <LinearLayout
+                    android:id="@+id/footballRow3"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/footballRow3Home"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="end"
+                        android:text="Man United"
+                        android:textColor="#E6FFFFFF"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/outfit"
+                        android:fontVariationSettings="'wght' 600"
+                        android:singleLine="true" />
+
+                    <TextView
+                        android:id="@+id/footballRow3Time"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:gravity="center"
+                        android:text="Minggu"
+                        android:textColor="#00F0FF"
+                        android:textSize="12.5sp"
+                        android:fontFamily="@font/outfit"
+                        android:fontVariationSettings="'wght' 700"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/footballRow3Away"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="start"
+                        android:text="Tottenham"
+                        android:textColor="#E6FFFFFF"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/outfit"
+                        android:fontVariationSettings="'wght' 600"
+                        android:singleLine="true" />
+                </LinearLayout>
             </LinearLayout>
 
-            <!-- Minimal Football Marquee Pill Widget (Mode Kecil) -->
+            <!-- Minimal Football Marquee Pill Widget (Mode Kecil, matching weatherPillMinimal) -->
             <LinearLayout
                 android:id="@+id/footballPillMinimal"
                 android:layout_width="320dp"
@@ -1164,12 +1272,25 @@
                 android:focusable="true"
                 android:clickable="true"
                 android:descendantFocusability="blocksDescendants"
+                android:background="@drawable/weather_pill_bg"
+                android:paddingStart="10dp"
+                android:paddingEnd="12dp"
+                android:clipChildren="false"
+                android:clipToPadding="false"
                 android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/minFootIcon"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_football" />
 
                 <TextView
                     android:id="@+id/footballMarqueeText"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
                     android:singleLine="true"
                     android:ellipsize="marquee"
                     android:marqueeRepeatLimit="marquee_forever"
@@ -1178,11 +1299,14 @@
                     android:textColor="#FFFFFFFF"
                     android:textSize="12.5sp"
                     android:fontFamily="@font/outfit"
-                    android:fontVariationSettings="'wght' 500"
+                    android:fontVariationSettings="'wght' 700"
+                    android:textStyle="bold"
+                    android:shadowColor="#80000000"
+                    android:shadowDx="0"
+                    android:shadowDy="1"
+                    android:shadowRadius="2"
                     android:includeFontPadding="false"
-                    android:paddingStart="10dp"
-                    android:paddingEnd="10dp"
-                    android:text="⚽ Jadwal Bola: Menghubungkan..." />
+                    android:text="Jadwal Bola: Memuat..." />
             </LinearLayout>
 
             <!-- Fallback Prayer Times view -->

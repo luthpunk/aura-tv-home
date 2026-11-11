@@ -2,6 +2,8 @@ package com.gathin.tvhome;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -13,6 +15,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -21,6 +25,7 @@ import java.util.TimeZone;
 /**
  * Manages fetching, caching, and parsing football/soccer match fixtures & live scores.
  * Data source: ESPN Global Scoreboard CDN API (Lightweight, keyless, reliable).
+ * Strictly focuses on SCHEDULED upcoming fixtures and LIVE matches.
  */
 public final class FootballScheduleManager {
     private static final String TAG = "FootballSchedule";
@@ -28,12 +33,12 @@ public final class FootballScheduleManager {
 
     public static final String MODE_NONE = "none";
     public static final String MODE_MINIMAL = "minimal"; // Marquee Running Text Pill
-    public static final String MODE_LARGE = "large";     // Full Card View
+    public static final String MODE_LARGE = "large";     // Full Card View (3 Fixtures)
 
     public static final String LEAGUE_ALL = "all";
+    public static final String LEAGUE_IDN = "idn.1";
     public static final String LEAGUE_EPL = "eng.1";
     public static final String LEAGUE_UCL = "uefa.champions";
-    public static final String LEAGUE_IDN = "idn.1";
     public static final String LEAGUE_LALIGA = "esp.1";
     public static final String LEAGUE_SERIEA = "ita.1";
 
@@ -42,7 +47,7 @@ public final class FootballScheduleManager {
     private static final String KEY_CACHE_JSON = "cached_events_json";
     private static final String KEY_LAST_UPDATE = "last_update_ts";
 
-    // 20-minute cache interval to prevent excessive requests & keep TV battery/CPU cool
+    // 20-minute cache interval to prevent excessive requests & keep TV cool
     private static final long CACHE_TTL_MS = 20 * 60 * 1000L;
 
     public static class MatchItem {
@@ -84,8 +89,8 @@ public final class FootballScheduleManager {
         }
 
         public String getScoreOrVs() {
-            if (isLive || isFinished) {
-                return homeScore + " - " + awayScore;
+            if (isLive) {
+                return (homeScore.isEmpty() ? "0" : homeScore) + " - " + (awayScore.isEmpty() ? "0" : awayScore);
             }
             return timeStr;
         }
@@ -93,20 +98,12 @@ public final class FootballScheduleManager {
         public String getCompactSummary() {
             StringBuilder sb = new StringBuilder();
             if (isLive) {
-                sb.append("🔴 LIVE ").append(statusDetail).append(" ");
-            } else if (isFinished) {
-                sb.append("[").append(leagueCode).append(" FT] ");
+                sb.append("🔴 LIVE ").append(statusDetail.isEmpty() ? "" : statusDetail + " ");
+                sb.append(homeShort).append(" ").append(homeScore).append("-").append(awayScore).append(" ").append(awayShort);
             } else {
-                sb.append("[").append(leagueCode).append(" ").append(timeStr).append("] ");
+                sb.append(leagueCode).append(": ").append(homeShort).append(" vs ").append(awayShort)
+                  .append(" (").append(timeStr).append(")");
             }
-
-            sb.append(homeShort).append(" ");
-            if (isLive || isFinished) {
-                sb.append(homeScore).append("-").append(awayScore);
-            } else {
-                sb.append("vs");
-            }
-            sb.append(" ").append(awayShort);
             return sb.toString();
         }
     }
@@ -114,38 +111,67 @@ public final class FootballScheduleManager {
     private FootballScheduleManager() {}
 
     public static String getWidgetMode(Context context) {
+        if (context == null) return MODE_NONE;
         SharedPreferences sp = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         return sp.getString(KEY_MODE, MODE_NONE);
     }
 
     public static void setWidgetMode(Context context, String mode) {
+        if (context == null) return;
         SharedPreferences sp = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         sp.edit().putString(KEY_MODE, mode).apply();
     }
 
     public static String getLeagueFilter(Context context) {
+        if (context == null) return LEAGUE_ALL;
         SharedPreferences sp = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         return sp.getString(KEY_LEAGUE_FILTER, LEAGUE_ALL);
     }
 
     public static void setLeagueFilter(Context context, String league) {
+        if (context == null) return;
         SharedPreferences sp = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         sp.edit().putString(KEY_LEAGUE_FILTER, league).apply();
     }
 
+    public static String cycleNextLeague(Context context) {
+        String cur = getLeagueFilter(context);
+        String next;
+        if (LEAGUE_IDN.equals(cur)) {
+            next = LEAGUE_EPL;
+        } else if (LEAGUE_EPL.equals(cur)) {
+            next = LEAGUE_UCL;
+        } else if (LEAGUE_UCL.equals(cur)) {
+            next = LEAGUE_LALIGA;
+        } else if (LEAGUE_LALIGA.equals(cur)) {
+            next = LEAGUE_SERIEA;
+        } else if (LEAGUE_SERIEA.equals(cur)) {
+            next = LEAGUE_ALL;
+        } else {
+            next = LEAGUE_IDN;
+        }
+        setLeagueFilter(context, next);
+        return next;
+    }
+
     public static String getLeagueDisplayName(String leagueCode) {
+        if (LEAGUE_IDN.equals(leagueCode)) return "Liga 1 Indonesia";
         if (LEAGUE_EPL.equals(leagueCode)) return "Premier League";
         if (LEAGUE_UCL.equals(leagueCode)) return "Champions League";
-        if (LEAGUE_IDN.equals(leagueCode)) return "Liga 1 Indonesia";
         if (LEAGUE_LALIGA.equals(leagueCode)) return "La Liga";
         if (LEAGUE_SERIEA.equals(leagueCode)) return "Serie A";
         return "Semua Liga Populer";
     }
 
-    /**
-     * Checks if cached match data is expired and synchronizes in background thread if needed.
-     */
+    public static void syncForce(Context context, Runnable onUpdated) {
+        if (context == null) return;
+        SharedPreferences sp = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        sp.edit().remove(KEY_LAST_UPDATE).remove(KEY_CACHE_JSON).apply();
+        syncIfDue(context, onUpdated);
+    }
+
     public static void syncIfDue(Context context, Runnable onUpdated) {
+        if (context == null) return;
         String mode = getWidgetMode(context);
         if (MODE_NONE.equals(mode)) return;
 
@@ -154,8 +180,9 @@ public final class FootballScheduleManager {
         long now = System.currentTimeMillis();
 
         if (now - last < CACHE_TTL_MS && sp.contains(KEY_CACHE_JSON)) {
-            // Cache is still fresh
-            if (onUpdated != null) onUpdated.run();
+            if (onUpdated != null) {
+                new Handler(Looper.getMainLooper()).post(onUpdated);
+            }
             return;
         }
 
@@ -165,17 +192,16 @@ public final class FootballScheduleManager {
                 List<MatchItem> matches = new ArrayList<>();
 
                 if (LEAGUE_ALL.equals(filter)) {
-                    // Smart priority: fetch EPL, UCL, and Liga 1
-                    matches.addAll(fetchLeagueScoreboard(LEAGUE_EPL, "Premier League", "EPL"));
-                    matches.addAll(fetchLeagueScoreboard(LEAGUE_UCL, "Champions League", "UCL"));
-                    matches.addAll(fetchLeagueScoreboard(LEAGUE_IDN, "Liga 1", "L1"));
+                    matches.addAll(fetchUpcomingFixtures(LEAGUE_IDN, "Liga 1", "Liga 1"));
+                    matches.addAll(fetchUpcomingFixtures(LEAGUE_EPL, "Premier League", "EPL"));
+                    matches.addAll(fetchUpcomingFixtures(LEAGUE_UCL, "Champions League", "UCL"));
                 } else {
                     String name = getLeagueDisplayName(filter);
-                    matches.addAll(fetchLeagueScoreboard(filter, name, getShortCode(filter)));
+                    matches.addAll(fetchUpcomingFixtures(filter, name, getShortCode(filter)));
                 }
 
                 if (!matches.isEmpty()) {
-                    // Sort: LIVE first, then Scheduled by date, then Finished
+                    // Sort: LIVE first, then Upcoming chronologically
                     matches.sort((a, b) -> {
                         if (a.isLive != b.isLive) return a.isLive ? -1 : 1;
                         if (a.isFinished != b.isFinished) return a.isFinished ? 1 : -1;
@@ -209,7 +235,7 @@ public final class FootballScheduleManager {
                 }
 
                 if (onUpdated != null) {
-                    onUpdated.run();
+                    new Handler(Looper.getMainLooper()).post(onUpdated);
                 }
             } catch (Exception e) {
                 Log.w(TAG, "Football sync failed: " + e.getMessage());
@@ -220,17 +246,108 @@ public final class FootballScheduleManager {
     private static String getShortCode(String league) {
         if (LEAGUE_EPL.equals(league)) return "EPL";
         if (LEAGUE_UCL.equals(league)) return "UCL";
-        if (LEAGUE_IDN.equals(league)) return "L1";
-        if (LEAGUE_LALIGA.equals(league)) return "ESP";
-        if (LEAGUE_SERIEA.equals(league)) return "ITA";
+        if (LEAGUE_IDN.equals(league)) return "Liga 1";
+        if (LEAGUE_LALIGA.equals(league)) return "La Liga";
+        if (LEAGUE_SERIEA.equals(league)) return "Serie A";
         return "BOLA";
     }
 
-    private static List<MatchItem> fetchLeagueScoreboard(String league, String leagueName, String leagueCode) {
+    private static List<MatchItem> fetchUpcomingFixtures(String league, String leagueName, String leagueCode) {
+        List<MatchItem> list = fetchLeagueEndpoint(league, leagueName, leagueCode, null);
+        
+        // Filter strictly for LIVE or SCHEDULED upcoming matches (discard finished/FT)
+        List<MatchItem> upcoming = new ArrayList<>();
+        for (MatchItem m : list) {
+            if (m.isLive || !m.isFinished) {
+                upcoming.add(m);
+            }
+        }
+
+        // If no scheduled match today, lookup league calendar for the next match day
+        if (upcoming.isEmpty()) {
+            String nextDate = findNextCalendarDate(league);
+            if (nextDate != null && !nextDate.isEmpty()) {
+                List<MatchItem> nextList = fetchLeagueEndpoint(league, leagueName, leagueCode, nextDate);
+                for (MatchItem m : nextList) {
+                    if (m.isLive || !m.isFinished) {
+                        upcoming.add(m);
+                    }
+                }
+            }
+        }
+
+        // If league is in off-season (e.g. Liga 1 off-season), show latest fixtures as fallback
+        if (upcoming.isEmpty() && !list.isEmpty()) {
+            upcoming.addAll(list);
+        }
+
+        return upcoming;
+    }
+
+    private static String findNextCalendarDate(String league) {
+        HttpURLConnection conn = null;
+        try {
+            String urlStr = "https://site.api.espn.com/apis/site/v2/sports/soccer/" + league + "/scoreboard";
+            URL url = new URL(urlStr);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setConnectTimeout(6000);
+            conn.setReadTimeout(6000);
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Android TV)");
+
+            if (conn.getResponseCode() == 200) {
+                BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = br.readLine()) != null) sb.append(line);
+                br.close();
+
+                JSONObject root = new JSONObject(sb.toString());
+                JSONArray leagues = root.optJSONArray("leagues");
+                if (leagues != null && leagues.length() > 0) {
+                    JSONObject lg = leagues.optJSONObject(0);
+                    JSONArray cal = lg != null ? lg.optJSONArray("calendar") : null;
+                    if (cal != null && cal.length() > 0) {
+                        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+                        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+                        String todayStr = sdf.format(new Date());
+
+                        String bestDate = null;
+                        for (int i = 0; i < cal.length(); i++) {
+                            Object item = cal.get(i);
+                            String dStr = "";
+                            if (item instanceof String) {
+                                dStr = (String) item;
+                            } else if (item instanceof JSONObject) {
+                                dStr = ((JSONObject) item).optString("date", ((JSONObject) item).optString("startDate", ""));
+                            }
+                            if (dStr.length() >= 10) {
+                                String ymd = dStr.substring(0, 10);
+                                if (ymd.compareTo(todayStr) >= 0) {
+                                    bestDate = ymd.replace("-", "");
+                                    break;
+                                }
+                            }
+                        }
+                        return bestDate;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error finding calendar for " + league + ": " + e);
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+        return null;
+    }
+
+    private static List<MatchItem> fetchLeagueEndpoint(String league, String leagueName, String leagueCode, String dateParam) {
         List<MatchItem> list = new ArrayList<>();
         HttpURLConnection conn = null;
         try {
             String urlStr = "https://site.api.espn.com/apis/site/v2/sports/soccer/" + league + "/scoreboard";
+            if (dateParam != null && !dateParam.isEmpty()) {
+                urlStr += "?dates=" + dateParam;
+            }
             URL url = new URL(urlStr);
             conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(8000);
@@ -249,8 +366,6 @@ public final class FootballScheduleManager {
                 if (events != null) {
                     SimpleDateFormat isoParser = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'", Locale.US);
                     isoParser.setTimeZone(TimeZone.getTimeZone("UTC"));
-                    SimpleDateFormat timeFormatter = new SimpleDateFormat("HH:mm", Locale.getDefault());
-                    SimpleDateFormat dayTimeFormatter = new SimpleDateFormat("EEE HH:mm", Locale.getDefault());
 
                     for (int i = 0; i < events.length(); i++) {
                         JSONObject ev = events.optJSONObject(i);
@@ -265,12 +380,7 @@ public final class FootballScheduleManager {
                                 Date d = isoParser.parse(dateIso);
                                 if (d != null) {
                                     ts = d.getTime();
-                                    long diffDays = (ts - System.currentTimeMillis()) / (24 * 3600 * 1000L);
-                                    if (Math.abs(diffDays) < 1) {
-                                        timeStr = timeFormatter.format(d);
-                                    } else {
-                                        timeStr = dayTimeFormatter.format(d);
-                                    }
+                                    timeStr = formatFriendlyDate(d);
                                 }
                             }
                         } catch (Exception ignored) {}
@@ -344,8 +454,45 @@ public final class FootballScheduleManager {
         return list;
     }
 
+    private static String formatFriendlyDate(Date matchDate) {
+        Calendar calMatch = Calendar.getInstance();
+        calMatch.setTime(matchDate);
+
+        Calendar calNow = Calendar.getInstance();
+        Calendar calTomorrow = Calendar.getInstance();
+        calTomorrow.add(Calendar.DAY_OF_YEAR, 1);
+
+        SimpleDateFormat timeFmt = new SimpleDateFormat("HH:mm", Locale.getDefault());
+        String timeOnly = timeFmt.format(matchDate);
+
+        if (calMatch.get(Calendar.YEAR) == calNow.get(Calendar.YEAR) &&
+            calMatch.get(Calendar.DAY_OF_YEAR) == calNow.get(Calendar.DAY_OF_YEAR)) {
+            return "Hari ini " + timeOnly;
+        } else if (calMatch.get(Calendar.YEAR) == calTomorrow.get(Calendar.YEAR) &&
+                   calMatch.get(Calendar.DAY_OF_YEAR) == calTomorrow.get(Calendar.DAY_OF_YEAR)) {
+            return "Besok " + timeOnly;
+        }
+
+        // Show day name in Indonesian
+        int dow = calMatch.get(Calendar.DAY_OF_WEEK);
+        String dayName;
+        switch (dow) {
+            case Calendar.SUNDAY: dayName = "Minggu"; break;
+            case Calendar.MONDAY: dayName = "Senin"; break;
+            case Calendar.TUESDAY: dayName = "Selasa"; break;
+            case Calendar.WEDNESDAY: dayName = "Rabu"; break;
+            case Calendar.THURSDAY: dayName = "Kamis"; break;
+            case Calendar.FRIDAY: dayName = "Jumat"; break;
+            case Calendar.SATURDAY: dayName = "Sabtu"; break;
+            default: dayName = ""; break;
+        }
+
+        return dayName + " " + timeOnly;
+    }
+
     public static List<MatchItem> getCachedMatches(Context context) {
         List<MatchItem> list = new ArrayList<>();
+        if (context == null) return list;
         SharedPreferences sp = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String json = sp.getString(KEY_CACHE_JSON, null);
         if (json == null || json.isEmpty()) return list;
@@ -378,11 +525,11 @@ public final class FootballScheduleManager {
     public static String getMarqueeTicker(Context context) {
         List<MatchItem> matches = getCachedMatches(context);
         if (matches.isEmpty()) {
-            return "⚽ Jadwal Pertandingan Bola: Menghubungkan jadwal...";
+            return "Jadwal Pertandingan Bola: Menghubungkan jadwal...";
         }
 
-        StringBuilder sb = new StringBuilder("⚽ ");
-        for (int i = 0; i < Math.min(matches.size(), 8); i++) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < Math.min(matches.size(), 10); i++) {
             if (i > 0) sb.append("   •   ");
             sb.append(matches.get(i).getCompactSummary());
         }
