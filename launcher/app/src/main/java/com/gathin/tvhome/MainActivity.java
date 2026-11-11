@@ -331,7 +331,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private final ConnectivityManager.NetworkCallback networkCallback = new ConnectivityManager.NetworkCallback() {
         @Override
         public void onAvailable(@NonNull Network network) {
-            handler.post(MainActivity.this::updateWifiLabel);
+            handler.post(() -> {
+                updateWifiLabel();
+                WeatherAirQuality.syncIfDue(MainActivity.this, MainActivity.this::updateWeatherAqi);
+                FootballScheduleManager.syncIfDue(MainActivity.this, () -> handler.post(MainActivity.this::updateFootballWidget));
+            });
         }
 
         @Override
@@ -382,6 +386,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             updateWifiLabel();
             updateWeatherAqi();
             WeatherAirQuality.syncIfDue(MainActivity.this, MainActivity.this::updateWeatherAqi);
+            updateFootballWidget();
+            FootballScheduleManager.syncIfDue(MainActivity.this, () -> handler.post(MainActivity.this::updateFootballWidget));
             updateIslamicShelf();
             refreshPlacesIfDue();
             refreshOnlineWallpapersIfDue();
@@ -1847,6 +1853,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         updateWifiLabel();
         updateWeatherAqi();
         WeatherAirQuality.syncIfDue(this, this::updateWeatherAqi);
+        updateFootballWidget();
+        FootballScheduleManager.syncIfDue(this, () -> handler.post(this::updateFootballWidget));
         updateIslamicShelf();
         updateInputsButton();
         applyHomeScreenTheme();
@@ -2883,15 +2891,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     }
 
                     if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE) {
-                        int targetH = (activeWea != null && activeWea.getHeight() > 0)
-                                ? activeWea.getHeight()
-                                : Math.round(138f * density);
+                        int targetH = Math.round(153f * density);
                         if (targetH > 0 && footballCardView.getLayoutParams().height != targetH) {
                             footballCardView.getLayoutParams().height = targetH;
                             footballCardView.requestLayout();
                         }
-                        int fh = footballCardView.getHeight() > 0 ? footballCardView.getHeight() : targetH;
-                        float fDesiredTopInMain = targetCenterY - (fh * 0.5f);
+                        float fDesiredTopInMain = targetCenterY - (targetH * 0.5f);
                         float fBaseTopInMain = footballCardView.getTop();
                         float fDy = Math.round(fDesiredTopInMain - fBaseTopInMain);
                         if (Math.abs(footballCardView.getTranslationY() - fDy) >= 1f) {
@@ -3927,9 +3932,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
 
             // Populate Match 1
+            if (footballRow1 != null) footballRow1.setVisibility(View.VISIBLE);
+            if (footballDiv1 != null) footballDiv1.setVisibility(View.VISIBLE);
+            if (footballRow2 != null) footballRow2.setVisibility(View.VISIBLE);
+            if (footballDiv2 != null) footballDiv2.setVisibility(View.VISIBLE);
+            if (footballRow3 != null) footballRow3.setVisibility(View.VISIBLE);
+
             if (!matches.isEmpty()) {
                 FootballScheduleManager.MatchItem m1 = matches.get(0);
-                if (footballRow1 != null) footballRow1.setVisibility(View.VISIBLE);
                 if (footballRow1Home != null) footballRow1Home.setText(m1.homeTeam);
                 if (footballRow1Away != null) footballRow1Away.setText(m1.awayTeam);
                 if (footballRow1Time != null) {
@@ -3945,11 +3955,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 }
             }
 
-            // Populate Match 2
+            // Populate Match 2 (always keep row visible so card shape/rows never shift)
             if (matches.size() > 1) {
                 FootballScheduleManager.MatchItem m2 = matches.get(1);
-                if (footballDiv1 != null) footballDiv1.setVisibility(View.VISIBLE);
-                if (footballRow2 != null) footballRow2.setVisibility(View.VISIBLE);
                 if (footballRow2Home != null) footballRow2Home.setText(m2.homeTeam);
                 if (footballRow2Away != null) footballRow2Away.setText(m2.awayTeam);
                 if (footballRow2Time != null) {
@@ -3957,15 +3965,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     footballRow2Time.setTextColor(m2.isLive ? liveColor : timeColor);
                 }
             } else {
-                if (footballDiv1 != null) footballDiv1.setVisibility(View.GONE);
-                if (footballRow2 != null) footballRow2.setVisibility(View.GONE);
+                if (footballRow2Home != null) footballRow2Home.setText("—");
+                if (footballRow2Away != null) footballRow2Away.setText("—");
+                if (footballRow2Time != null) {
+                    footballRow2Time.setText("•••");
+                    footballRow2Time.setTextColor(timeColor);
+                }
             }
 
-            // Populate Match 3
+            // Populate Match 3 (always keep row visible so card shape/rows never shift)
             if (matches.size() > 2) {
                 FootballScheduleManager.MatchItem m3 = matches.get(2);
-                if (footballDiv2 != null) footballDiv2.setVisibility(View.VISIBLE);
-                if (footballRow3 != null) footballRow3.setVisibility(View.VISIBLE);
                 if (footballRow3Home != null) footballRow3Home.setText(m3.homeTeam);
                 if (footballRow3Away != null) footballRow3Away.setText(m3.awayTeam);
                 if (footballRow3Time != null) {
@@ -3973,8 +3983,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     footballRow3Time.setTextColor(m3.isLive ? liveColor : timeColor);
                 }
             } else {
-                if (footballDiv2 != null) footballDiv2.setVisibility(View.GONE);
-                if (footballRow3 != null) footballRow3.setVisibility(View.GONE);
+                if (footballRow3Home != null) footballRow3Home.setText("—");
+                if (footballRow3Away != null) footballRow3Away.setText("—");
+                if (footballRow3Time != null) {
+                    footballRow3Time.setText("•••");
+                    footballRow3Time.setTextColor(timeColor);
+                }
             }
         }
     }
@@ -4578,6 +4592,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         });
     }
 
+    private void openAccessibilitySettingsWithFallback() {
+        try {
+            startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+        } catch (Exception e) {
+            open(systemIntent(Settings.ACTION_SETTINGS));
+        }
+    }
+
     private void buildRestartSubMenu(FrameLayout panel, LinearLayout rows) {
         addInputRow(rows, null, R.drawable.ic_back, "Kembali", -1, () -> popMenuSubPage(panel, rows));
         addInputRow(rows, null, R.drawable.ic_restart, "Konfirmasi Mulai Ulang TV", -1, () -> {
@@ -4586,9 +4608,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             boolean success = HomeKeyService.restartTv(MainActivity.this);
             if (!success) {
                 Toast.makeText(MainActivity.this, "⚠️ Aktifkan 'Aura TV Home' di Pengaturan TV > Aksesibilitas agar dapat memulai ulang TV", Toast.LENGTH_LONG).show();
-                try {
-                    startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
-                } catch (Exception ignored) {}
+                openAccessibilitySettingsWithFallback();
             } else {
                 Toast.makeText(MainActivity.this, "Memulai ulang TV...", Toast.LENGTH_SHORT).show();
             }
@@ -4603,9 +4623,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             boolean success = HomeKeyService.turnOffTv(MainActivity.this);
             if (!success) {
                 Toast.makeText(MainActivity.this, "⚠️ Aktifkan 'Aura TV Home' di Pengaturan TV > Aksesibilitas agar dapat mematikan TV", Toast.LENGTH_LONG).show();
-                try {
-                    startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
-                } catch (Exception ignored) {}
+                openAccessibilitySettingsWithFallback();
             }
         });
     }
@@ -5829,9 +5847,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             boolean success = HomeKeyService.restartTv(MainActivity.this);
             if (!success) {
                 Toast.makeText(MainActivity.this, "⚠️ Aktifkan 'Aura TV Home' di Pengaturan TV > Aksesibilitas agar dapat merestart TV", Toast.LENGTH_LONG).show();
-                try {
-                    startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
-                } catch (Exception ignored) {}
+                openAccessibilitySettingsWithFallback();
             } else {
                 Toast.makeText(MainActivity.this, "Memulai ulang TV...", Toast.LENGTH_SHORT).show();
             }
@@ -5851,9 +5867,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             boolean success = HomeKeyService.turnOffTv(MainActivity.this);
             if (!success) {
                 Toast.makeText(MainActivity.this, "⚠️ Aktifkan 'Aura TV Home' di Pengaturan TV > Aksesibilitas agar dapat mematikan TV", Toast.LENGTH_LONG).show();
-                try {
-                    startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
-                } catch (Exception ignored) {}
+                openAccessibilitySettingsWithFallback();
             }
         });
         builder.setNegativeButton("Batal", (dialog, which) -> dialog.dismiss());

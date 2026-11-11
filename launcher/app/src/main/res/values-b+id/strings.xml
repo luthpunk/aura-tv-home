@@ -21,8 +21,8 @@
     <string name="home_settings">Beranda utama</string>
     <string name="home_settings_help">Pilih layar utama di pengaturan sistem, lalu tekan tombol Home.</string>
     <string name="input_key_service_description">Membuka menu pilihan input saat tombol Input di remote ditekan.</string>
-    <string name="home_key_name">Tombol Home</string>
-    <string name="home_key_description">Membuat tombol Home di remote membuka launcher ini.</string>
+    <string name="home_key_name">Aura TV Home</string>
+    <string name="home_key_description">Mengaktifkan tombol Home, Matikan TV, Mulai Ulang TV, dan pembersih RAM otomatis di Aura TV Home.</string>
     <string name="card_prompt_title">Kartu baru dari %1$s</string>
     <string name="card_prompt_body">%1$s dapat menampilkan kartu di layar utama. Menyembunyikannya akan membiarkan ikon aplikasi seperti biasa.</string>
     <string name="card_prompt_names">Nama kartu: \'%1$s\'. Aplikasi: \'%2$s\'.</string>

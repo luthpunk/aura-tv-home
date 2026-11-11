@@ -20,6 +20,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Queue;
+import java.util.concurrent.TimeUnit;
 
 public class HomeKeyService extends AccessibilityService {
 
@@ -31,6 +32,11 @@ public class HomeKeyService extends AccessibilityService {
     private final Queue<String> forceStopQueue = new LinkedList<>();
     private boolean isProcessingForceStop = false;
     private boolean isWaitingForConfirmDialog = false;
+
+    private boolean isProcessingRestart = false;
+    private boolean isWaitingForRestartConfirm = false;
+    private long lastRestartClickTime = 0L;
+    private int restartScrollAttempts = 0;
 
     /** Scancodes of remote buttons that should open Settings (config.xml, settings_key_scancodes). */
     private int[] settingsScancodes = new int[0];
@@ -49,8 +55,32 @@ public class HomeKeyService extends AccessibilityService {
         super.onDestroy();
     }
 
+    public static boolean isAccessibilityActive() {
+        return instance != null;
+    }
+
+    private static boolean tryRootCommand(String cmd) {
+        try {
+            Process p = Runtime.getRuntime().exec(new String[]{"su", "-c", cmd});
+            boolean finished = p.waitFor(450, TimeUnit.MILLISECONDS);
+            return finished && p.exitValue() == 0;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private static boolean tryDirectCommand(String... cmd) {
+        try {
+            Process p = Runtime.getRuntime().exec(cmd);
+            boolean finished = p.waitFor(350, TimeUnit.MILLISECONDS);
+            return finished && p.exitValue() == 0;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
     public static boolean sleepScreen() {
-        if (instance != null) {
+        if (instance != null && android.os.Build.VERSION.SDK_INT >= 28) {
             Log.i(TAG, "Executing GLOBAL_ACTION_LOCK_SCREEN to turn off TV display");
             return instance.performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN);
         }
@@ -58,18 +88,11 @@ public class HomeKeyService extends AccessibilityService {
     }
 
     public static boolean restartTv(Context context) {
-        if (instance != null) {
-            Log.i(TAG, "Attempting TV restart via accessibility service");
-            // Android 11+ (API 30+) provides GLOBAL_ACTION_REBOOT = 12
-            if (android.os.Build.VERSION.SDK_INT >= 30) {
-                boolean done = instance.performGlobalAction(12);
-                if (done) return true;
-            }
-            // Fallback: System power dialog which presents Restart
-            boolean dialog = instance.performGlobalAction(GLOBAL_ACTION_POWER_DIALOG);
-            if (dialog) return true;
+        // 1. Rooted / Unlocked STB: direct reboot via su or permissive /system/bin/reboot (verified via exitValue == 0)
+        if (tryRootCommand("reboot") || tryDirectCommand("reboot")) {
+            return true;
         }
-        // Fallback: system broadcast or shell reboot
+        // 2. System broadcast (works on system-signed STB ROMs; throws SecurityException on non-root TV)
         try {
             Intent intent = new Intent(Intent.ACTION_REBOOT);
             intent.putExtra("nowait", 1);
@@ -77,33 +100,81 @@ public class HomeKeyService extends AccessibilityService {
             intent.putExtra("window", 0);
             context.sendBroadcast(intent);
             return true;
-        } catch (Exception e) {
-            try {
-                Runtime.getRuntime().exec("reboot");
-                return true;
-            } catch (Exception ignored) {}
+        } catch (Exception ignored) {}
+        // 3. Non-root Android TV with Accessibility enabled
+        if (instance != null) {
+            Log.i(TAG, "Starting automated TV restart via accessibility service");
+            instance.startAutomatedRestart(context);
+            return true;
         }
         return false;
     }
 
     public static boolean turnOffTv(Context context) {
-        if (instance != null) {
-            Log.i(TAG, "Attempting TV power off / sleep via accessibility service");
-            // 1. Tampilkan dialog power resmi TV (Universal untuk Sharp, TCL, Xiaomi, Sony, dll.)
-            boolean dialog = instance.performGlobalAction(GLOBAL_ACTION_POWER_DIALOG);
-            if (dialog) return true;
-            // 2. Fallback: Lock screen / sleep display
-            boolean done = instance.performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN);
-            if (done) return true;
+        // 1. Rooted / System-signed STB shutdown first if Accessibility is not active
+        if (instance == null) {
+            if (tryRootCommand("reboot -p") || tryRootCommand("input keyevent 26") || tryDirectCommand("reboot", "-p")) {
+                return true;
+            }
+            try {
+                Intent intent = new Intent("android.intent.action.ACTION_REQUEST_SHUTDOWN");
+                intent.putExtra("android.intent.extra.KEY_CONFIRM", false);
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(intent);
+                return true;
+            } catch (Exception ignored) {}
+            return false;
         }
-        try {
-            Intent intent = new Intent("android.intent.action.ACTION_REQUEST_SHUTDOWN");
-            intent.putExtra("android.intent.extra.KEY_CONFIRM", false);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            context.startActivity(intent);
-            return true;
-        } catch (Exception ignored) {}
-        return false;
+        // 2. Non-root Android TV / STB with Accessibility enabled:
+        // Execute GLOBAL_ACTION_LOCK_SCREEN first (calls PowerManager.goToSleep() directly in system_server).
+        Log.i(TAG, "Attempting TV power off / sleep via accessibility service");
+        if (android.os.Build.VERSION.SDK_INT >= 28) {
+            boolean locked = instance.performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN);
+            if (locked) return true;
+        }
+        boolean dialog = instance.performGlobalAction(GLOBAL_ACTION_POWER_DIALOG);
+        return dialog;
+    }
+
+    private void startAutomatedRestart(Context context) {
+        isProcessingRestart = true;
+        isWaitingForRestartConfirm = false;
+        lastRestartClickTime = 0L;
+        restartScrollAttempts = 0;
+        homeHandler.removeCallbacksAndMessages(null);
+
+        // Step A: Try system power dialog first (works on TVs that display a global power menu)
+        performGlobalAction(GLOBAL_ACTION_POWER_DIALOG);
+
+        // Step B: If the TV firmware ignores GLOBAL_ACTION_POWER_DIALOG (no dialog appears within 400ms),
+        // automatically open Device Info / About Settings where every Android TV has "Mulai ulang" / "Restart".
+        homeHandler.postDelayed(() -> {
+            if (!isProcessingRestart || isWaitingForRestartConfirm) return;
+            AccessibilityNodeInfo root = getRootInActiveWindow();
+            String pkg = (root != null && root.getPackageName() != null) ? root.getPackageName().toString() : "";
+            if (pkg.isEmpty() || pkg.equals(getPackageName())) {
+                Log.i(TAG, "Power dialog not shown by TV firmware; opening Device Info Settings for Restart");
+                try {
+                    Intent aboutIntent = new Intent(Settings.ACTION_DEVICE_INFO_SETTINGS);
+                    aboutIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    startActivity(aboutIntent);
+                } catch (Exception e) {
+                    try {
+                        Intent settingsIntent = new Intent(Settings.ACTION_SETTINGS);
+                        settingsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(settingsIntent);
+                    } catch (Exception ignored) {}
+                }
+            } else {
+                handleRestartAccessibilityTree(root);
+            }
+        }, 400);
+
+        // Safety timeout: clear restart automation state after 5 seconds if not completed
+        homeHandler.postDelayed(() -> {
+            isProcessingRestart = false;
+            isWaitingForRestartConfirm = false;
+        }, 5000);
     }
 
     public static void forceStopApp(Context context, String pkg) {
@@ -213,8 +284,117 @@ public class HomeKeyService extends AccessibilityService {
         return node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
     }
 
+    private boolean clickClickableNodeOrAncestor(AccessibilityNodeInfo node) {
+        if (node == null) return false;
+        AccessibilityNodeInfo cur = node;
+        for (int i = 0; i < 5; i++) {
+            if (cur.isClickable() && cur.isEnabled()) {
+                boolean res = cur.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                if (res) {
+                    Log.d(TAG, "Clicked clickable node/ancestor: " + cur.getClassName());
+                    return true;
+                }
+            }
+            AccessibilityNodeInfo parent = cur.getParent();
+            if (parent == null) break;
+            cur = parent;
+        }
+        return false;
+    }
+
+    private boolean scrollFirstScrollable(AccessibilityNodeInfo node) {
+        if (node == null) return false;
+        if (node.isScrollable()) {
+            if (node.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)) {
+                return true;
+            }
+        }
+        int count = node.getChildCount();
+        for (int i = 0; i < count; i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child != null && scrollFirstScrollable(child)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void handleRestartAccessibilityTree(AccessibilityNodeInfo root) {
+        if (root == null || !isProcessingRestart) return;
+        String pkg = root.getPackageName() != null ? root.getPackageName().toString() : "";
+        if (pkg.equals(getPackageName())) return;
+
+        try {
+            String[] restartKeywords = {"Mulai ulang", "Restart", "Reboot", "Muat ulang"};
+            if (isWaitingForRestartConfirm) {
+                if (SystemClock.uptimeMillis() - lastRestartClickTime < 220L) return;
+                String[] confirmKeywords = {"Mulai ulang", "Restart", "Reboot", "OK", "Ya"};
+                for (String kw : confirmKeywords) {
+                    List<AccessibilityNodeInfo> nodes = root.findAccessibilityNodeInfosByText(kw);
+                    for (int i = nodes.size() - 1; i >= 0; i--) {
+                        AccessibilityNodeInfo n = nodes.get(i);
+                        CharSequence txt = n.getText();
+                        String t = txt != null ? txt.toString().trim() : "";
+                        if (t.equalsIgnoreCase(kw) || t.toLowerCase(Locale.ROOT).startsWith(kw.toLowerCase(Locale.ROOT))) {
+                            if (clickClickableNodeOrAncestor(n)) {
+                                Log.i(TAG, "Confirmed TV Restart button: " + t);
+                                isProcessingRestart = false;
+                                isWaitingForRestartConfirm = false;
+                                homeHandler.removeCallbacksAndMessages(null);
+                                return;
+                            }
+                        }
+                    }
+                }
+                return;
+            }
+
+            for (String kw : restartKeywords) {
+                List<AccessibilityNodeInfo> nodes = root.findAccessibilityNodeInfosByText(kw);
+                for (AccessibilityNodeInfo n : nodes) {
+                    CharSequence txt = n.getText();
+                    String t = txt != null ? txt.toString().trim() : "";
+                    if (t.equalsIgnoreCase(kw) || t.toLowerCase(Locale.ROOT).contains(kw.toLowerCase(Locale.ROOT))) {
+                        if (clickClickableNodeOrAncestor(n)) {
+                            Log.i(TAG, "Clicked initial TV Restart item: " + t);
+                            isWaitingForRestartConfirm = true;
+                            lastRestartClickTime = SystemClock.uptimeMillis();
+                            homeHandler.postDelayed(() -> {
+                                if (isProcessingRestart && isWaitingForRestartConfirm) {
+                                    AccessibilityNodeInfo r = getRootInActiveWindow();
+                                    if (r != null) handleRestartAccessibilityTree(r);
+                                }
+                            }, 320);
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // If in Settings and Restart is further down the list, scroll down to reveal it
+            if (restartScrollAttempts < 5 && scrollFirstScrollable(root)) {
+                restartScrollAttempts++;
+                homeHandler.postDelayed(() -> {
+                    if (isProcessingRestart && !isWaitingForRestartConfirm) {
+                        AccessibilityNodeInfo r = getRootInActiveWindow();
+                        if (r != null) handleRestartAccessibilityTree(r);
+                    }
+                }, 250);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error during automated restart accessibility traversal", e);
+        }
+    }
+
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
+        if (isProcessingRestart) {
+            AccessibilityNodeInfo root = getRootInActiveWindow();
+            if (root != null) {
+                handleRestartAccessibilityTree(root);
+            }
+            return;
+        }
         if (!isProcessingForceStop || targetForceStopPackage == null) return;
 
         AccessibilityNodeInfo root = getRootInActiveWindow();

@@ -96,7 +96,7 @@
              build-and-install.sh; see HomeKeyService. -->
         <service
             android:name=".HomeKeyService"
-            android:label="@string/home_key_name"
+            android:label="@string/app_name"
             android:exported="true"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>

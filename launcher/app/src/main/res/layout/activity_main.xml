@@ -1028,11 +1028,11 @@
                     android:drawableStart="@drawable/ic_settings" />
             </LinearLayout>
 
-            <!-- Football Schedule Card Widget (Mode Besar - 332dp matching weatherAirQuality) -->
+            <!-- Football Schedule Card Widget (Mode Besar - Fixed 332dp x 153dp) -->
             <LinearLayout
                 android:id="@+id/footballCardView"
                 android:layout_width="332dp"
-                android:layout_height="wrap_content"
+                android:layout_height="153dp"
                 android:layout_below="@id/leftBlock"
                 android:layout_alignParentEnd="true"
                 android:layout_marginTop="24dp"
