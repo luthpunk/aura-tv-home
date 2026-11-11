@@ -106,14 +106,14 @@ final class OnlineWallpapers {
             // Live Wallpaper (Video Wallpaper - MoeWalls H.264)
             new WallpaperItem("https://go.moewalls.com/download.php?video=DfKLZFsXpeRlAM3ImPaTitnT4sIq4iehV7yot%2FAGlHpx6k5E%2BtJ%2FVtnM144%3D",
                     "Cat Sunlight Garden", "Kucing berjemur di taman dengan semilir cahaya matahari hangat", "Live"),
-            new WallpaperItem("https://go.moewalls.com/download.php?video=58sgEDhBalS7LFiUyq8AToL8urVnkl%2FrHfcaCGFjieAm1MwK4zjV4169Eb3qkyQUJjSVp4OhP9AVcYus",
-                    "Amiya x Doctor Fireworks", "Amiya dan Doctor menikmati indahnya kembang api malam hari", "Live"),
-            new WallpaperItem("https://go.moewalls.com/download.php?video=pMJG%2BbhC1yOxNsNHM4pyagbg37hKlgPwVmCPGDS7nxOHCW7LVXge9oMqzY6ozeh3HGokOqHknO%2BYAa8RC5OjcjgufUslmr%2FIng9u7w%3D%3D",
-                    "Arona Cloud Sky Classroom", "Arona tersenyum di dalam kelas berlatar langit biru dan awan cerah", "Live"),
-            new WallpaperItem("https://go.moewalls.com/download.php?video=tSXngeVmLX1MMDcpzD%2Bso%2Fe7%2FVnxdMtkWQD%2BhSapFzuNhDtEREcNVgw6Qtc%3D",
-                    "Blood Moon Clouds", "Bulan merah darah melintasi awan malam yang bergerak dramatis", "Live"),
             new WallpaperItem("https://go.moewalls.com/download.php?video=iJSRmj44rJ26t%2FVwsD8xZ3JS3vQ6Moy%2Ba%2BlPOMprj1VcuOSyiR3rLliyjpTlC9mznW3ygXRvz4S%2BrRgmI%2BDWF9KR0vWVaeqpruX1JQ%3D%3D",
                     "Nanally City View", "Pemandangan kota metropolitan futuristik Neverness to Everness", "Live"),
+            new WallpaperItem("https://go.moewalls.com/download.php?video=pMJG%2BbhC1yOxNsNHM4pyagbg37hKlgPwVmCPGDS7nxOHCW7LVXge9oMqzY6ozeh3HGokOqHknO%2BYAa8RC5OjcjgufUslmr%2FIng9u7w%3D%3D",
+                    "Arona Cloud Sky Classroom", "Arona tersenyum di dalam kelas berlatar langit biru dan awan cerah", "Live"),
+            new WallpaperItem("https://go.moewalls.com/download.php?video=58sgEDhBalS7LFiUyq8AToL8urVnkl%2FrHfcaCGFjieAm1MwK4zjV4169Eb3qkyQUJjSVp4OhP9AVcYus",
+                    "Amiya x Doctor Fireworks", "Amiya dan Doctor menikmati indahnya kembang api malam hari", "Live"),
+            new WallpaperItem("https://go.moewalls.com/download.php?video=tSXngeVmLX1MMDcpzD%2Bso%2Fe7%2FVnxdMtkWQD%2BhSapFzuNhDtEREcNVgw6Qtc%3D",
+                    "Blood Moon Clouds", "Bulan merah darah melintasi awan malam yang bergerak dramatis", "Live"),
 
             // Ocean & Water (Lautan & Pantai - Unsplash 4K Pilihan Pengguna)
             new WallpaperItem("https://images.unsplash.com/photo-1505699261378-c372af38134c?auto=format&fit=crop&w=3840&h=2160&q=85",
@@ -268,6 +268,19 @@ final class OnlineWallpapers {
         }
     }
 
+    private static int catalogOrderIndex(File f) {
+        if (f == null) return Integer.MAX_VALUE;
+        String name = f.getName();
+        int dot = name.lastIndexOf('.');
+        String base = dot > 0 ? name.substring(0, dot) : name;
+        for (int i = 0; i < CURATED_CATALOG.length; i++) {
+            if (base.equals(hashFilename(CURATED_CATALOG[i].url))) {
+                return i;
+            }
+        }
+        return Integer.MAX_VALUE;
+    }
+
     static List<File> listByCategory(Context ctx, String category) {
         File d = dir(ctx);
         if (d != null && d.exists()) {
@@ -278,10 +291,12 @@ final class OnlineWallpapers {
         List<File> filtered = new ArrayList<>();
         boolean wantLive = category.equalsIgnoreCase("Live");
         for (File f : all) {
-            if (wantLive && f.getName().toLowerCase(Locale.ROOT).endsWith(".mp4")) {
-                filtered.add(f);
+            boolean isMp4 = f.getName().toLowerCase(Locale.ROOT).endsWith(".mp4");
+            if (wantLive) {
+                if (isMp4) filtered.add(f);
                 continue;
             }
+            if (isMp4) continue;
             String[] desc = describe(f);
             if (desc != null && desc.length >= 3) {
                 if (matchesCategory(desc[2], category)) {
@@ -289,6 +304,12 @@ final class OnlineWallpapers {
                 }
             }
         }
+        Collections.sort(filtered, (a, b) -> {
+            int ia = catalogOrderIndex(a);
+            int ib = catalogOrderIndex(b);
+            if (ia != ib) return Integer.compare(ia, ib);
+            return a.getName().compareTo(b.getName());
+        });
         return filtered;
     }
 
