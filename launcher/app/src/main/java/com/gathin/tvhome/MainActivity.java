@@ -4017,12 +4017,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         String activeFilter = FootballScheduleManager.getLeagueFilter(this);
         String leagueName = FootballScheduleManager.getLeagueDisplayName(activeFilter);
 
-        // Option: Refresh Jadwal
+        // Action: Refresh Jadwal
         items.add(new ThemedDialogItem(
                 "🔄 Segarkan Jadwal Sekarang",
-                "Sinkronisasi ulang skor dan jadwal terkini (" + leagueName + ")",
+                "Sinkronisasi skor langsung dan jadwal pertandingan terkini (" + leagueName + ")",
                 false,
-                null,
+                "SYNC",
                 () -> {
                     SoundEffects.playSelect();
                     FootballScheduleManager.syncForce(this, () -> handler.post(() -> {
@@ -4042,16 +4042,88 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     null
             ));
         } else {
+            List<FootballScheduleManager.MatchItem> liveList = new ArrayList<>();
+            List<FootballScheduleManager.MatchItem> todayList = new ArrayList<>();
+            List<FootballScheduleManager.MatchItem> upcomingList = new ArrayList<>();
+            List<FootballScheduleManager.MatchItem> finishedList = new ArrayList<>();
+
+            Calendar calNow = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta"));
+            int curDay = calNow.get(Calendar.DAY_OF_YEAR);
+            int curYear = calNow.get(Calendar.YEAR);
+
             for (FootballScheduleManager.MatchItem m : matches) {
-                String title = (m.isLive ? "🔴 LIVE " : "") + m.homeTeam + " " + (m.isLive || m.isFinished ? m.homeScore + " - " + m.awayScore : "vs") + " " + m.awayTeam;
-                String sub = m.leagueName + " • " + (m.isLive ? m.statusDetail : (m.isFinished ? "FT" : m.timeStr));
-                items.add(new ThemedDialogItem(title, sub, false, null, null));
+                if (m.isLive) {
+                    liveList.add(m);
+                } else if (m.isFinished) {
+                    finishedList.add(m);
+                } else {
+                    if (m.timestamp > 0) {
+                        Calendar calM = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta"));
+                        calM.setTimeInMillis(m.timestamp);
+                        if (calM.get(Calendar.YEAR) == curYear && calM.get(Calendar.DAY_OF_YEAR) == curDay) {
+                            todayList.add(m);
+                        } else {
+                            upcomingList.add(m);
+                        }
+                    } else {
+                        String t = (m.timeStr != null) ? m.timeStr.toLowerCase(Locale.ROOT) : "";
+                        if (t.contains("hari ini") || t.contains("today") || t.matches(".*\\d{1,2}:\\d{2}.*")) {
+                            todayList.add(m);
+                        } else {
+                            upcomingList.add(m);
+                        }
+                    }
+                }
+            }
+
+            // 1. Group Live
+            if (!liveList.isEmpty()) {
+                items.add(new ThemedDialogItem("── 🔴 SEDANG BERLANGSUNG ──", null, false, null, null));
+                for (FootballScheduleManager.MatchItem m : liveList) {
+                    String title = m.homeTeam + "   " + m.homeScore + " - " + m.awayScore + "   " + m.awayTeam;
+                    String badge = "LIVE" + (m.statusDetail != null && !m.statusDetail.isEmpty() ? " " + m.statusDetail : "");
+                    String sub = m.leagueName + (m.timeStr != null && !m.timeStr.isEmpty() ? " • " + m.timeStr : "");
+                    items.add(new ThemedDialogItem(title, sub, false, badge.trim(), null));
+                }
+            }
+
+            // 2. Group Hari Ini
+            if (!todayList.isEmpty()) {
+                items.add(new ThemedDialogItem("── ⏰ HARI INI / MALAM INI ──", null, false, null, null));
+                for (FootballScheduleManager.MatchItem m : todayList) {
+                    String title = m.homeTeam + "   vs   " + m.awayTeam;
+                    String badge = (m.timeStr != null && !m.timeStr.isEmpty()) ? m.timeStr : "HARI INI";
+                    String sub = m.leagueName + (m.statusDetail != null && !m.statusDetail.isEmpty() ? " • " + m.statusDetail : "");
+                    items.add(new ThemedDialogItem(title, sub, false, badge, null));
+                }
+            }
+
+            // 3. Group Mendatang
+            if (!upcomingList.isEmpty()) {
+                items.add(new ThemedDialogItem("── 📅 JADWAL MENDATANG ──", null, false, null, null));
+                for (FootballScheduleManager.MatchItem m : upcomingList) {
+                    String title = m.homeTeam + "   vs   " + m.awayTeam;
+                    String badge = (m.timeStr != null && !m.timeStr.isEmpty()) ? m.timeStr : "MENDATANG";
+                    String sub = m.leagueName + (m.statusDetail != null && !m.statusDetail.isEmpty() ? " • " + m.statusDetail : "");
+                    items.add(new ThemedDialogItem(title, sub, false, badge, null));
+                }
+            }
+
+            // 4. Group Selesai
+            if (!finishedList.isEmpty()) {
+                items.add(new ThemedDialogItem("── 🏁 HASIL AKHIR ──", null, false, null, null));
+                for (FootballScheduleManager.MatchItem m : finishedList) {
+                    String title = m.homeTeam + "   " + m.homeScore + " - " + m.awayScore + "   " + m.awayTeam;
+                    String badge = "FT";
+                    String sub = m.leagueName + (m.timeStr != null && !m.timeStr.isEmpty() ? " • " + m.timeStr : "");
+                    items.add(new ThemedDialogItem(title, sub, false, badge, null));
+                }
             }
         }
 
         showThemedListDialog(
                 "⚽ Jadwal Pertandingan (" + leagueName + ")",
-                "Jadwal dan skor pertandingan resmi terkini",
+                "Daftar laga dan skor resmi terkini",
                 items,
                 null,
                 null
