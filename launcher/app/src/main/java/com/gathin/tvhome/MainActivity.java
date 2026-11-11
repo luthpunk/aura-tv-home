@@ -62,6 +62,7 @@ import android.os.Looper;
 import android.os.StatFs;
 import android.provider.Settings;
 import android.text.format.Formatter;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.text.SpannableString;
 import android.text.Spanned;
