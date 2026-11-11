@@ -489,6 +489,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     OnlineWallpapers.syncCategory(getApplicationContext(), activeCat);
                     handler.post(() -> {
                         if (isDestroyed()) return;
+                        if (!isActiveCategory(activeCat)) return;
                         List<File> fresh = OnlineWallpapers.listByCategory(MainActivity.this, activeCat);
                         if (!fresh.isEmpty()) {
                             wallpapers = fresh;
@@ -1301,22 +1302,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         prefs.edit().putInt("index", next).apply();
         wallShownAt = android.os.SystemClock.elapsedRealtime();
         final File file = wallpapers.get(next);
+        // Every switch gets its own number: a picture still decoding from an earlier switch is
+        // dropped when it finishes, so it can never cover the wallpaper chosen after it.
+        final int gen = ++wallGen;
         // On a cold start, name the place straight away: waiting for the decode showed the app's name
         // at full size and shrank it a moment later. After that the name changes with the picture,
         // or it would name the next place over the last one's picture while that one decodes.
         if (placeName == null) setPlace(file);
 
         if (file != null && file.getName().toLowerCase(java.util.Locale.ROOT).endsWith(".mp4")) {
-            handler.post(() -> {
-                if (isDestroyed()) return;
-                playLiveWallpaper(file);
-                setPlace(file);
-            });
+            playLiveWallpaper(file);
+            setPlace(file);
             return;
-        }
-
-        if (currentLiveFile != null) {
-            stopLiveWallpaper();
         }
 
         final boolean firstPicture = wallBitmap == null;
@@ -1329,66 +1326,99 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             android.graphics.Bitmap blur = firstPicture ? null
                     : Backdrop.blur(bmp, dm.widthPixels, dm.heightPixels, getWallpaperDimColor());
             handler.post(() -> {
-                if (isDestroyed()) return;
-                setWallpaper(bmp, fade, blur);
+                if (isDestroyed() || gen != wallGen) return;
+                if (currentLiveFile != null || liveWallView != null) {
+                    // Leaving a live wallpaper: the video stays on screen until the new picture is
+                    // ready, then the picture takes over in one step (no stale picture in between).
+                    setWallpaper(bmp, false, blur);
+                    stopLiveWallpaper();
+                } else {
+                    setWallpaper(bmp, fade, blur);
+                }
                 setPlace(file);
             });
         });
     }
 
+    /** Bumped on every wallpaper switch; see showNextWallpaper. */
+    private int wallGen;
+    /** Bumped on every live start/stop; callbacks from an older player or view are ignored. */
+    private int liveGen;
+    /** Frames the current live view has received, for the stall watchdog. */
+    private int liveFrames;
+    private int liveFramesSeen;
+    private int liveRetries;
+    /** Home is behind another app: the player is paused on purpose, the watchdog stays quiet. */
+    private boolean livePaused;
+    private static final long LIVE_WATCHDOG_MS = 3000;
+    private static final int LIVE_MAX_RETRIES = 4;
+
+    /**
+     * Plays a video wallpaper. Every start gets a brand-new TextureView (and so a brand-new
+     * SurfaceTexture): the Amlogic decoder disconnects from a surface asynchronously, and a new
+     * player connecting to the same surface too soon failed silently and showed a still frame,
+     * which is why every other switch used to freeze. The previous view (or the static picture)
+     * stays on screen until the new video's first frame arrives, then it is removed.
+     */
     private void playLiveWallpaper(File file) {
         if (file == null || !file.exists()) return;
+        if (file != currentLiveFile) liveRetries = 0;
         currentLiveFile = file;
+        final int g = ++liveGen;
+        livePaused = false;
+        // Only one hardware decoder at a time on this TV: free the old one before anything else.
+        releaseLivePlayer();
+        handler.removeCallbacks(liveWatchdog);
 
-        if (liveWallView == null) {
-            liveWallView = new TextureView(this);
-            liveWallView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
-                @Override
-                public void onSurfaceTextureAvailable(@NonNull SurfaceTexture surface, int width, int height) {
-                    if (currentLiveFile != null) {
-                        startMediaPlayer(surface, currentLiveFile);
-                    }
+        final TextureView tv = new TextureView(this);
+        tv.setOpaque(false);
+        tv.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
+            @Override
+            public void onSurfaceTextureAvailable(@NonNull SurfaceTexture surface, int width, int height) {
+                if (g != liveGen || isDestroyed()) return;
+                // Give the decoder just released a moment to let go before the new one starts.
+                handler.postDelayed(() -> {
+                    if (g != liveGen || isDestroyed() || !tv.isAvailable()) return;
+                    startMediaPlayer(tv, tv.getSurfaceTexture(), file, g);
+                }, 120);
+            }
+            @Override
+            public void onSurfaceTextureSizeChanged(@NonNull SurfaceTexture surface, int width, int height) {
+                if (g == liveGen && livePlayer != null) {
+                    adjustVideoAspect(tv, livePlayer.getVideoWidth(), livePlayer.getVideoHeight());
                 }
-                @Override
-                public void onSurfaceTextureSizeChanged(@NonNull SurfaceTexture surface, int width, int height) {
-                    if (livePlayer != null) {
-                        adjustVideoAspect(liveWallView, livePlayer.getVideoWidth(), livePlayer.getVideoHeight());
-                    }
-                }
-                @Override
-                public boolean onSurfaceTextureDestroyed(@NonNull SurfaceTexture surface) {
-                    releaseLivePlayer();
-                    if (liveSurface != null) {
-                        try {
-                            liveSurface.release();
-                        } catch (Exception ignored) {}
-                        liveSurface = null;
-                    }
-                    currentSurfaceTexture = null;
-                    return true;
-                }
-                @Override
-                public void onSurfaceTextureUpdated(@NonNull SurfaceTexture surface) {}
-            });
-            root.addView(liveWallView, 0, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        }
-        liveWallView.setVisibility(View.VISIBLE);
-        liveWallView.setAlpha(1f);
+            }
+            @Override
+            public boolean onSurfaceTextureDestroyed(@NonNull SurfaceTexture surface) {
+                // Only the current view owns the player; an old view going away must not stop it.
+                if (g == liveGen) releaseLivePlayer();
+                return true;
+            }
+            @Override
+            public void onSurfaceTextureUpdated(@NonNull SurfaceTexture surface) {
+                if (g != liveGen) return;
+                liveFrames++;
+                if (liveFrames == 1) onLiveFirstFrame(tv);
+            }
+        });
 
-        if (liveDimOverlay == null) {
-            liveDimOverlay = new View(this);
-            int idx = root.indexOfChild(liveWallView);
-            root.addView(liveDimOverlay, Math.max(0, idx + 1), new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        }
+        // New view goes right above whatever is showing now (old video or picture), below the dim.
+        int idx;
+        if (liveWallView != null && liveWallView.getParent() == root) idx = root.indexOfChild(liveWallView) + 1;
+        else if (wallView != null && wallView.getParent() == root) idx = root.indexOfChild(wallView) + 1;
+        else idx = 0;
+        root.addView(tv, idx, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        if (liveWallView != null && liveWallView != tv) staleLiveViews.add(liveWallView);
+        liveWallView = tv;
+        liveFrames = 0;
+        liveFramesSeen = 0;
+
+        if (liveDimOverlay == null) liveDimOverlay = new View(this);
+        if (liveDimOverlay.getParent() == root) root.removeView(liveDimOverlay);
+        root.addView(liveDimOverlay, root.indexOfChild(tv) + 1, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         updateLiveDimOverlay();
 
-        if (wallView != null) {
-            wallView.setVisibility(View.GONE);
-        }
-
-        if (liveWallView.isAvailable()) {
-            startMediaPlayer(liveWallView.getSurfaceTexture(), file);
-        }
+        handler.postDelayed(liveWatchdog, LIVE_WATCHDOG_MS + 2000);
 
         File thumb = new File(file.getParentFile(), file.getName().replace(".mp4", ".jpg"));
         if (thumb.exists()) {
@@ -1398,7 +1428,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     DisplayMetrics dm = getResources().getDisplayMetrics();
                     Bitmap blur = Backdrop.blur(bmp, dm.widthPixels, dm.heightPixels, getWallpaperDimColor());
                     handler.post(() -> {
-                        if (isDestroyed() || currentLiveFile != file) return;
+                        if (isDestroyed() || g != liveGen) return;
                         if (blur != null) Backdrop.present(blur, 400);
                     });
                 }
@@ -1406,37 +1436,100 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
     }
 
-    private void startMediaPlayer(SurfaceTexture surfaceTexture, File file) {
+    /** Views of earlier videos, kept on screen until the new one has a frame to show. */
+    private final List<TextureView> staleLiveViews = new ArrayList<>();
+
+    private void onLiveFirstFrame(TextureView tv) {
+        if (tv != liveWallView) return;
+        for (TextureView old : staleLiveViews) {
+            if (old.getParent() == root) root.removeView(old);
+        }
+        staleLiveViews.clear();
+        if (wallView != null) wallView.setVisibility(View.GONE);
+        if (livePlayer != null) adjustVideoAspect(tv, livePlayer.getVideoWidth(), livePlayer.getVideoHeight());
+    }
+
+    /**
+     * Checks the video is really moving. No new frame since the last check while Home is in front
+     * means the decoder stalled (the "frozen until I press next again" case): start it over.
+     */
+    private final Runnable liveWatchdog = new Runnable() {
+        @Override
+        public void run() {
+            if (currentLiveFile == null || isDestroyed()) return;
+            if (livePaused) return;
+            if (!root.isShown()) { handler.postDelayed(this, LIVE_WATCHDOG_MS); return; }
+            if (liveFrames <= liveFramesSeen + 1) {
+                if (liveRetries < LIVE_MAX_RETRIES) {
+                    liveRetries++;
+                    Log.w("TvHome.Live", "live wallpaper stalled, restarting (" + liveRetries + ")");
+                    playLiveWallpaper(currentLiveFile);
+                    return;
+                }
+            } else {
+                liveRetries = 0;
+            }
+            liveFramesSeen = liveFrames;
+            handler.postDelayed(this, LIVE_WATCHDOG_MS);
+        }
+    };
+
+    /** Home came back to the front (or the theme changed): make sure the video is moving. */
+    private void resumeLiveWallpaper() {
+        if (currentLiveFile == null) return;
+        livePaused = false;
+        updateLiveDimOverlay();
+        if (livePlayer != null && liveWallView != null && liveWallView.isAvailable()) {
+            try {
+                if (!livePlayer.isPlaying()) livePlayer.start();
+            } catch (Exception ignored) {}
+            liveFramesSeen = liveFrames;
+            handler.removeCallbacks(liveWatchdog);
+            handler.postDelayed(liveWatchdog, LIVE_WATCHDOG_MS);
+        } else {
+            liveRetries = 0;
+            playLiveWallpaper(currentLiveFile);
+        }
+    }
+
+    private void pauseLiveWallpaper() {
+        livePaused = true;
+        handler.removeCallbacks(liveWatchdog);
+        if (livePlayer != null) {
+            try {
+                if (livePlayer.isPlaying()) livePlayer.pause();
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private void startMediaPlayer(TextureView tv, SurfaceTexture surfaceTexture, File file, int g) {
         if (surfaceTexture == null || file == null || !file.exists()) return;
         releaseLivePlayer();
         try {
-            if (currentSurfaceTexture != surfaceTexture || liveSurface == null || !liveSurface.isValid()) {
-                if (liveSurface != null) {
-                    try { liveSurface.release(); } catch (Exception ignored) {}
-                }
-                currentSurfaceTexture = surfaceTexture;
-                liveSurface = new Surface(surfaceTexture);
-            }
+            currentSurfaceTexture = surfaceTexture;
+            liveSurface = new Surface(surfaceTexture);
             MediaPlayer mp = new MediaPlayer();
             livePlayer = mp;
             mp.setSurface(liveSurface);
             mp.setDataSource(file.getAbsolutePath());
             mp.setLooping(true);
             mp.setVolume(0f, 0f); // Wallpaper latar selalu senyap (mute)
-            mp.setOnVideoSizeChangedListener((player, w, h) -> adjustVideoAspect(liveWallView, w, h));
+            mp.setOnVideoSizeChangedListener((player, w, h) -> {
+                if (g == liveGen) adjustVideoAspect(tv, w, h);
+            });
             mp.setOnPreparedListener(player -> {
-                if (isDestroyed() || livePlayer != player) {
-                    try { player.release(); } catch (Exception ignored) {}
+                if (isDestroyed() || livePlayer != player || g != liveGen) {
+                    if (livePlayer == player) releaseLivePlayer();
+                    else try { player.release(); } catch (Exception ignored) {}
                     return;
                 }
-                adjustVideoAspect(liveWallView, player.getVideoWidth(), player.getVideoHeight());
-                player.start();
+                adjustVideoAspect(tv, player.getVideoWidth(), player.getVideoHeight());
+                if (!livePaused) player.start();
             });
             mp.setOnErrorListener((player, what, extra) -> {
                 Log.w("TvHome.Live", "MediaPlayer error: " + what + ", " + extra);
-                if (livePlayer == player) {
-                    releaseLivePlayer();
-                }
+                if (livePlayer == player) releaseLivePlayer();
+                // The watchdog sees no frames and starts the video over.
                 return true;
             });
             mp.prepareAsync();
@@ -1448,32 +1541,43 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void releaseLivePlayer() {
         if (livePlayer != null) {
-            try {
-                livePlayer.setOnPreparedListener(null);
-                livePlayer.setOnVideoSizeChangedListener(null);
-                livePlayer.setOnErrorListener(null);
-                if (livePlayer.isPlaying()) {
-                    livePlayer.stop();
-                }
-                livePlayer.reset();
-                livePlayer.setSurface(null);
-                livePlayer.release();
-            } catch (Exception ignored) {}
+            MediaPlayer mp = livePlayer;
             livePlayer = null;
+            try {
+                mp.setOnPreparedListener(null);
+                mp.setOnVideoSizeChangedListener(null);
+                mp.setOnErrorListener(null);
+                try {
+                    if (mp.isPlaying()) mp.stop();
+                } catch (Exception ignored) {}
+                mp.setSurface(null);
+                mp.reset();
+                mp.release();
+            } catch (Exception ignored) {}
         }
+        if (liveSurface != null) {
+            try { liveSurface.release(); } catch (Exception ignored) {}
+            liveSurface = null;
+        }
+        currentSurfaceTexture = null;
     }
 
     private void stopLiveWallpaper() {
+        liveGen++;
+        handler.removeCallbacks(liveWatchdog);
         releaseLivePlayer();
         currentLiveFile = null;
+        if (wallView != null) wallView.setVisibility(View.VISIBLE);
+        for (TextureView old : staleLiveViews) {
+            if (old.getParent() == root) root.removeView(old);
+        }
+        staleLiveViews.clear();
         if (liveWallView != null) {
-            liveWallView.setAlpha(0f);
+            if (liveWallView.getParent() == root) root.removeView(liveWallView);
+            liveWallView = null;
         }
         if (liveDimOverlay != null) {
             liveDimOverlay.setVisibility(View.GONE);
-        }
-        if (wallView != null) {
-            wallView.setVisibility(View.VISIBLE);
         }
     }
 
@@ -1646,11 +1750,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onStop() {
         hiddenSinceResume = true;
-        if (livePlayer != null) {
-            try {
-                if (livePlayer.isPlaying()) livePlayer.pause();
-            } catch (Exception ignored) {}
-        }
+        pauseLiveWallpaper();
         handler.removeCallbacks(cacheClean);
         handler.removeCallbacks(nowPlayingPoll);
         super.onStop();
@@ -1688,11 +1788,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         handler.removeCallbacks(cacheClean);
         handler.postDelayed(cacheClean, CacheCleaner.IDLE_MS);
         hiddenSinceResume = false;
-        if (livePlayer != null && currentLiveFile != null) {
-            try {
-                livePlayer.start();
-            } catch (Exception ignored) {}
-        }
+        if (currentLiveFile != null) resumeLiveWallpaper();
     }
 
     /** Rebuilds the tiles (and the module cards), then puts focus back where it was. */
@@ -1795,7 +1891,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
             showCardPrompt();
-            if (livePlayer != null && currentLiveFile != null) {
+            if (currentLiveFile != null && livePlayer != null && !livePaused) {
                 try {
                     if (!livePlayer.isPlaying()) livePlayer.start();
                 } catch (Exception ignored) {}
@@ -2499,16 +2595,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
         }
 
-        if (currentLiveFile != null) {
-            updateLiveDimOverlay();
-            if (livePlayer != null) {
-                try {
-                    if (!livePlayer.isPlaying()) livePlayer.start();
-                } catch (Exception ignored) {}
-            } else if (liveWallView != null && liveWallView.isAvailable()) {
-                startMediaPlayer(liveWallView.getSurfaceTexture(), currentLiveFile);
-            }
-        }
+        if (currentLiveFile != null) resumeLiveWallpaper();
         updateFootballWidget();
 
         // Focused Row-1 App Title (above dock left)
@@ -6937,6 +7024,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         } catch (Exception ignored) {}
     }
 
+    /** A category download finishing late must not replace the list of a category chosen since. */
+    private boolean isActiveCategory(String category) {
+        String raw = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE).getString("active_category", "Indonesia");
+        String active = "Malaysia".equalsIgnoreCase(raw) ? "Indonesia" : raw;
+        return active.equalsIgnoreCase(category);
+    }
+
     private void switchWallpaperCategory(String category) {
         getSharedPreferences("wallpaper_prefs", MODE_PRIVATE).edit().putString("active_category", category).apply();
         getSharedPreferences("wallpaper", MODE_PRIVATE).edit().putInt("index", -1).apply();
@@ -6981,6 +7075,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 boolean downloaded = OnlineWallpapers.syncCategory(getApplicationContext(), category);
                 handler.post(() -> {
                     if (isDestroyed()) return;
+                    if (!isActiveCategory(category)) return;
                     List<File> fresh = OnlineWallpapers.listByCategory(MainActivity.this, category);
                     if (!fresh.isEmpty()) {
                         wallpapers = fresh;
