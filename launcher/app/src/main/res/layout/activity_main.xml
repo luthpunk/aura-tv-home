@@ -1028,6 +1028,163 @@
                     android:drawableStart="@drawable/ic_settings" />
             </LinearLayout>
 
+            <!-- Football Schedule Card Widget (Mode Besar) -->
+            <LinearLayout
+                android:id="@+id/footballCardView"
+                android:layout_width="332dp"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/leftBlock"
+                android:layout_alignParentEnd="true"
+                android:layout_marginTop="24dp"
+                android:orientation="vertical"
+                android:focusable="true"
+                android:clickable="true"
+                android:descendantFocusability="blocksDescendants"
+                android:background="@drawable/weather_pill_bg"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:visibility="gone">
+
+                <!-- Header: League Name & Live/Status Badge -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/footballLeagueTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="⚽ PREMIER LEAGUE"
+                        android:textColor="#CCFFFFFF"
+                        android:textSize="12sp"
+                        android:fontFamily="@font/outfit"
+                        android:fontVariationSettings="'wght' 700"
+                        android:textStyle="bold"
+                        android:singleLine="true" />
+
+                    <TextView
+                        android:id="@+id/footballStatusBadge"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="HARI INI"
+                        android:textColor="#FFA726"
+                        android:textSize="10.5sp"
+                        android:fontFamily="@font/outfit"
+                        android:fontVariationSettings="'wght' 700"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp"
+                        android:paddingTop="2dp"
+                        android:paddingBottom="2dp"
+                        android:background="@drawable/weather_sub_pill_bg" />
+                </LinearLayout>
+
+                <!-- Main Match Display: Home vs Away + Score/Time -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <!-- Home Team -->
+                    <TextView
+                        android:id="@+id/footballHomeTeam"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="end"
+                        android:text="Arsenal"
+                        android:textColor="#FFFFFFFF"
+                        android:textSize="15sp"
+                        android:fontFamily="@font/outfit"
+                        android:fontVariationSettings="'wght' 600"
+                        android:singleLine="true" />
+
+                    <!-- Score or Kick-off Time -->
+                    <TextView
+                        android:id="@+id/footballScoreOrVs"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:layout_marginEnd="10dp"
+                        android:gravity="center"
+                        android:text="21:00"
+                        android:textColor="#00F0FF"
+                        android:textSize="16sp"
+                        android:fontFamily="@font/outfit"
+                        android:fontVariationSettings="'wght' 700"
+                        android:textStyle="bold" />
+
+                    <!-- Away Team -->
+                    <TextView
+                        android:id="@+id/footballAwayTeam"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="start"
+                        android:text="Chelsea"
+                        android:textColor="#FFFFFFFF"
+                        android:textSize="15sp"
+                        android:fontFamily="@font/outfit"
+                        android:fontVariationSettings="'wght' 600"
+                        android:singleLine="true" />
+                </LinearLayout>
+
+                <!-- Secondary Ticker (Next match / subtitle) -->
+                <TextView
+                    android:id="@+id/footballSubTicker"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:singleLine="true"
+                    android:ellipsize="end"
+                    android:text="Laga Lain: Real Madrid vs Barcelona (02:00)"
+                    android:textColor="#99FFFFFF"
+                    android:textSize="11sp"
+                    android:fontFamily="@font/outfit"
+                    android:fontVariationSettings="'wght' 400" />
+            </LinearLayout>
+
+            <!-- Minimal Football Marquee Pill Widget (Mode Kecil) -->
+            <LinearLayout
+                android:id="@+id/footballPillMinimal"
+                android:layout_width="320dp"
+                android:layout_height="28dp"
+                android:layout_below="@id/leftBlock"
+                android:layout_alignParentEnd="true"
+                android:layout_marginTop="6dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:focusable="true"
+                android:clickable="true"
+                android:descendantFocusability="blocksDescendants"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/footballMarqueeText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:singleLine="true"
+                    android:ellipsize="marquee"
+                    android:marqueeRepeatLimit="marquee_forever"
+                    android:focusable="false"
+                    android:scrollHorizontally="true"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="12.5sp"
+                    android:fontFamily="@font/outfit"
+                    android:fontVariationSettings="'wght' 500"
+                    android:includeFontPadding="false"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:text="⚽ Jadwal Bola: Menghubungkan..." />
+            </LinearLayout>
+
             <!-- Fallback Prayer Times view -->
             <TextView
                 android:id="@+id/prayerTimes"

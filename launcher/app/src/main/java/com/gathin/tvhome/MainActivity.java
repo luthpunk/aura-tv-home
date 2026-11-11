@@ -214,6 +214,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private ImageView weaMainIcon, weaHourIcon1, weaHourIcon2, weaHourIcon3;
     private TextView weaHourTime1, weaHourVal1, weaHourTime2, weaHourVal2, weaHourTime3, weaHourVal3;
     private TextView weaPillAqi, weaPillHum, weaPillWind, weaPillRain;
+    private View footballCardView;
+    private View footballPillMinimalView;
+    private TextView footballLeagueTitle, footballStatusBadge;
+    private TextView footballHomeTeam, footballScoreOrVs, footballAwayTeam;
+    private TextView footballSubTicker;
+    private TextView footballMarqueeText;
     private View nowPlayingCard;
     private ImageView cardAlbumArt;
     private View cardTrackInfo;
@@ -603,6 +609,106 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         applyWeatherWidgetMode();
         updateWeatherAqi();
         WeatherAirQuality.syncIfDue(this, this::updateWeatherAqi);
+
+        // Football Schedule Widget Views (Right side)
+        footballCardView = findViewById(R.id.footballCardView);
+        if (footballCardView != null) {
+            footballLeagueTitle = findViewById(R.id.footballLeagueTitle);
+            footballStatusBadge = findViewById(R.id.footballStatusBadge);
+            footballHomeTeam = findViewById(R.id.footballHomeTeam);
+            footballScoreOrVs = findViewById(R.id.footballScoreOrVs);
+            footballAwayTeam = findViewById(R.id.footballAwayTeam);
+            footballSubTicker = findViewById(R.id.footballSubTicker);
+
+            footballCardView.setOnClickListener(v -> {
+                SoundEffects.playSelect();
+                showFootballFixturesDialog();
+            });
+            footballCardView.setOnKeyListener((v, keyCode, event) -> {
+                if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    focusTile(lastFocused % COLUMNS);
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                    if (weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE) {
+                        weatherAirQualityView.requestFocus();
+                        return true;
+                    } else if (weatherPillMinimalView != null && weatherPillMinimalView.getVisibility() == View.VISIBLE) {
+                        weatherPillMinimalView.requestFocus();
+                        return true;
+                    }
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                    View target = (btnSettings != null && btnSettings.getVisibility() == View.VISIBLE) ? btnSettings
+                            : (btnWifi != null && btnWifi.getVisibility() == View.VISIBLE) ? btnWifi
+                            : findViewById(R.id.btnSettings);
+                    if (target != null) {
+                        target.requestFocus();
+                        return true;
+                    }
+                }
+                return false;
+            });
+            footballCardView.setOnFocusChangeListener((v, hasFocus) -> {
+                if (hasFocus) {
+                    SoundEffects.playNav();
+                    hideShelf();
+                    if (glider != null) glider.hide();
+                }
+                boolean isNeu = ThemeManager.isNeumorphism(MainActivity.this);
+                float scale = (hasFocus && !isNeu) ? 1.025f : 1.0f;
+                v.animate().scaleX(scale).scaleY(scale).setDuration(150).start();
+            });
+        }
+
+        footballPillMinimalView = findViewById(R.id.footballPillMinimal);
+        if (footballPillMinimalView != null) {
+            footballMarqueeText = findViewById(R.id.footballMarqueeText);
+
+            footballPillMinimalView.setOnClickListener(v -> {
+                SoundEffects.playSelect();
+                showFootballFixturesDialog();
+            });
+            footballPillMinimalView.setOnKeyListener((v, keyCode, event) -> {
+                if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    focusTile(lastFocused % COLUMNS);
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                    if (weatherPillMinimalView != null && weatherPillMinimalView.getVisibility() == View.VISIBLE) {
+                        weatherPillMinimalView.requestFocus();
+                        return true;
+                    } else if (weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE) {
+                        weatherAirQualityView.requestFocus();
+                        return true;
+                    }
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                    View target = (btnSettings != null && btnSettings.getVisibility() == View.VISIBLE) ? btnSettings
+                            : (btnWifi != null && btnWifi.getVisibility() == View.VISIBLE) ? btnWifi
+                            : findViewById(R.id.btnSettings);
+                    if (target != null) {
+                        target.requestFocus();
+                        return true;
+                    }
+                }
+                return false;
+            });
+            footballPillMinimalView.setOnFocusChangeListener((v, hasFocus) -> {
+                if (hasFocus) {
+                    SoundEffects.playNav();
+                    hideShelf();
+                    if (glider != null) glider.hide();
+                }
+                boolean isNeu = ThemeManager.isNeumorphism(MainActivity.this);
+                float scale = (hasFocus && !isNeu) ? 1.03f : 1.0f;
+                v.animate().scaleX(scale).scaleY(scale).setDuration(150).start();
+            });
+        }
+
+        applyFootballWidgetMode();
 
         // Dynamic Now Playing Pill (Apple TV Style: Single Focus Glanceable Pill)
         nowPlayingCard = findViewById(R.id.nowPlayingCard);
@@ -2224,6 +2330,68 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
         }
 
+        // Football Card & Pill Theme Styling (Right side)
+        if (footballCardView != null) {
+            float cardRadius = 18f * density;
+            if (isDark) {
+                GradientDrawable cBg = new GradientDrawable();
+                cBg.setColor(0xFF101420);
+                cBg.setCornerRadius(cardRadius);
+                cBg.setStroke(Math.max(1, Math.round(1f * density)), 0x3300F0FF);
+                footballCardView.setBackground(cBg);
+            } else if (isNeu) {
+                footballCardView.setBackground(new NeumorphicDrawable(cardRadius, density, NeumorphicDrawable.MODE_EXTRUDED, false));
+            } else {
+                StateListDrawable sld = new StateListDrawable();
+                GradientDrawable focused = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0x732A3140, 0x731C222E});
+                focused.setCornerRadius(cardRadius);
+                focused.setStroke(Math.max(2, Math.round(1.5f * density)), 0xF2FFFFFF);
+                GradientDrawable normal = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0x4D2A3244, 0x3D1E2432});
+                normal.setCornerRadius(cardRadius);
+                normal.setStroke(Math.max(1, Math.round(1.0f * density)), 0x38FFFFFF);
+                sld.addState(new int[]{android.R.attr.state_focused}, focused);
+                sld.addState(new int[]{}, normal);
+                footballCardView.setBackground(sld);
+            }
+        }
+        if (footballPillMinimalView != null) {
+            float minRadius = 14f * density;
+            if (isDark) {
+                StateListDrawable sld = new StateListDrawable();
+                GradientDrawable focused = new GradientDrawable();
+                focused.setColor(0xFF0A0A10);
+                focused.setCornerRadius(minRadius);
+                focused.setStroke(Math.max(1, Math.round(1.25f * density)), 0xFF00F0FF);
+                GradientDrawable normal = new GradientDrawable();
+                normal.setColor(0xEE08080C);
+                normal.setCornerRadius(minRadius);
+                normal.setStroke(Math.max(1, Math.round(1.0f * density)), 0x28FFFFFF);
+                sld.addState(new int[]{android.R.attr.state_focused}, focused);
+                sld.addState(new int[]{}, normal);
+                footballPillMinimalView.setBackground(sld);
+            } else if (isNeu) {
+                StateListDrawable sld = new StateListDrawable();
+                sld.addState(new int[]{android.R.attr.state_focused}, new NeumorphicDrawable(minRadius, density, NeumorphicDrawable.MODE_RECESSED, false));
+                sld.addState(new int[]{}, new NeumorphicDrawable(minRadius, density, NeumorphicDrawable.MODE_EXTRUDED, true));
+                footballPillMinimalView.setBackground(sld);
+            } else {
+                StateListDrawable sld = new StateListDrawable();
+                GradientDrawable focused = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0x732A3140, 0x731C222E});
+                focused.setCornerRadius(minRadius);
+                focused.setStroke(Math.max(2, Math.round(1.5f * density)), 0xF2FFFFFF);
+                GradientDrawable normal = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0x4D2A3244, 0x3D1E2432});
+                normal.setCornerRadius(minRadius);
+                normal.setStroke(Math.max(1, Math.round(1.0f * density)), 0x38FFFFFF);
+                sld.addState(new int[]{android.R.attr.state_focused}, focused);
+                sld.addState(new int[]{}, normal);
+                footballPillMinimalView.setBackground(sld);
+            }
+            if (footballMarqueeText != null) {
+                footballMarqueeText.setTextColor(isNeu ? ThemeManager.neu(0xFF1F2429) : 0xFFFFFFFF);
+            }
+        }
+        updateFootballWidget();
+
         // Focused Row-1 App Title (above dock left)
         if (heroName != null) {
             heroName.setTextColor(isNeu ? ThemeManager.neu(0xFF232830) : 0xFFFFFFFF);
@@ -3297,6 +3465,184 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         updateWeatherAqi();
     }
 
+    private void applyFootballWidgetMode() {
+        String mode = FootballScheduleManager.getWidgetMode(this);
+        if (FootballScheduleManager.MODE_LARGE.equals(mode)) {
+            if (footballCardView != null) {
+                footballCardView.setVisibility(View.VISIBLE);
+                footballCardView.setAlpha(1f);
+            }
+            if (footballPillMinimalView != null) footballPillMinimalView.setVisibility(View.GONE);
+        } else if (FootballScheduleManager.MODE_MINIMAL.equals(mode)) {
+            if (footballCardView != null) footballCardView.setVisibility(View.GONE);
+            if (footballPillMinimalView != null) {
+                footballPillMinimalView.setVisibility(View.VISIBLE);
+                footballPillMinimalView.setAlpha(1f);
+                if (footballMarqueeText != null) footballMarqueeText.setSelected(true);
+            }
+        } else {
+            if (footballCardView != null) footballCardView.setVisibility(View.GONE);
+            if (footballPillMinimalView != null) footballPillMinimalView.setVisibility(View.GONE);
+        }
+        updateFootballWidget();
+        FootballScheduleManager.syncIfDue(this, () -> handler.post(this::updateFootballWidget));
+    }
+
+    private void updateFootballWidget() {
+        if (footballCardView == null && footballPillMinimalView == null) return;
+        List<FootballScheduleManager.MatchItem> matches = FootballScheduleManager.getCachedMatches(this);
+
+        if (footballPillMinimalView != null && footballPillMinimalView.getVisibility() == View.VISIBLE) {
+            if (footballMarqueeText != null) {
+                footballMarqueeText.setText(FootballScheduleManager.getMarqueeTicker(this));
+                footballMarqueeText.setSelected(true);
+            }
+        }
+
+        if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE) {
+            if (!matches.isEmpty()) {
+                FootballScheduleManager.MatchItem top = matches.get(0);
+                if (footballLeagueTitle != null) {
+                    footballLeagueTitle.setText("⚽ " + top.leagueName.toUpperCase(Locale.ROOT));
+                }
+                if (footballStatusBadge != null) {
+                    if (top.isLive) {
+                        footballStatusBadge.setText("🔴 LIVE " + top.statusDetail);
+                        footballStatusBadge.setTextColor(0xFFFF3B30);
+                    } else if (top.isFinished) {
+                        footballStatusBadge.setText("SELESAI (FT)");
+                        footballStatusBadge.setTextColor(0xFF4CD964);
+                    } else {
+                        footballStatusBadge.setText(top.timeStr);
+                        footballStatusBadge.setTextColor(0xFFFFA726);
+                    }
+                }
+                if (footballHomeTeam != null) footballHomeTeam.setText(top.homeTeam);
+                if (footballAwayTeam != null) footballAwayTeam.setText(top.awayTeam);
+                if (footballScoreOrVs != null) {
+                    footballScoreOrVs.setText(top.getScoreOrVs());
+                    if (top.isLive) footballScoreOrVs.setTextColor(0xFFFF3B30);
+                    else footballScoreOrVs.setTextColor(0xFF00F0FF);
+                }
+                if (footballSubTicker != null) {
+                    if (matches.size() > 1) {
+                        FootballScheduleManager.MatchItem next = matches.get(1);
+                        footballSubTicker.setText("Lainnya: " + next.homeShort + " vs " + next.awayShort + " (" + next.getScoreOrVs() + ")");
+                    } else {
+                        footballSubTicker.setText("Jadwal resmi " + top.leagueName);
+                    }
+                }
+            } else {
+                if (footballLeagueTitle != null) footballLeagueTitle.setText("⚽ JADWAL BOLA");
+                if (footballHomeTeam != null) footballHomeTeam.setText("Memuat");
+                if (footballAwayTeam != null) footballAwayTeam.setText("Jadwal...");
+                if (footballScoreOrVs != null) footballScoreOrVs.setText("vs");
+                if (footballSubTicker != null) footballSubTicker.setText("Menghubungkan ke server ESPN...");
+            }
+        }
+    }
+
+    private void showFootballFixturesDialog() {
+        List<FootballScheduleManager.MatchItem> matches = FootballScheduleManager.getCachedMatches(this);
+        List<ThemedDialogItem> items = new ArrayList<>();
+
+        String activeFilter = FootballScheduleManager.getLeagueFilter(this);
+        String leagueName = FootballScheduleManager.getLeagueDisplayName(activeFilter);
+
+        // Option 1: Ubah Pilihan Liga
+        items.add(new ThemedDialogItem(
+                "🏆 Filter Liga : " + leagueName,
+                "Klik untuk mengganti liga (Liga 1, EPL, UCL, La Liga)",
+                false,
+                null,
+                () -> {
+                    SoundEffects.playSelect();
+                    showFootballLeagueFilterDialog();
+                }
+        ));
+
+        // Option 2: Refresh Jadwal
+        items.add(new ThemedDialogItem(
+                "🔄 Segarkan Jadwal Sekarang",
+                "Sinkronisasi ulang skor dan jadwal terkini",
+                false,
+                null,
+                () -> {
+                    SoundEffects.playSelect();
+                    FootballScheduleManager.syncIfDue(this, () -> handler.post(() -> {
+                        updateFootballWidget();
+                        Toast.makeText(this, "⚽ Jadwal bola berhasil diperbarui!", Toast.LENGTH_SHORT).show();
+                    }));
+                }
+        ));
+
+        // List matches
+        if (matches.isEmpty()) {
+            items.add(new ThemedDialogItem(
+                    "Belum ada pertandingan terjadwal",
+                    "Jadwal sedang dimuat atau tidak ada laga hari ini",
+                    false,
+                    null,
+                    null
+            ));
+        } else {
+            for (FootballScheduleManager.MatchItem m : matches) {
+                String title = (m.isLive ? "🔴 LIVE " : "") + m.homeTeam + " " + (m.isLive || m.isFinished ? m.homeScore + " - " + m.awayScore : "vs") + " " + m.awayTeam;
+                String sub = m.leagueName + " • " + (m.isLive ? m.statusDetail : (m.isFinished ? "FT" : m.timeStr));
+                items.add(new ThemedDialogItem(title, sub, false, null, null));
+            }
+        }
+
+        showThemedListDialog(
+                "⚽ Jadwal Pertandingan Bola",
+                "Jadwal dan skor pertandingan terkini",
+                items,
+                null,
+                null
+        );
+    }
+
+    private void showFootballLeagueFilterDialog() {
+        String current = FootballScheduleManager.getLeagueFilter(this);
+        List<ThemedDialogItem> items = new ArrayList<>();
+
+        String[][] leagues = {
+                {FootballScheduleManager.LEAGUE_ALL, "🌟 Semua Liga Populer (Otomatis)"},
+                {FootballScheduleManager.LEAGUE_IDN, "🇮🇩 Liga 1 Indonesia"},
+                {FootballScheduleManager.LEAGUE_EPL, "🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League (Inggris)"},
+                {FootballScheduleManager.LEAGUE_UCL, "🏆 UEFA Champions League"},
+                {FootballScheduleManager.LEAGUE_LALIGA, "🇪🇸 La Liga (Spanyol)"},
+                {FootballScheduleManager.LEAGUE_SERIEA, "🇮🇹 Serie A (Italia)"}
+        };
+
+        for (String[] l : leagues) {
+            String code = l[0];
+            String name = l[1];
+            boolean selected = code.equals(current);
+            items.add(new ThemedDialogItem(
+                    name,
+                    null,
+                    selected,
+                    selected ? "Dipilih" : null,
+                    () -> {
+                        SoundEffects.playSelect();
+                        FootballScheduleManager.setLeagueFilter(this, code);
+                        getSharedPreferences("football_widget_cache", MODE_PRIVATE).edit().putLong("last_update_ts", 0).apply();
+                        applyFootballWidgetMode();
+                        showFootballFixturesDialog();
+                    }
+            ));
+        }
+
+        showThemedListDialog(
+                "🏆 Pilih Liga Sepak Bola",
+                "Pilih liga yang ingin ditampilkan di beranda",
+                items,
+                null,
+                null
+        );
+    }
+
     private void showWidgetManagerDialog() {
         String currentMode = getWeatherWidgetMode();
         boolean isMinimal = WIDGET_MODE_MINIMAL.equals(currentMode);
@@ -3331,6 +3677,51 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     setWeatherWidgetMode(next);
                     applyWeatherWidgetMode();
                     showWidgetManagerDialog();
+                }
+        ));
+
+        // 3. Bola Minimalis (Marquee)
+        boolean isFootMin = FootballScheduleManager.MODE_MINIMAL.equals(FootballScheduleManager.getWidgetMode(this));
+        items.add(new ThemedDialogItem(
+                "⚽ Bola Minimalis (Marquee)",
+                null,
+                isFootMin,
+                isFootMin ? "ON" : "OFF",
+                () -> {
+                    SoundEffects.playSelect();
+                    String next = isFootMin ? FootballScheduleManager.MODE_NONE : FootballScheduleManager.MODE_MINIMAL;
+                    FootballScheduleManager.setWidgetMode(this, next);
+                    applyFootballWidgetMode();
+                    showWidgetManagerDialog();
+                }
+        ));
+
+        // 4. Bola Besar (Kartu Lengkap)
+        boolean isFootLrg = FootballScheduleManager.MODE_LARGE.equals(FootballScheduleManager.getWidgetMode(this));
+        items.add(new ThemedDialogItem(
+                "⚽ Bola Besar (Kartu)",
+                null,
+                isFootLrg,
+                isFootLrg ? "ON" : "OFF",
+                () -> {
+                    SoundEffects.playSelect();
+                    String next = isFootLrg ? FootballScheduleManager.MODE_NONE : FootballScheduleManager.MODE_LARGE;
+                    FootballScheduleManager.setWidgetMode(this, next);
+                    applyFootballWidgetMode();
+                    showWidgetManagerDialog();
+                }
+        ));
+
+        // 5. Pilihan Liga Bola
+        String activeLeague = FootballScheduleManager.getLeagueDisplayName(FootballScheduleManager.getLeagueFilter(this));
+        items.add(new ThemedDialogItem(
+                "🏆 Liga : " + activeLeague,
+                null,
+                false,
+                null,
+                () -> {
+                    SoundEffects.playSelect();
+                    showFootballLeagueFilterDialog();
                 }
         ));
 
@@ -3623,6 +4014,35 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             applyWeatherWidgetMode();
             updateRowStatus(rowLargeHolder[0], !curLarge ? "ON" : "OFF");
             updateRowStatus(rowMinimalHolder[0], "OFF");
+        });
+
+        final View[] rowFootMinHolder = new View[1];
+        final View[] rowFootLrgHolder = new View[1];
+
+        rowFootMinHolder[0] = addInputRow(rows, null, R.drawable.ic_cards, "Bola Marquee : " + (FootballScheduleManager.MODE_MINIMAL.equals(FootballScheduleManager.getWidgetMode(this)) ? "ON" : "OFF"), -1, () -> {
+            SoundEffects.playSelect();
+            boolean curMin = FootballScheduleManager.MODE_MINIMAL.equals(FootballScheduleManager.getWidgetMode(this));
+            String next = curMin ? FootballScheduleManager.MODE_NONE : FootballScheduleManager.MODE_MINIMAL;
+            FootballScheduleManager.setWidgetMode(this, next);
+            applyFootballWidgetMode();
+            updateRowStatus(rowFootMinHolder[0], !curMin ? "ON" : "OFF");
+            updateRowStatus(rowFootLrgHolder[0], "OFF");
+        });
+
+        rowFootLrgHolder[0] = addInputRow(rows, null, R.drawable.ic_cards, "Bola Besar : " + (FootballScheduleManager.MODE_LARGE.equals(FootballScheduleManager.getWidgetMode(this)) ? "ON" : "OFF"), -1, () -> {
+            SoundEffects.playSelect();
+            boolean curLrg = FootballScheduleManager.MODE_LARGE.equals(FootballScheduleManager.getWidgetMode(this));
+            String next = curLrg ? FootballScheduleManager.MODE_NONE : FootballScheduleManager.MODE_LARGE;
+            FootballScheduleManager.setWidgetMode(this, next);
+            applyFootballWidgetMode();
+            updateRowStatus(rowFootLrgHolder[0], !curLrg ? "ON" : "OFF");
+            updateRowStatus(rowFootMinHolder[0], "OFF");
+        });
+
+        String activeLeague = FootballScheduleManager.getLeagueDisplayName(FootballScheduleManager.getLeagueFilter(this));
+        addInputRow(rows, null, R.drawable.ic_cards, "Pilih Liga : " + activeLeague, -1, () -> {
+            SoundEffects.playSelect();
+            showFootballLeagueFilterDialog();
         });
     }
 

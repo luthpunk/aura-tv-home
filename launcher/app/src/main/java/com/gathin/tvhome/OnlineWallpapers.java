@@ -110,6 +110,10 @@ final class OnlineWallpapers {
                     "Amiya x Doctor Fireworks", "Amiya dan Doctor menikmati indahnya kembang api malam hari", "Live"),
             new WallpaperItem("https://go.moewalls.com/download.php?video=pMJG%2BbhC1yOxNsNHM4pyagbg37hKlgPwVmCPGDS7nxOHCW7LVXge9oMqzY6ozeh3HGokOqHknO%2BYAa8RC5OjcjgufUslmr%2FIng9u7w%3D%3D",
                     "Arona Cloud Sky Classroom", "Arona tersenyum di dalam kelas berlatar langit biru dan awan cerah", "Live"),
+            new WallpaperItem("https://go.moewalls.com/download.php?video=tSXngeVmLX1MMDcpzD%2Bso%2Fe7%2FVnxdMtkWQD%2BhSapFzuNhDtEREcNVgw6Qtc%3D",
+                    "Blood Moon Clouds", "Bulan merah darah melintasi awan malam yang bergerak dramatis", "Live"),
+            new WallpaperItem("https://go.moewalls.com/download.php?video=iJSRmj44rJ26t%2FVwsD8xZ3JS3vQ6Moy%2Ba%2BlPOMprj1VcuOSyiR3rLliyjpTlC9mznW3ygXRvz4S%2BrRgmI%2BDWF9KR0vWVaeqpruX1JQ%3D%3D",
+                    "Nanally City View", "Pemandangan kota metropolitan futuristik Neverness to Everness", "Live"),
 
             // Ocean & Water (Lautan & Pantai - Unsplash 4K Pilihan Pengguna)
             new WallpaperItem("https://images.unsplash.com/photo-1505699261378-c372af38134c?auto=format&fit=crop&w=3840&h=2160&q=85",
