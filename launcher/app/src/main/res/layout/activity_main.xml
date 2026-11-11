@@ -1310,6 +1310,30 @@
                             android:ellipsize="end" />
                     </LinearLayout>
                 </LinearLayout>
+
+                <!-- Expanded Scroll Container (Transformasi Melebar ke Atas & Bawah) -->
+                <ScrollView
+                    android:id="@+id/footballExpandedScroll"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:scrollbars="none"
+                    android:overScrollMode="never"
+                    android:fadingEdgeLength="14dp"
+                    android:requiresFadingEdge="vertical"
+                    android:clipToPadding="false"
+                    android:paddingStart="4dp"
+                    android:paddingEnd="4dp"
+                    android:paddingTop="2dp"
+                    android:paddingBottom="4dp"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:id="@+id/footballExpandedList"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+                </ScrollView>
             </LinearLayout>
 
             <!-- Minimal Football Marquee Pill Widget (Mode Kecil, matching weatherPillMinimal) -->

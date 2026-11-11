@@ -1,6 +1,10 @@
 package com.gathin.tvhome;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.app.Activity;
+import android.view.animation.DecelerateInterpolator;
 import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -224,6 +228,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private TextView footballRow1Home, footballRow1Time, footballRow1Away;
     private TextView footballRow2Home, footballRow2Time, footballRow2Away;
     private TextView footballRow3Home, footballRow3Time, footballRow3Away;
+    private ScrollView footballExpandedScroll;
+    private LinearLayout footballExpandedList;
+    private boolean footballCardExpanded = false;
+    private boolean footballCardAnimating = false;
     private ImageView minFootIcon;
     private TextView footballMarqueeText;
     private Surface liveSurface;
@@ -649,6 +657,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         footballCardView = findViewById(R.id.footballCardView);
         if (footballCardView != null) {
             footballRowsContainer = findViewById(R.id.footballRowsContainer);
+            footballExpandedScroll = findViewById(R.id.footballExpandedScroll);
+            footballExpandedList = findViewById(R.id.footballExpandedList);
             footballLeagueTitle = findViewById(R.id.footballLeagueTitle);
             footballStatusBadge = findViewById(R.id.footballStatusBadge);
             footballHeaderDiv = findViewById(R.id.footballHeaderDiv);
@@ -668,16 +678,39 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             footballRow3Away = findViewById(R.id.footballRow3Away);
 
             footballCardView.setOnClickListener(v -> {
-                SoundEffects.playSelect();
-                showFootballFixturesDialog();
+                expandFootballCard(!footballCardExpanded);
             });
             footballCardView.setOnLongClickListener(v -> {
-                SoundEffects.playSelect();
-                showFootballFixturesDialog();
+                expandFootballCard(!footballCardExpanded);
                 return true;
             });
             footballCardView.setOnKeyListener((v, keyCode, event) -> {
                 if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+                if (footballCardExpanded) {
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                        if (footballExpandedScroll != null) {
+                            footballExpandedScroll.smoothScrollBy(0, Math.round(55 * density));
+                        }
+                        return true;
+                    }
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                        if (footballExpandedScroll != null) {
+                            footballExpandedScroll.smoothScrollBy(0, -Math.round(55 * density));
+                        }
+                        return true;
+                    }
+                    if (keyCode == KeyEvent.KEYCODE_BACK) {
+                        expandFootballCard(false);
+                        return true;
+                    }
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+                        expandFootballCard(false);
+                        return true;
+                    }
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                        return true;
+                    }
+                }
                 if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
                     focusTile(lastFocused % COLUMNS);
                     return true;
@@ -2026,6 +2059,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     private void handleBackPress() {
+        if (footballCardExpanded) {
+            expandFootballCard(false);
+            return;
+        }
         if (addAppOverlay != null) {
             closeAddAppSheet(true);
             return;
@@ -2183,6 +2220,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         } else {
             // Below the dock there is no shelf, but the glow still takes this app's colour, so every
             // tile lights the room the same way the dock does.
+            if (footballCardExpanded) {
+                expandFootballCard(false);
+            }
             hideShelf();
             int dur = reducedMotion ? 100 : 160;
             if (weatherAirQualityView != null) {
@@ -2896,15 +2936,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     }
 
                     if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE) {
-                        int targetH = Math.round(153f * density);
-                        if (targetH > 0 && footballCardView.getLayoutParams().height != targetH) {
+                        int targetH = footballCardExpanded ? Math.round(380f * density) : Math.round(153f * density);
+                        if (!footballCardAnimating && targetH > 0 && footballCardView.getLayoutParams().height != targetH) {
                             footballCardView.getLayoutParams().height = targetH;
                             footballCardView.requestLayout();
                         }
                         float fDesiredTopInMain = targetCenterY - (targetH * 0.5f);
                         float fBaseTopInMain = footballCardView.getTop();
                         float fDy = Math.round(fDesiredTopInMain - fBaseTopInMain);
-                        if (Math.abs(footballCardView.getTranslationY() - fDy) >= 1f) {
+                        if (!footballCardAnimating && Math.abs(footballCardView.getTranslationY() - fDy) >= 1f) {
                             footballCardView.setTranslationY(fDy);
                         }
                     }
@@ -4008,6 +4048,187 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 }
             }
         }
+
+        if (footballCardExpanded) {
+            populateFootballExpandedList();
+        }
+    }
+
+    private void expandFootballCard(boolean expand) {
+        if (footballCardView == null || footballCardAnimating || footballCardExpanded == expand) return;
+        footballCardAnimating = true;
+        footballCardExpanded = expand;
+
+        SoundEffects.playSelect();
+
+        int startH = expand ? Math.round(153f * density) : Math.round(380f * density);
+        int endH = expand ? Math.round(380f * density) : Math.round(153f * density);
+
+        View lb = findViewById(R.id.leftBlock);
+        float calcCenterY = footballCardView.getTop() + (footballCardView.getHeight() * 0.5f) + footballCardView.getTranslationY();
+        if (lb != null && gridWrap != null && grid.getPaddingTop() > 0) {
+            float clockBottomInMain = lb.getBottom();
+            float parkedDockTopInMain = gridWrap.getTop() + grid.getPaddingTop();
+            float shelfH = (heroName != null && heroName.getHeight() > 0) ? heroName.getHeight() : (24f * density);
+            float shelfTopInMain = parkedDockTopInMain - (HERO_GAP_DP * density) - shelfH;
+            calcCenterY = (clockBottomInMain + shelfTopInMain) * 0.5f;
+        }
+        final float targetCenterY = calcCenterY;
+
+        if (expand) {
+            populateFootballExpandedList();
+            if (footballRowsContainer != null) footballRowsContainer.setVisibility(View.GONE);
+            if (footballExpandedScroll != null) {
+                footballExpandedScroll.setVisibility(View.VISIBLE);
+                footballExpandedScroll.setAlpha(0f);
+                footballExpandedScroll.animate().alpha(1f).setDuration(220).start();
+                footballExpandedScroll.scrollTo(0, 0);
+            }
+            if (footballStatusBadge != null) {
+                footballStatusBadge.setText("✕ TUTUP");
+            }
+        } else {
+            if (footballExpandedScroll != null) {
+                footballExpandedScroll.animate().alpha(0f).setDuration(120).withEndAction(() -> {
+                    if (footballExpandedScroll != null) footballExpandedScroll.setVisibility(View.GONE);
+                    if (footballRowsContainer != null) footballRowsContainer.setVisibility(View.VISIBLE);
+                }).start();
+            }
+            updateFootballWidget();
+        }
+
+        ValueAnimator anim = ValueAnimator.ofFloat(0f, 1f);
+        anim.setDuration(reducedMotion ? 120 : 280);
+        anim.setInterpolator(new DecelerateInterpolator(1.6f));
+        anim.addUpdateListener(va -> {
+            float frac = (float) va.getAnimatedValue();
+            int curH = Math.round(startH + (endH - startH) * frac);
+            if (footballCardView.getLayoutParams().height != curH) {
+                footballCardView.getLayoutParams().height = curH;
+                footballCardView.requestLayout();
+            }
+            float desiredTop = targetCenterY - (curH * 0.5f);
+            float fDy = Math.round(desiredTop - footballCardView.getTop());
+            footballCardView.setTranslationY(fDy);
+        });
+        anim.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                footballCardAnimating = false;
+                if (!expand) {
+                    if (footballRowsContainer != null) footballRowsContainer.setVisibility(View.VISIBLE);
+                    if (footballExpandedScroll != null) footballExpandedScroll.setVisibility(View.GONE);
+                    updateFootballWidget();
+                } else {
+                    footballCardView.requestFocus();
+                }
+            }
+        });
+        anim.start();
+    }
+
+    private void populateFootballExpandedList() {
+        if (footballExpandedList == null) return;
+        footballExpandedList.removeAllViews();
+
+        List<FootballScheduleManager.MatchItem> matches = FootballScheduleManager.getCachedMatches(this);
+        if (matches.isEmpty()) {
+            TextView empty = new TextView(this);
+            empty.setText("Belum ada jadwal pertandingan.");
+            empty.setTextColor(0x99FFFFFF);
+            empty.setTextSize(12f);
+            empty.setGravity(Gravity.CENTER);
+            empty.setPadding(0, Math.round(20 * density), 0, Math.round(20 * density));
+            footballExpandedList.addView(empty);
+            return;
+        }
+
+        boolean isNeu = ThemeManager.isNeumorphism(this);
+        boolean isNeuDark = ThemeManager.isNeumorphismDark(this);
+        boolean isDark = ThemeManager.isDarkGlow(this);
+        int timeColor = isNeu ? (isNeuDark ? 0xFF60A5FA : 0xFF0D47A1) : (isDark ? 0xFF00F0FF : 0xFF7DD3FC);
+        int liveColor = (isNeu && !isNeuDark) ? 0xFFD32F2F : 0xFFFF453A;
+        int teamColor = isNeu ? (isNeuDark ? 0xFFF8FAFC : 0xFF1A202C) : 0xFFFFFFFF;
+        Typeface outfit = getResources().getFont(R.font.outfit);
+        float pillRadius = 8f * density;
+
+        for (int i = 0; i < matches.size(); i++) {
+            FootballScheduleManager.MatchItem m = matches.get(i);
+
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(0, Math.round(5 * density), 0, Math.round(5 * density));
+
+            TextView home = new TextView(this);
+            home.setText(m.homeTeam);
+            home.setTextColor(teamColor);
+            home.setTextSize(12f);
+            home.setTypeface(outfit, Typeface.BOLD);
+            home.setFontVariationSettings("'wght' 650");
+            home.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+            home.setSingleLine(true);
+            home.setEllipsize(TextUtils.TruncateAt.END);
+            home.setIncludeFontPadding(false);
+
+            TextView time = new TextView(this);
+            time.setText(m.getScoreOrVs());
+            time.setTextColor(m.isLive ? liveColor : timeColor);
+            time.setTextSize(10.5f);
+            time.setTypeface(outfit, Typeface.BOLD);
+            time.setFontVariationSettings("'wght' 700");
+            time.setGravity(Gravity.CENTER);
+            time.setMinWidth(Math.round(66 * density));
+            time.setSingleLine(true);
+            time.setIncludeFontPadding(false);
+            time.setPadding(Math.round(6 * density), Math.round(2 * density), Math.round(6 * density), Math.round(2 * density));
+
+            // Set Pill Background
+            if (isNeu) {
+                time.setBackground(new NeumorphicDrawable(pillRadius, density, NeumorphicDrawable.MODE_EXTRUDED, false));
+            } else if (isDark) {
+                GradientDrawable pBg = new GradientDrawable();
+                pBg.setColor(m.isLive ? 0x2E000000 : 0x1A00F0FF);
+                pBg.setCornerRadius(pillRadius);
+                pBg.setStroke(Math.max(1, Math.round(1.0f * density)), m.isLive ? 0x80FF3B30 : 0x4000F0FF);
+                time.setBackground(pBg);
+            } else {
+                GradientDrawable pBg = new GradientDrawable();
+                pBg.setColor(m.isLive ? 0x33FF3B30 : 0x24FFFFFF);
+                pBg.setCornerRadius(pillRadius);
+                pBg.setStroke(Math.max(1, Math.round(1.0f * density)), m.isLive ? 0x66FF3B30 : 0x38FFFFFF);
+                time.setBackground(pBg);
+            }
+
+            TextView away = new TextView(this);
+            away.setText(m.awayTeam);
+            away.setTextColor(teamColor);
+            away.setTextSize(12f);
+            away.setTypeface(outfit, Typeface.BOLD);
+            away.setFontVariationSettings("'wght' 650");
+            away.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+            away.setSingleLine(true);
+            away.setEllipsize(TextUtils.TruncateAt.END);
+            away.setIncludeFontPadding(false);
+
+            LinearLayout.LayoutParams lpHome = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            LinearLayout.LayoutParams lpTime = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            lpTime.setMargins(Math.round(6 * density), 0, Math.round(6 * density), 0);
+            LinearLayout.LayoutParams lpAway = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+
+            row.addView(home, lpHome);
+            row.addView(time, lpTime);
+            row.addView(away, lpAway);
+
+            footballExpandedList.addView(row);
+
+            if (i < matches.size() - 1) {
+                View div = new View(this);
+                div.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.round(1 * density)));
+                div.setBackgroundColor(isNeu ? ThemeManager.neu(0x1F000000) : (isDark ? 0x2E00F0FF : 0x1AFFFFFF));
+                footballExpandedList.addView(div);
+            }
+        }
     }
 
     private void showFootballFixturesDialog() {
@@ -4020,9 +4241,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Action: Refresh Jadwal
         items.add(new ThemedDialogItem(
                 "🔄 Segarkan Jadwal Sekarang",
-                "Sinkronisasi skor langsung dan jadwal pertandingan terkini (" + leagueName + ")",
+                null,
                 false,
-                "SYNC",
+                null,
                 () -> {
                     SoundEffects.playSelect();
                     FootballScheduleManager.syncForce(this, () -> handler.post(() -> {
@@ -4123,7 +4344,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         showThemedListDialog(
                 "⚽ Jadwal Pertandingan (" + leagueName + ")",
-                "Daftar laga dan skor resmi terkini",
+                null,
                 items,
                 null,
                 null
