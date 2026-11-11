@@ -962,7 +962,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
         }
         // The grid only shows the shape on the tray.
-        glider.addCompanion(grid, tray.area);
+        glider.addCompanion(grid, dockTray.area);
         applyHomeScreenTheme();
         for (int id : new int[]{R.id.btnInputs, R.id.btnWifi, R.id.btnAssistant, R.id.btnCandyBox, R.id.btnSettings, R.id.nowPlayingCard}) {
             View pill = findViewById(id);
