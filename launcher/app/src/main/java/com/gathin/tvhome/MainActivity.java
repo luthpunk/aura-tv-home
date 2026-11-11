@@ -1334,14 +1334,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return;
         }
         liveDimOverlay.setVisibility(View.VISIBLE);
-        if (ThemeManager.isCandybox(this)) {
-            liveDimOverlay.setBackgroundColor(0x66000000);
-        } else if (ThemeManager.isDarkGlow(this)) {
-            liveDimOverlay.setBackgroundColor(0x77171A22);
+        if (ThemeManager.isDarkGlow(this)) {
+            liveDimOverlay.setBackgroundColor(0x88222222);
+        } else if (ThemeManager.isNeumorphismDark(this)) {
+            liveDimOverlay.setBackgroundColor(0x88171A22);
         } else if (ThemeManager.isNeumorphism(this)) {
             liveDimOverlay.setBackgroundColor(0x88EDEAE4);
         } else {
-            liveDimOverlay.setBackgroundColor(0x44000000);
+            liveDimOverlay.setBackgroundColor(0x55000000);
         }
     }
 
