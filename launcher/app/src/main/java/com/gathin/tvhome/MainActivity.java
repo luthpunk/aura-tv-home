@@ -6377,18 +6377,44 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             try {
                 // Tutup aplikasi pihak ketiga di latar belakang (Netflix, YouTube, Spotify, games, dll.)
                 ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+                PackageManager pm = getPackageManager();
                 if (am != null) {
+                    String myPkg = getPackageName();
+
+                    // 1. Target semua aplikasi pihak ketiga yang terpasang (efektif di Android 7 - 14+)
+                    if (pm != null) {
+                        List<ApplicationInfo> installedApps = pm.getInstalledApplications(0);
+                        if (installedApps != null) {
+                            for (ApplicationInfo app : installedApps) {
+                                if (app.packageName == null || app.packageName.equals(myPkg)) continue;
+                                if (app.packageName.startsWith("android")
+                                        || app.packageName.startsWith("com.android.")
+                                        || app.packageName.startsWith("com.google.android.")
+                                        || app.packageName.startsWith("com.droidlogic.")
+                                        || app.packageName.startsWith("com.amlogic.")) {
+                                    continue;
+                                }
+                                boolean isSystem = (app.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
+                                boolean isUpdatedSystem = (app.flags & ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0;
+                                if (!isSystem || isUpdatedSystem) {
+                                    am.killBackgroundProcesses(app.packageName);
+                                }
+                            }
+                        }
+                    }
+
+                    // 2. Fallback untuk proses yang dilaporkan sistem
                     List<ActivityManager.RunningAppProcessInfo> procs = am.getRunningAppProcesses();
                     if (procs != null) {
-                        String myPkg = getPackageName();
                         for (ActivityManager.RunningAppProcessInfo proc : procs) {
                             if (proc.pkgList != null) {
                                 for (String pkg : proc.pkgList) {
-                                    if (!pkg.equals(myPkg)
+                                    if (pkg != null && !pkg.equals(myPkg)
                                             && !pkg.startsWith("android")
                                             && !pkg.startsWith("com.android.")
                                             && !pkg.startsWith("com.google.android.")
-                                            && !pkg.startsWith("com.droidlogic.")) {
+                                            && !pkg.startsWith("com.droidlogic.")
+                                            && !pkg.startsWith("com.amlogic.")) {
                                         am.killBackgroundProcesses(pkg);
                                     }
                                 }

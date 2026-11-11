@@ -69,17 +69,31 @@ jobs:
             CHANGELOG_JSON=$(python3 -c "import json, sys; print(json.dumps(sys.stdin.read().strip()))" <<< "${COMMIT_MSG}")
           fi
 
-          tag="build-${GITHUB_RUN_NUMBER}"
-          for i in 1 2 3; do
-            gh release delete "$tag" --cleanup-tag -y 2>/dev/null || true
-            if gh release create "$tag" aura-tv-home.apk \
-              --title "Aura TV Home (v${VNAME})" \
-              --notes "${CHANGELOG_NOTES}" \
-              --latest; then
-              break
-            fi
-            sleep 4
-          done
+          # Cek apakah rilis untuk versi ini sudah ada agar tidak membuat duplikat rilis
+          EXISTING_TAG=$(gh release list --json tagName,name | python3 -c "import json, sys; releases = json.loads(sys.stdin.read()); match = next((r['tagName'] for r in releases if 'v' + sys.argv[1] in r.get('name', '')), ''); print(match)" "${VNAME}")
+
+          if [ -n "$EXISTING_TAG" ]; then
+            echo "Release untuk v${VNAME} sudah ada ($EXISTING_TAG). Memperbarui file APK langsung tanpa membuat duplikat..."
+            for i in 1 2 3; do
+              if gh release upload "$EXISTING_TAG" aura-tv-home.apk --clobber; then
+                gh release edit "$EXISTING_TAG" --title "Aura TV Home (v${VNAME})" --notes "${CHANGELOG_NOTES}" --latest || true
+                break
+              fi
+              sleep 4
+            done
+          else
+            tag="build-${GITHUB_RUN_NUMBER}"
+            for i in 1 2 3; do
+              gh release delete "$tag" --cleanup-tag -y 2>/dev/null || true
+              if gh release create "$tag" aura-tv-home.apk \
+                --title "Aura TV Home (v${VNAME})" \
+                --notes "${CHANGELOG_NOTES}" \
+                --latest; then
+                break
+              fi
+              sleep 4
+            done
+          fi
 
           mkdir -p release
           cat > release/version.json <<EOF
