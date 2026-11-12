@@ -652,7 +652,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Football Schedule Widget Views (Right side)
         footballCardView = findViewById(R.id.footballCardView);
         if (footballCardView != null) {
-            footballCardView.setClipToOutline(true);
             footballRowsContainer = findViewById(R.id.footballRowsContainer);
             footballExpandedScroll = findViewById(R.id.footballExpandedScroll);
             footballExpandedList = findViewById(R.id.footballExpandedList);
@@ -3073,6 +3072,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         int inner = grid.getWidth() - grid.getPaddingLeft() - grid.getPaddingRight();
         int tileW = AppAdapter.tileWidthPx(inner, COLUMNS, density);
         int tileH = AppAdapter.tileHeightPx(tileW);
+        int tileW5 = AppAdapter.tileWidthPx(inner, 5, density);
+        float shadowK = Math.max(0.5f, Math.min(1f, tileW5 > 0 ? tileW / (float) tileW5 : 1f));
+        if (Math.abs(AppAdapter.tileShadowScale - shadowK) > 0.001f) {
+            AppAdapter.tileShadowScale = shadowK;
+            grid.invalidate();
+            if (glider != null) glider.invalidate();
+        }
         int vPad = (COLUMNS >= 7) ? Math.round(4 * density) : (COLUMNS >= 6 ? Math.round(6 * density) : Math.round(8 * density));
         int itemH = AppAdapter.itemHeightPx(tileH, density, COLUMNS);
         int dockRow = itemH + (int) ((6 + 12) * density);   // item height plus DockDecoration offsets

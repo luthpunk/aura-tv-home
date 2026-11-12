@@ -76,6 +76,7 @@ final class Glider extends View {
      */
     private Bitmap shadow;
     private int shadowW, shadowH;
+    private float shadowBlurMade = -1f;
     private final Paint shadowPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
     private final float shadowBlur, shadowDrop;
     /** How far the shadow is shown: it comes in as the glider turns to glass, and goes with the dark. */
@@ -311,7 +312,7 @@ final class Glider extends View {
             return;
         }
         if (isNeu) {
-            NeumorphicDrawable.drawOuterDualShadows(canvas, shape, r, density, opacity * Math.max(0.65f, shadowMix), 1.35f);
+            NeumorphicDrawable.drawOuterDualShadows(canvas, shape, r, density, opacity * Math.max(0.65f, shadowMix), 1.35f * AppAdapter.tileShadowScale);
             if (paneHidden) return;
             NeumorphicDrawable.drawExtruded(canvas, shape, r, density, opacity, false);
             NeumorphicDrawable.drawTileFocusRim(canvas, shape, r, density, opacity);
@@ -346,28 +347,33 @@ final class Glider extends View {
         if (shadowMix <= 0f) return;
         int w = Math.round(shape.width()), h = Math.round(shape.height());
         if (w <= 0 || h <= 0) return;
-        int pad = (int) Math.ceil(shadowBlur * 2);
-        if (shadow != null && (w != shadowW || h != shadowH) && moving()) {
+        // Sebaran ikut ukuran ubin: dock 6/7 kolom (ubin lebih kecil) mendapat bayangan lebih kecil.
+        float k = AppAdapter.tileShadowScale;
+        float blur = shadowBlur * k;
+        float drop = shadowDrop * k;
+        int pad = (int) Math.ceil(blur * 2);
+        if (shadow != null && shadowBlurMade == blur && (w != shadowW || h != shadowH) && moving()) {
             // Changing size mid-glide: stretch the shadow it has rather than blur a new one every
             // frame; the right one is made once the shape comes to rest.
             shadowPaint.setColor(0xFF000000);
             shadowPaint.setAlpha(Math.round(0x9A * opacity * shadowMix));
-            area.set(shape.left - pad, shape.top - pad + shadowDrop, shape.right + pad, shape.bottom + pad + shadowDrop);
+            area.set(shape.left - pad, shape.top - pad + drop, shape.right + pad, shape.bottom + pad + drop);
             canvas.drawBitmap(shadow, null, area, shadowPaint);
             return;
         }
-        if (shadow == null || w != shadowW || h != shadowH) {
+        if (shadow == null || w != shadowW || h != shadowH || shadowBlurMade != blur) {
             shadow = Bitmap.createBitmap(w + 2 * pad, h + 2 * pad, Bitmap.Config.ALPHA_8);
             Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
             p.setColor(0xFF000000);
-            p.setMaskFilter(new android.graphics.BlurMaskFilter(shadowBlur, android.graphics.BlurMaskFilter.Blur.NORMAL));
+            p.setMaskFilter(new android.graphics.BlurMaskFilter(blur, android.graphics.BlurMaskFilter.Blur.NORMAL));
             new Canvas(shadow).drawRoundRect(pad, pad, pad + w, pad + h, radius, radius, p);
             shadowW = w;
             shadowH = h;
+            shadowBlurMade = blur;
         }
         shadowPaint.setColor(0xFF000000);
         shadowPaint.setAlpha(Math.round(0x9A * opacity * shadowMix));
-        canvas.drawBitmap(shadow, shape.left - pad, shape.top - pad + shadowDrop, shadowPaint);
+        canvas.drawBitmap(shadow, shape.left - pad, shape.top - pad + drop, shadowPaint);
     }
 
     private void fadeTo(float to, long ms) {

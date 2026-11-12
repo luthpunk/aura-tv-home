@@ -277,7 +277,14 @@ public final class NeumorphicDrawable extends Drawable {
      */
     public static void drawAmbientDualShadows(@NonNull Canvas c, @NonNull RectF bounds, float r,
                                               float density, float alpha) {
+        drawAmbientDualShadows(c, bounds, r, density, alpha, 1f);
+    }
+
+    /** Sama seperti di atas, dengan sebaran dikali {@code scale} (ubin lebih kecil, bayangan lebih kecil). */
+    public static void drawAmbientDualShadows(@NonNull Canvas c, @NonNull RectF bounds, float r,
+                                              float density, float alpha, float scale) {
         if (bounds.isEmpty() || alpha <= 0f) return;
+        density *= scale;
 
         // Top-Left Light Highlight Shadow (Single blended pass)
         SHADOW_LIGHT_PAINT.setStyle(Paint.Style.FILL);

@@ -1049,8 +1049,8 @@
                 android:paddingEnd="14dp"
                 android:paddingTop="11dp"
                 android:paddingBottom="11dp"
-                android:clipChildren="true"
-                android:clipToPadding="true"
+                android:clipChildren="false"
+                android:clipToPadding="false"
                 android:visibility="gone">
 
                 <!-- Header: League Name & Live/Status Badge -->

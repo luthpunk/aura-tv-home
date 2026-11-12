@@ -204,7 +204,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
             float hh = card.getHeight() * sy * 0.5f;
             tileBounds.set(cx - hw, cy - hh, cx + hw, cy + hh);
             float tileR = AppAdapter.cornerRadius(card.getWidth(), density) * sx;
-            NeumorphicDrawable.drawAmbientDualShadows(c, tileBounds, tileR, density, 1f);
+            NeumorphicDrawable.drawAmbientDualShadows(c, tileBounds, tileR, density, 1f, AppAdapter.tileShadowScale);
         }
     }
 
