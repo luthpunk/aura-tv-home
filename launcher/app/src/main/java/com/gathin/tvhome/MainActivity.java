@@ -1944,6 +1944,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      * ones and cards stay off for this process.
      */
     private boolean reloadTiles() {
+        cachedDrawerApps = null;
         // Read these before reload(): rebinding can move focus to the first tile and overwrite them.
         final String returnKey = lastFocusedKey;
         final int returnSlot = lastFocused;
@@ -8653,14 +8654,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
     }
 
-    private void showGlassAppDrawer() {
-        if (appDrawerOverlay != null || isFinishing() || isDestroyed()) return;
+    private List<DrawerAppItem> cachedDrawerApps = null;
 
+    private List<DrawerAppItem> getDrawerAppsList() {
+        if (cachedDrawerApps != null && !cachedDrawerApps.isEmpty()) {
+            return cachedDrawerApps;
+        }
         PackageManager pm = getPackageManager();
         java.util.Map<String, DrawerAppItem> byPkg = new java.util.LinkedHashMap<>();
 
         Intent lbProbe = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
-        List< android.content.pm.ResolveInfo > lbList = pm.queryIntentActivities(lbProbe, 0);
+        List<android.content.pm.ResolveInfo> lbList = pm.queryIntentActivities(lbProbe, 0);
         if (lbList != null) {
             for (android.content.pm.ResolveInfo ri : lbList) {
                 if (ri.activityInfo == null) continue;
@@ -8676,7 +8680,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
 
         Intent phoneProbe = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
-        List< android.content.pm.ResolveInfo > phoneList = pm.queryIntentActivities(phoneProbe, 0);
+        List<android.content.pm.ResolveInfo> phoneList = pm.queryIntentActivities(phoneProbe, 0);
         if (phoneList != null) {
             for (android.content.pm.ResolveInfo ri : phoneList) {
                 if (ri.activityInfo == null) continue;
@@ -8693,6 +8697,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         List<DrawerAppItem> appList = new ArrayList<>(byPkg.values());
         Collections.sort(appList, (a, b) -> a.label.compareToIgnoreCase(b.label));
+        cachedDrawerApps = appList;
+        return appList;
+    }
+
+    private void showGlassAppDrawer() {
+        if (appDrawerOverlay != null || isFinishing() || isDestroyed()) return;
+
+        final List<DrawerAppItem> appList = getDrawerAppsList();
 
         boolean isDark = ThemeManager.isDarkGlow(this);
         boolean isNeu = ThemeManager.isNeumorphism(this);
@@ -8768,49 +8780,36 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         divLp.bottomMargin = Math.round(10 * density);
         panel.addView(divider, divLp);
 
-        ScrollView scroll = new ScrollView(this);
-        scroll.setVerticalScrollBarEnabled(false);
-        scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
-        scroll.setClipChildren(true);
-        scroll.setClipToPadding(true);
-
-        LinearLayout gridRows = new LinearLayout(this);
-        gridRows.setOrientation(LinearLayout.VERTICAL);
-        gridRows.setClipChildren(false);
-        gridRows.setClipToPadding(false);
-        int gridPad = Math.round(6 * density);
-        gridRows.setPadding(gridPad, gridPad, gridPad, gridPad);
-
         final int COLS = 6;
-        final List<View> cells = new ArrayList<>();
-        final int total = appList.size();
-        int rowCount = (total + COLS - 1) / COLS;
-
+        int gridPad = Math.round(6 * density);
         int cellMargin = Math.round(5 * density);
         int innerW = maxW - (padH * 2) - (gridPad * 2);
         int cardW = Math.max(Math.round(80 * density), (innerW / COLS) - (cellMargin * 2));
         int cardH = Math.round(cardW * 101f / 180f);
         final float cardRadius = 11f * density;
 
-        for (int r = 0; r < rowCount; r++) {
-            LinearLayout rowLayout = new LinearLayout(this);
-            rowLayout.setOrientation(LinearLayout.HORIZONTAL);
-            rowLayout.setWeightSum(COLS);
-            rowLayout.setClipChildren(false);
-            rowLayout.setClipToPadding(false);
+        RecyclerView gridRv = new RecyclerView(this);
+        gridRv.setLayoutManager(new GridLayoutManager(this, COLS));
+        gridRv.setHasFixedSize(true);
+        gridRv.setItemViewCacheSize(24);
+        gridRv.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        gridRv.setVerticalScrollBarEnabled(false);
+        gridRv.setClipToPadding(false);
+        gridRv.setClipChildren(false);
+        gridRv.setPadding(gridPad, gridPad, gridPad, gridPad);
 
-            for (int c = 0; c < COLS; c++) {
-                int idx = r * COLS + c;
-                if (idx >= total) {
-                    View spacer = new View(this);
-                    LinearLayout.LayoutParams spLp = new LinearLayout.LayoutParams(0, 1, 1f);
-                    spLp.setMargins(cellMargin, cellMargin, cellMargin, cellMargin);
-                    rowLayout.addView(spacer, spLp);
-                    continue;
-                }
+        class DrawerAdapter extends RecyclerView.Adapter<DrawerAdapter.VH> {
+            final List<DrawerAppItem> items;
+            final PackageManager pm = getPackageManager();
 
-                final DrawerAppItem item = appList.get(idx);
-                LinearLayout cell = new LinearLayout(this);
+            DrawerAdapter(List<DrawerAppItem> items) {
+                this.items = items;
+            }
+
+            @NonNull
+            @Override
+            public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+                LinearLayout cell = new LinearLayout(MainActivity.this);
                 cell.setOrientation(LinearLayout.VERTICAL);
                 cell.setGravity(Gravity.CENTER_HORIZONTAL);
                 cell.setFocusable(true);
@@ -8819,7 +8818,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 cell.setClipChildren(false);
                 cell.setClipToPadding(false);
 
-                FrameLayout cardBox = new FrameLayout(this);
+                FrameLayout cardBox = new FrameLayout(MainActivity.this);
                 cardBox.setOutlineProvider(new android.view.ViewOutlineProvider() {
                     @Override
                     public void getOutline(View view, android.graphics.Outline outline) {
@@ -8828,13 +8827,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 });
                 cardBox.setClipToOutline(true);
 
-                if (ThemeManager.isDarkGlow(this)) {
+                if (ThemeManager.isDarkGlow(MainActivity.this)) {
                     GradientDrawable cardBaseBg = new GradientDrawable();
                     cardBaseBg.setColor(0xFF000000);
                     cardBaseBg.setStroke(Math.max(1, Math.round(0.9f * density)), 0x1EFFFFFF);
                     cardBaseBg.setCornerRadius(cardRadius);
                     cardBox.setBackground(cardBaseBg);
-                } else if (ThemeManager.isNeumorphism(this)) {
+                } else if (ThemeManager.isNeumorphism(MainActivity.this)) {
                     NeumorphicDrawable cardBaseBg = new NeumorphicDrawable(cardRadius, density, NeumorphicDrawable.MODE_EXTRUDED, false);
                     cardBox.setBackground(cardBaseBg);
                     cardBox.setPadding(0, 0, 0, 0);
@@ -8846,23 +8845,19 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     cardBox.setBackground(cardBaseBg);
                 }
 
-                if (item.banner != null) {
-                    ImageView bannerView = new ImageView(this);
-                    bannerView.setImageDrawable(item.banner);
-                    bannerView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                    cardBox.addView(bannerView, new FrameLayout.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-                } else {
-                    ImageView iconView = new ImageView(this);
-                    iconView.setImageDrawable(item.icon);
-                    iconView.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                    int iconSize = Math.round(cardH * 0.64f);
-                    FrameLayout.LayoutParams iconLp = new FrameLayout.LayoutParams(iconSize, iconSize, Gravity.CENTER);
-                    cardBox.addView(iconView, iconLp);
-                }
+                ImageView bannerView = new ImageView(MainActivity.this);
+                bannerView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                cardBox.addView(bannerView, new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-                View focusRim = new View(this);
-                if (ThemeManager.isNeumorphism(this)) {
+                ImageView iconView = new ImageView(MainActivity.this);
+                iconView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                int iconSize = Math.round(cardH * 0.64f);
+                FrameLayout.LayoutParams iconLp = new FrameLayout.LayoutParams(iconSize, iconSize, Gravity.CENTER);
+                cardBox.addView(iconView, iconLp);
+
+                View focusRim = new View(MainActivity.this);
+                if (ThemeManager.isNeumorphism(MainActivity.this)) {
                     final RectF rimBounds = new RectF();
                     focusRim.setBackground(new Drawable() {
                         @Override
@@ -8878,9 +8873,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     GradientDrawable rimDrawable = new GradientDrawable();
                     rimDrawable.setColor(0x00000000);
                     rimDrawable.setCornerRadius(cardRadius);
-                    boolean isDarkDrawer = ThemeManager.isDarkGlow(this);
+                    boolean isDarkDrawer = ThemeManager.isDarkGlow(MainActivity.this);
                     int rimColor = isDarkDrawer ? 0xFF00F0FF : 0xFFFFFFFF;
-                    // Thin, crisp neon border in Dark Glow (1.25dp)
                     int strokeW = Math.max(1, Math.round((isDarkDrawer ? 1.25f : 1.8f) * density));
                     rimDrawable.setStroke(strokeW, rimColor);
                     focusRim.setBackground(rimDrawable);
@@ -8891,8 +8885,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
                 cell.addView(cardBox, new LinearLayout.LayoutParams(cardW, cardH));
 
-                TextView nameView = new TextView(this);
-                nameView.setText(item.label);
+                TextView nameView = new TextView(MainActivity.this);
                 nameView.setTextSize(11.5f);
                 nameView.setTextColor(isNeu ? ThemeManager.neu(0xFF3A414A) : 0xB3FFFFFF);
                 nameView.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
@@ -8907,16 +8900,39 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 nameLp.topMargin = Math.round(5 * density);
                 cell.addView(nameView, nameLp);
 
-                cell.setOnFocusChangeListener((v, hasFocus) -> {
+                RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                lp.setMargins(cellMargin, cellMargin, cellMargin, cellMargin);
+                cell.setLayoutParams(lp);
+
+                return new VH(cell, cardBox, bannerView, iconView, focusRim, nameView);
+            }
+
+            @Override
+            public void onBindViewHolder(@NonNull VH holder, int position) {
+                final DrawerAppItem item = items.get(position);
+                holder.nameView.setText(item.label);
+
+                if (item.banner != null) {
+                    holder.bannerView.setVisibility(View.VISIBLE);
+                    holder.bannerView.setImageDrawable(item.banner);
+                    holder.iconView.setVisibility(View.GONE);
+                } else {
+                    holder.bannerView.setVisibility(View.GONE);
+                    holder.iconView.setVisibility(View.VISIBLE);
+                    holder.iconView.setImageDrawable(item.icon);
+                }
+
+                holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
                     if (hasFocus) SoundEffects.playNav();
-                    focusRim.animate().alpha(hasFocus ? 1f : 0f).setDuration(140).start();
-                    nameView.setTextColor(hasFocus ? (isNeu ? ThemeManager.neu(0xFF1F2429) : 0xFFFFFFFF) : (isNeu ? ThemeManager.neu(0xFF3A414A) : 0xB3FFFFFF));
+                    holder.focusRim.animate().alpha(hasFocus ? 1f : 0f).setDuration(140).start();
+                    holder.nameView.setTextColor(hasFocus ? (isNeu ? ThemeManager.neu(0xFF1F2429) : 0xFFFFFFFF) : (isNeu ? ThemeManager.neu(0xFF3A414A) : 0xB3FFFFFF));
                     float s = hasFocus ? 1.08f : 1.0f;
-                    cardBox.animate().scaleX(s).scaleY(s).translationZ(hasFocus ? 8 * density : 0f)
+                    holder.cardBox.animate().scaleX(s).scaleY(s).translationZ(hasFocus ? 8 * density : 0f)
                             .setDuration(160).setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
                 });
 
-                cell.setOnClickListener(v -> {
+                holder.itemView.setOnClickListener(v -> {
                     SoundEffects.playSelect();
                     closeAppDrawer(false);
                     try {
@@ -8937,65 +8953,53 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     }
                 });
 
-                cell.setOnLongClickListener(v -> {
+                holder.itemView.setOnLongClickListener(v -> {
                     SoundEffects.playSelect();
                     try {
                         Intent infoIntent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                                 Uri.parse("package:" + item.pkg));
                         infoIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         startActivity(infoIntent);
-                    } catch (Exception ignored) {
-                    }
+                    } catch (Exception ignored) {}
                     return true;
                 });
 
-                final int cellIndex = idx;
-                cell.setOnKeyListener((v, keyCode, event) -> {
-                    boolean down = event.getAction() == KeyEvent.ACTION_DOWN;
-                    switch (keyCode) {
-                        case KeyEvent.KEYCODE_DPAD_LEFT:
-                            if (cellIndex % COLS > 0 && down) {
-                                cells.get(cellIndex - 1).requestFocus();
-                            }
+                holder.itemView.setOnKeyListener((v, keyCode, event) -> {
+                    if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                        if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE) {
+                            closeAppDrawer(true);
                             return true;
-                        case KeyEvent.KEYCODE_DPAD_RIGHT:
-                            if (cellIndex % COLS < COLS - 1 && cellIndex + 1 < total && down) {
-                                cells.get(cellIndex + 1).requestFocus();
-                            }
-                            return true;
-                        case KeyEvent.KEYCODE_DPAD_UP:
-                            if (cellIndex >= COLS && down) {
-                                cells.get(cellIndex - COLS).requestFocus();
-                            }
-                            return true;
-                        case KeyEvent.KEYCODE_DPAD_DOWN:
-                            int curRow = cellIndex / COLS;
-                            int maxRow = (total - 1) / COLS;
-                            if (curRow < maxRow && down) {
-                                cells.get(Math.min(cellIndex + COLS, total - 1)).requestFocus();
-                            }
-                            return true;
-                        case KeyEvent.KEYCODE_BACK:
-                        case KeyEvent.KEYCODE_ESCAPE:
-                            if (down) closeAppDrawer(true);
-                            return true;
-                        default:
-                            return false;
+                        }
                     }
+                    return false;
                 });
-
-                LinearLayout.LayoutParams cellLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-                cellLp.setMargins(cellMargin, cellMargin, cellMargin, cellMargin);
-                rowLayout.addView(cell, cellLp);
-                cells.add(cell);
             }
-            gridRows.addView(rowLayout, new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+            @Override
+            public int getItemCount() {
+                return items.size();
+            }
+
+            class VH extends RecyclerView.ViewHolder {
+                final FrameLayout cardBox;
+                final ImageView bannerView;
+                final ImageView iconView;
+                final View focusRim;
+                final TextView nameView;
+
+                VH(View itemView, FrameLayout cardBox, ImageView bannerView, ImageView iconView, View focusRim, TextView nameView) {
+                    super(itemView);
+                    this.cardBox = cardBox;
+                    this.bannerView = bannerView;
+                    this.iconView = iconView;
+                    this.focusRim = focusRim;
+                    this.nameView = nameView;
+                }
+            }
         }
 
-        scroll.addView(gridRows, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        panel.addView(scroll, new LinearLayout.LayoutParams(
+        gridRv.setAdapter(new DrawerAdapter(appList));
+        panel.addView(gridRv, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
         appDrawerOverlay = overlay;
@@ -9011,14 +9015,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 .setInterpolator(new android.view.animation.DecelerateInterpolator(1.5f))
                 .withEndAction(panel::invalidate).start();
 
-        if (!cells.isEmpty()) {
-            cells.get(0).requestFocus();
-            panel.post(() -> {
-                if (appDrawerOverlay == overlay && !cells.isEmpty()) {
-                    cells.get(0).requestFocus();
+        gridRv.post(() -> {
+            if (appDrawerOverlay == overlay) {
+                RecyclerView.LayoutManager lm = gridRv.getLayoutManager();
+                if (lm != null) {
+                    View first = lm.findViewByPosition(0);
+                    if (first != null) first.requestFocus();
                 }
-            });
-        }
+            }
+        });
     }
 
     private void closeAppDrawer(boolean restoreFocus) {
@@ -9032,54 +9037,23 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             focusTile(lastFocused);
         }
         if (panel != null) {
-            panel.animate().scaleX(0.95f).scaleY(0.95f).setDuration(150).start();
+            panel.animate().scaleX(0.94f).scaleY(0.94f).setDuration(160)
+                    .setInterpolator(new android.view.animation.AccelerateInterpolator()).start();
         }
-        overlay.animate().alpha(0f).setDuration(150).withEndAction(() -> {
+        overlay.animate().alpha(0f).setDuration(160).withEndAction(() -> {
             root.removeView(overlay);
         }).start();
     }
-
     private void showAddAppSheet() {
         if (addAppOverlay != null || isFinishing() || isDestroyed()) return;
 
-        PackageManager pm = getPackageManager();
-        java.util.Map<String, DrawerAppItem> byPkg = new java.util.LinkedHashMap<>();
-
-        Intent lbProbe = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
-        List<android.content.pm.ResolveInfo> lbList = pm.queryIntentActivities(lbProbe, 0);
-        if (lbList != null) {
-            for (android.content.pm.ResolveInfo ri : lbList) {
-                if (ri.activityInfo == null) continue;
-                String pkg = ri.activityInfo.packageName;
-                if (pkg.equals(getPackageName()) || "com.arvanasoft.aplikasi".equals(pkg)
-                        || hiddenApps.contains(pkg) || adapter.isPackageOnHome(pkg)) continue;
-                ComponentName comp = new ComponentName(pkg, ri.activityInfo.name);
-                String label = Cards.cleanLabel(String.valueOf(ri.loadLabel(pm)), pkg);
-                Drawable banner = AppAdapter.loadBanner(this, pm, ri);
-                Drawable icon = banner == null ? ri.loadIcon(pm) : null;
-                byPkg.put(pkg, new DrawerAppItem(label, pkg, comp, true, banner, icon));
+        List<DrawerAppItem> allApps = getDrawerAppsList();
+        final List<DrawerAppItem> appList = new ArrayList<>();
+        for (DrawerAppItem item : allApps) {
+            if (!adapter.isPackageOnHome(item.pkg)) {
+                appList.add(item);
             }
         }
-
-        Intent phoneProbe = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
-        List<android.content.pm.ResolveInfo> phoneList = pm.queryIntentActivities(phoneProbe, 0);
-        if (phoneList != null) {
-            for (android.content.pm.ResolveInfo ri : phoneList) {
-                if (ri.activityInfo == null) continue;
-                String pkg = ri.activityInfo.packageName;
-                if (pkg.equals(getPackageName()) || "com.arvanasoft.aplikasi".equals(pkg)
-                        || hiddenApps.contains(pkg) || byPkg.containsKey(pkg)
-                        || adapter.isPackageOnHome(pkg)) continue;
-                ComponentName comp = new ComponentName(pkg, ri.activityInfo.name);
-                String label = Cards.cleanLabel(String.valueOf(ri.loadLabel(pm)), pkg);
-                Drawable banner = AppAdapter.loadBanner(this, pm, ri);
-                Drawable icon = banner == null ? ri.loadIcon(pm) : null;
-                byPkg.put(pkg, new DrawerAppItem(label, pkg, comp, false, banner, icon));
-            }
-        }
-
-        final List<DrawerAppItem> appList = new ArrayList<>(byPkg.values());
-        Collections.sort(appList, (a, b) -> a.label.compareToIgnoreCase(b.label));
 
         boolean isDark = ThemeManager.isDarkGlow(this);
         boolean isNeu = ThemeManager.isNeumorphism(this);
