@@ -3102,11 +3102,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (h <= 0) return false;
         // Item height follows the tile size, which follows the column count (AppAdapter.tileWidthPx).
         int inner = grid.getWidth() - grid.getPaddingLeft() - grid.getPaddingRight();
+        int tileW = AppAdapter.tileWidthPx(inner, COLUMNS, density);
+        int tileH = AppAdapter.tileHeightPx(tileW);
         int vPad = (COLUMNS >= 7) ? Math.round(4 * density) : (COLUMNS >= 6 ? Math.round(6 * density) : Math.round(8 * density));
-        int itemH = AppAdapter.itemHeightPx(AppAdapter.tileHeightPx(AppAdapter.tileWidthPx(inner, COLUMNS, density)), density, COLUMNS);
+        int itemH = AppAdapter.itemHeightPx(tileH, density, COLUMNS);
         int dockRow = itemH + (int) ((6 + 12) * density);   // item height plus DockDecoration offsets
-        // Tetap sisakan 30dp agar puncak baris kedua tetap mengintip di dasar layar persis seperti 5 aplikasi
-        int want = Math.max(0, h - dockRow - vPad - (int) (30 * density));
+        // Intipan baris kedua persis 1/4 (25%) dari tinggi kartu baris kedua di semua opsi (5, 6, 7 aplikasi)
+        int cardPeek = Math.round(tileH * 0.25f);
+        int want = Math.max(0, h - dockRow - vPad - cardPeek);
         if (grid.getPaddingTop() == want) return true;
         grid.setPadding(grid.getPaddingLeft(), want, grid.getPaddingRight(), grid.getPaddingBottom());
         return false;
@@ -4070,39 +4073,42 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         View tb = findViewById(R.id.topButtons);
         View lb = findViewById(R.id.leftBlock);
 
-        // Safe boundaries:
-        // Top limit: strictly below the top menu bar (topButtons / leftBlock)
+        // Mepet batas atas: tepat 4dp di bawah tombol menu atas (topButtons / leftBlock)
         float topLimit = 0;
         if (tb != null && tb.getVisibility() == View.VISIBLE) {
-            topLimit = Math.max(topLimit, tb.getBottom() + Math.round(14 * density));
+            topLimit = Math.max(topLimit, tb.getBottom() + Math.round(4 * density));
         }
         if (lb != null && lb.getVisibility() == View.VISIBLE) {
-            topLimit = Math.max(topLimit, lb.getBottom() + Math.round(14 * density));
+            topLimit = Math.max(topLimit, lb.getBottom() + Math.round(4 * density));
         }
         if (topLimit <= 0) {
-            topLimit = Math.round(108 * density);
+            topLimit = Math.round(100 * density);
         }
 
-        // Bottom limit: strictly above the first dock row & dock tray rim
-        float bottomLimit = getResources().getDisplayMetrics().heightPixels - Math.round(200 * density);
+        // Mepet batas bawah: tepat 4dp di atas lengkungan dock tray baris pertama
+        float bottomLimit = getResources().getDisplayMetrics().heightPixels - Math.round(180 * density);
         if (gridWrap != null && grid != null && grid.getPaddingTop() > 0) {
             float dockTrayTopInMain = gridWrap.getTop() + grid.getPaddingTop() - Math.round(14 * density);
             float shelfH = (heroName != null && heroName.getHeight() > 0) ? heroName.getHeight() : 0;
             float shelfTopInMain = dockTrayTopInMain - (HERO_GAP_DP * density) - shelfH;
-            bottomLimit = Math.min(dockTrayTopInMain, shelfTopInMain) - Math.round(16 * density);
+            bottomLimit = Math.min(dockTrayTopInMain, shelfTopInMain) - Math.round(4 * density);
         }
 
-        int maxAllowedH = Math.max(Math.round(180 * density), Math.round(bottomLimit - topLimit));
-        int targetExpandedH = Math.min(Math.round(270f * density), maxAllowedH);
         int defaultH = Math.round(153f * density);
+        int targetExpandedH = Math.max(defaultH, Math.round(bottomLimit - topLimit));
+        final float finalTopLimit = topLimit;
+        final float finalBottomLimit = bottomLimit;
+
+        // Base layout top saat unexpanded
+        int baseTop = (lb != null && lb.getBottom() > 0) ? lb.getBottom() + Math.round(24 * density) : footballCardView.getTop();
+        if (baseTop <= 0) baseTop = Math.round(120 * density);
 
         int startH = expand ? defaultH : (footballCardView.getLayoutParams().height > 0 ? footballCardView.getLayoutParams().height : defaultH);
         int endH = expand ? targetExpandedH : defaultH;
 
-        // Position strictly between topLimit and bottomLimit
-        float targetExpandedTop = topLimit + Math.max(0, (bottomLimit - topLimit - targetExpandedH) * 0.5f);
+        float targetExpandedTop = finalTopLimit;
         float startDy = footballCardView.getTranslationY();
-        float endDy = expand ? (targetExpandedTop - footballCardView.getTop()) : 0f;
+        float endDy = expand ? (targetExpandedTop - baseTop) : 0f;
 
         if (expand) {
             populateFootballExpandedList();
@@ -4126,17 +4132,31 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             updateFootballWidget();
         }
 
+        final int fBaseTop = baseTop;
         ValueAnimator anim = ValueAnimator.ofFloat(0f, 1f);
         anim.setDuration(reducedMotion ? 120 : 280);
         anim.setInterpolator(new DecelerateInterpolator(1.6f));
         anim.addUpdateListener(va -> {
             float frac = (float) va.getAnimatedValue();
             int curH = Math.round(startH + (endH - startH) * frac);
+            float curDy = startDy + (endDy - startDy) * frac;
+
+            // Strict anti-bug boundary clamping: tidak akan pernah melewati batas atas dan bawah
+            if (expand) {
+                float curTop = fBaseTop + curDy;
+                if (curTop < finalTopLimit) {
+                    curDy = finalTopLimit - fBaseTop;
+                    curTop = finalTopLimit;
+                }
+                if (curTop + curH > finalBottomLimit) {
+                    curH = (int) Math.max(defaultH, finalBottomLimit - curTop);
+                }
+            }
+
             if (footballCardView.getLayoutParams().height != curH) {
                 footballCardView.getLayoutParams().height = curH;
                 footballCardView.requestLayout();
             }
-            float curDy = startDy + (endDy - startDy) * frac;
             footballCardView.setTranslationY(curDy);
         });
         anim.addListener(new AnimatorListenerAdapter() {
@@ -9882,9 +9902,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 status.getPaint().setFakeBoldText(false);
             }
         } else {
+            if (titleView != null) {
+                titleView.setTextColor(0xFFFFFFFF);
+                titleView.setShadowLayer(4f, 0, 1f, 0x99000000);
+            }
             if (status != null) {
                 status.setTextColor(0xFFFFFFFF);
-                status.setShadowLayer(2f, 0, 1f, 0x80000000);
+                status.setShadowLayer(3.5f, 0, 1f, 0x99000000);
                 status.setAlpha(1.0f);
                 status.getPaint().setFakeBoldText(false);
             }
@@ -9919,7 +9943,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             boolean isDarkNeu = ThemeManager.isNeuDarkCached();
             int textColor = isNeu ? (isDarkNeu ? 0xFFFFFFFF : 0xFF000000) : 0xFFFFFFFF;
             status.setTextColor(textColor);
-            status.setShadowLayer(0, 0, 0, 0);
+            if (isNeu) {
+                status.setShadowLayer(0, 0, 0, 0);
+            } else {
+                status.setShadowLayer(3.5f, 0, 1f, 0x99000000);
+            }
             status.setAlpha(1.0f);
             status.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
             try {
