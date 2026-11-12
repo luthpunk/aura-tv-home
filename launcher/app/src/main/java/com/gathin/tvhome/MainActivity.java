@@ -563,9 +563,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE && footballCardView.getAlpha() > 0.5f) {
                         footballCardView.requestFocus();
                         return true;
-                    } else if (footballPillMinimalView != null && footballPillMinimalView.getVisibility() == View.VISIBLE && footballPillMinimalView.getAlpha() > 0.5f) {
-                        footballPillMinimalView.requestFocus();
-                        return true;
                     }
                 }
                 if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT || keyCode == KeyEvent.KEYCODE_DPAD_UP) {
@@ -615,10 +612,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     return true;
                 }
                 if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                    if (footballPillMinimalView != null && footballPillMinimalView.getVisibility() == View.VISIBLE && footballPillMinimalView.getAlpha() > 0.5f) {
-                        footballPillMinimalView.requestFocus();
-                        return true;
-                    } else if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE && footballCardView.getAlpha() > 0.5f) {
+                    if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE && footballCardView.getAlpha() > 0.5f) {
                         footballCardView.requestFocus();
                         return true;
                     }
@@ -757,53 +751,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             minFootIcon = findViewById(R.id.minFootIcon);
             footballMarqueeText = findViewById(R.id.footballMarqueeText);
 
-            footballPillMinimalView.setOnClickListener(v -> {
-                SoundEffects.playSelect();
-                showFootballFixturesDialog();
-            });
-            footballPillMinimalView.setOnLongClickListener(v -> {
-                SoundEffects.playSelect();
-                showFootballFixturesDialog();
-                return true;
-            });
-            footballPillMinimalView.setOnKeyListener((v, keyCode, event) -> {
-                if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
-                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                    focusTile(lastFocused % COLUMNS);
-                    return true;
-                }
-                if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-                    if (weatherPillMinimalView != null && weatherPillMinimalView.getVisibility() == View.VISIBLE && weatherPillMinimalView.getAlpha() > 0.5f) {
-                        weatherPillMinimalView.requestFocus();
-                        return true;
-                    } else if (weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE && weatherAirQualityView.getAlpha() > 0.5f) {
-                        weatherAirQualityView.requestFocus();
-                        return true;
-                    }
-                }
-                if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-                    View target = (btnCandyBox != null && btnCandyBox.getVisibility() == View.VISIBLE) ? btnCandyBox
-                            : (topSettings != null && topSettings.getVisibility() == View.VISIBLE) ? topSettings
-                            : (btnWifi != null && btnWifi.getVisibility() == View.VISIBLE) ? btnWifi
-                            : findViewById(R.id.btnSettings);
-                    if (target != null) {
-                        target.requestFocus();
-                        return true;
-                    }
-                }
-                return false;
-            });
-            footballPillMinimalView.setOnFocusChangeListener((v, hasFocus) -> {
-                if (hasFocus) {
-                    SoundEffects.playNav();
-                    hideShelf();
-                    if (glider != null) glider.hide();
-                }
-                boolean isNeu = ThemeManager.isNeumorphism(MainActivity.this);
-                float scale = (hasFocus && !isNeu) ? 1.03f : 1.0f;
-                float targetAlpha = (lastFocused < COLUMNS) ? 1.0f : 0.0f;
-                v.animate().scaleX(scale).scaleY(scale).alpha(targetAlpha).setDuration(150).start();
-            });
+            // Ticker marquee hanya tampilan: tidak bisa difokus, tidak bisa diklik, tidak membuka popup.
+            footballPillMinimalView.setOnClickListener(null);
+            footballPillMinimalView.setOnLongClickListener(null);
+            footballPillMinimalView.setFocusable(false);
+            footballPillMinimalView.setClickable(false);
+            footballPillMinimalView.setLongClickable(false);
         }
 
         applyFootballWidgetMode();
@@ -1096,9 +1049,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 if (v.getId() == R.id.btnSettings || v.getId() == R.id.btnCandyBox || v.getId() == R.id.btnAssistant) {
                     if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE && footballCardView.getAlpha() > 0.5f) {
                         footballCardView.requestFocus();
-                        return true;
-                    } else if (footballPillMinimalView != null && footballPillMinimalView.getVisibility() == View.VISIBLE && footballPillMinimalView.getAlpha() > 0.5f) {
-                        footballPillMinimalView.requestFocus();
                         return true;
                     }
                 }
@@ -2208,8 +2158,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
             if (footballPillMinimalView != null) {
                 footballPillMinimalView.animate().alpha(1f).setDuration(dur).start();
-                footballPillMinimalView.setFocusable(true);
-                footballPillMinimalView.setClickable(true);
             }
             int decoratedTop = item.getTop() - (int) (6 * density);
             int dy = decoratedTop - grid.getPaddingTop();
@@ -2654,6 +2602,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     rBg.setCornerRadius(wellRadius);
                     rBg.setStroke(Math.max(1, Math.round(1.0f * density)), 0x2E00F0FF);
                     footballRowsContainer.setBackground(rBg);
+                    if (footballExpandedScroll != null) {
+                        // Saat melebar, wadah daftar memakai sumur yang sama persis dengan keadaan normal.
+                        footballExpandedScroll.setBackground(rBg.getConstantState().newDrawable().mutate());
+                    }
                 }
                 for (TextView tp : new TextView[]{footballRow1Time, footballRow2Time, footballRow3Time}) {
                     if (tp == null) continue;
@@ -2673,6 +2625,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
                 if (footballRowsContainer != null) {
                     footballRowsContainer.setBackground(new NeumorphicDrawable(wellRadius, density, NeumorphicDrawable.MODE_RECESSED, false));
+                }
+                if (footballExpandedScroll != null) {
+                    footballExpandedScroll.setBackground(new NeumorphicDrawable(wellRadius, density, NeumorphicDrawable.MODE_RECESSED, false));
                 }
                 for (TextView tp : new TextView[]{footballRow1Time, footballRow2Time, footballRow3Time}) {
                     if (tp == null) continue;
@@ -2700,6 +2655,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     rBg.setCornerRadius(wellRadius);
                     rBg.setStroke(Math.max(1, Math.round(1.0f * density)), 0x33FFFFFF);
                     footballRowsContainer.setBackground(rBg);
+                    if (footballExpandedScroll != null) {
+                        // Saat melebar, wadah daftar memakai sumur yang sama persis dengan keadaan normal.
+                        footballExpandedScroll.setBackground(rBg.getConstantState().newDrawable().mutate());
+                    }
                 }
                 for (TextView tp : new TextView[]{footballRow1Time, footballRow2Time, footballRow3Time}) {
                     if (tp == null) continue;
@@ -2939,16 +2898,24 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         }
                     }
 
-                    if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE) {
-                        int targetH = footballCardExpanded ? Math.round(380f * density) : Math.round(153f * density);
-                        if (!footballCardAnimating && targetH > 0 && footballCardView.getLayoutParams().height != targetH) {
+                    if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE && !footballCardAnimating) {
+                        // Satu sumber geometri untuk keadaan normal dan melebar, sama dengan yang dipakai
+                        // animasi, supaya setelah animasi selesai kartu tidak diubah lagi ke ukuran lain.
+                        int targetH;
+                        float fDy;
+                        float[] eb = footballCardExpanded ? footballExpandedBounds() : null;
+                        if (eb != null) {
+                            targetH = Math.round(eb[1] - eb[0]);
+                            fDy = Math.round(eb[0] - footballCardView.getTop());
+                        } else {
+                            targetH = Math.round(153f * density);
+                            fDy = Math.round(targetCenterY - (targetH * 0.5f) - footballCardView.getTop());
+                        }
+                        if (targetH > 0 && footballCardView.getLayoutParams().height != targetH) {
                             footballCardView.getLayoutParams().height = targetH;
                             footballCardView.requestLayout();
                         }
-                        float fDesiredTopInMain = targetCenterY - (targetH * 0.5f);
-                        float fBaseTopInMain = footballCardView.getTop();
-                        float fDy = Math.round(fDesiredTopInMain - fBaseTopInMain);
-                        if (!footballCardAnimating && Math.abs(footballCardView.getTranslationY() - fDy) >= 1f) {
+                        if (Math.abs(footballCardView.getTranslationY() - fDy) >= 1f) {
                             footballCardView.setTranslationY(fDy);
                         }
                     }
@@ -3098,6 +3065,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      * for that, and says whether it was already right.
      */
     private boolean parkDock() {
+        // Selama kartu bola beranimasi, dock dibekukan supaya layout kartu dan dock tidak saling dorong.
+        if (footballCardAnimating) return true;
         int h = grid.getHeight();
         if (h <= 0) return false;
         // Item height follows the tile size, which follows the column count (AppAdapter.tileWidthPx).
@@ -3533,16 +3502,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     } else if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE && footballCardView.getAlpha() > 0.5f) {
                         footballCardView.requestFocus();
                         return true;
-                    } else if (footballPillMinimalView != null && footballPillMinimalView.getVisibility() == View.VISIBLE && footballPillMinimalView.getAlpha() > 0.5f) {
-                        footballPillMinimalView.requestFocus();
-                        return true;
                     }
                 } else {
                     if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE && footballCardView.getAlpha() > 0.5f) {
                         footballCardView.requestFocus();
-                        return true;
-                    } else if (footballPillMinimalView != null && footballPillMinimalView.getVisibility() == View.VISIBLE && footballPillMinimalView.getAlpha() > 0.5f) {
-                        footballPillMinimalView.requestFocus();
                         return true;
                     }
                 }
@@ -3938,8 +3901,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (footballPillMinimalView != null) {
                 footballPillMinimalView.setVisibility(View.VISIBLE);
                 footballPillMinimalView.setAlpha(alpha);
-                footballPillMinimalView.setFocusable(isDockRow);
-                footballPillMinimalView.setClickable(isDockRow);
+                footballPillMinimalView.setFocusable(false);
+                footballPillMinimalView.setClickable(false);
                 if (footballMarqueeText != null) footballMarqueeText.setSelected(true);
             }
         } else {
@@ -4063,52 +4026,80 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
     }
 
+    /**
+     * Batas kartu bola saat melebar, dalam koordinat mainContent: atas = tepat di bawah tombol menu
+     * kanan atas, bawah = tepat di atas tray dock baris pertama (posisi parkir). Null bila belum siap.
+     */
+    private float[] footballExpandedBounds() {
+        View tb = findViewById(R.id.topButtons);
+        if (tb == null || gridWrap == null || grid == null || grid.getPaddingTop() <= 0) return null;
+        float gap = 4f * density;
+        // Bawah tombol yang terlihat (topButtons sendiri setinggi blok jam, jadi pakai anaknya).
+        float buttonsBottom = -1f;
+        if (tb instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) tb;
+            for (int i = 0; i < g.getChildCount(); i++) {
+                View c = g.getChildAt(i);
+                if (c.getVisibility() != View.VISIBLE || c.getHeight() <= 0) continue;
+                buttonsBottom = Math.max(buttonsBottom, tb.getTop() + c.getBottom());
+            }
+        }
+        if (buttonsBottom < 0) buttonsBottom = tb.getBottom();
+        float top = buttonsBottom + gap;
+
+        // Atas tray dock: kartu baris pertama di posisi parkir dikurangi bantalan tray (DockDecoration 14dp).
+        float cardTopInItem = 0f;
+        RecyclerView.ViewHolder first = grid.findViewHolderForAdapterPosition(0);
+        if (first != null) {
+            View card = first.itemView.findViewById(R.id.card);
+            if (card != null) cardTopInItem = card.getTop();
+        }
+        float trayTop = gridWrap.getTop() + grid.getTop() + grid.getPaddingTop()
+                + 6f * density + cardTopInItem - 14f * density;
+        float bottom = trayTop - gap;
+        if (bottom - top < 153f * density) return null;
+        return new float[]{top, bottom};
+    }
+
+    /** Geser Y kartu bola dalam keadaan normal (tengah antara jam dan shelf), sama seperti alignTopRow. */
+    private float footballNormalDy(int cardH) {
+        View lb = findViewById(R.id.leftBlock);
+        if (lb == null || gridWrap == null || grid == null || grid.getPaddingTop() <= 0) {
+            return footballCardView.getTranslationY();
+        }
+        float parkedDockTopInMain = gridWrap.getTop() + grid.getPaddingTop();
+        float shelfH = (heroName != null && heroName.getHeight() > 0) ? heroName.getHeight() : (24f * density);
+        float shelfTopInMain = parkedDockTopInMain - (HERO_GAP_DP * density) - shelfH;
+        float centerY = (lb.getBottom() + shelfTopInMain) * 0.5f;
+        return Math.round(centerY - cardH * 0.5f - footballCardView.getTop());
+    }
+
     private void expandFootballCard(boolean expand) {
         if (footballCardView == null || footballCardAnimating || footballCardExpanded == expand) return;
-        footballCardAnimating = true;
-        footballCardExpanded = expand;
 
+        final int defaultH = Math.round(153f * density);
+        float[] bounds = footballExpandedBounds();
+        if (expand && bounds == null) return;   // layout belum siap; jangan melebar ke ukuran tebakan
+
+        footballCardExpanded = expand;
+        footballCardAnimating = true;
         SoundEffects.playSelect();
 
-        View tb = findViewById(R.id.topButtons);
-        View lb = findViewById(R.id.leftBlock);
-
-        // Mepet batas atas: tepat 4dp di bawah tombol menu atas (topButtons / leftBlock)
-        float topLimit = 0;
-        if (tb != null && tb.getVisibility() == View.VISIBLE) {
-            topLimit = Math.max(topLimit, tb.getBottom() + Math.round(4 * density));
+        // Semua target dihitung sekali di awal; tidak ada yang dihitung ulang di tengah animasi.
+        final int baseTop = footballCardView.getTop();
+        final int startH = footballCardView.getHeight() > 0 ? footballCardView.getHeight() : defaultH;
+        final float startDy = footballCardView.getTranslationY();
+        final int endH;
+        final float endDy;
+        if (expand) {
+            endH = Math.round(bounds[1] - bounds[0]);
+            endDy = Math.round(bounds[0] - baseTop);
+        } else {
+            endH = defaultH;
+            endDy = footballNormalDy(defaultH);
         }
-        if (lb != null && lb.getVisibility() == View.VISIBLE) {
-            topLimit = Math.max(topLimit, lb.getBottom() + Math.round(4 * density));
-        }
-        if (topLimit <= 0) {
-            topLimit = Math.round(100 * density);
-        }
-
-        // Mepet batas bawah: tepat 4dp di atas lengkungan dock tray baris pertama
-        float bottomLimit = getResources().getDisplayMetrics().heightPixels - Math.round(180 * density);
-        if (gridWrap != null && grid != null && grid.getPaddingTop() > 0) {
-            float dockTrayTopInMain = gridWrap.getTop() + grid.getPaddingTop() - Math.round(14 * density);
-            float shelfH = (heroName != null && heroName.getHeight() > 0) ? heroName.getHeight() : 0;
-            float shelfTopInMain = dockTrayTopInMain - (HERO_GAP_DP * density) - shelfH;
-            bottomLimit = Math.min(dockTrayTopInMain, shelfTopInMain) - Math.round(4 * density);
-        }
-
-        int defaultH = Math.round(153f * density);
-        int targetExpandedH = Math.max(defaultH, Math.round(bottomLimit - topLimit));
-        final float finalTopLimit = topLimit;
-        final float finalBottomLimit = bottomLimit;
-
-        // Base layout top saat unexpanded
-        int baseTop = (lb != null && lb.getBottom() > 0) ? lb.getBottom() + Math.round(24 * density) : footballCardView.getTop();
-        if (baseTop <= 0) baseTop = Math.round(120 * density);
-
-        int startH = expand ? defaultH : (footballCardView.getLayoutParams().height > 0 ? footballCardView.getLayoutParams().height : defaultH);
-        int endH = expand ? targetExpandedH : defaultH;
-
-        float targetExpandedTop = finalTopLimit;
-        float startDy = footballCardView.getTranslationY();
-        float endDy = expand ? (targetExpandedTop - baseTop) : 0f;
+        final float topLimit = expand ? bounds[0] : -Float.MAX_VALUE;
+        final float bottomLimit = expand ? bounds[1] : Float.MAX_VALUE;
 
         if (expand) {
             populateFootballExpandedList();
@@ -4132,43 +4123,38 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             updateFootballWidget();
         }
 
-        final int fBaseTop = baseTop;
         ValueAnimator anim = ValueAnimator.ofFloat(0f, 1f);
-        anim.setDuration(reducedMotion ? 120 : 280);
-        anim.setInterpolator(new DecelerateInterpolator(1.6f));
+        anim.setDuration(reducedMotion ? 120 : 300);
+        anim.setInterpolator(new DecelerateInterpolator(1.5f));
         anim.addUpdateListener(va -> {
             float frac = (float) va.getAnimatedValue();
             int curH = Math.round(startH + (endH - startH) * frac);
             float curDy = startDy + (endDy - startDy) * frac;
-
-            // Strict anti-bug boundary clamping: tidak akan pernah melewati batas atas dan bawah
-            if (expand) {
-                float curTop = fBaseTop + curDy;
-                if (curTop < finalTopLimit) {
-                    curDy = finalTopLimit - fBaseTop;
-                    curTop = finalTopLimit;
-                }
-                if (curTop + curH > finalBottomLimit) {
-                    curH = (int) Math.max(defaultH, finalBottomLimit - curTop);
-                }
+            // Tinggi dan posisi bergerak bersama; dijepit supaya tidak pernah lewat batas atas/bawah.
+            float curTop = baseTop + curDy;
+            if (curTop < topLimit) {
+                curDy = topLimit - baseTop;
+                curTop = topLimit;
             }
-
-            if (footballCardView.getLayoutParams().height != curH) {
-                footballCardView.getLayoutParams().height = curH;
-                footballCardView.requestLayout();
+            if (curTop + curH > bottomLimit) curH = Math.round(bottomLimit - curTop);
+            ViewGroup.LayoutParams lp = footballCardView.getLayoutParams();
+            if (lp.height != curH) {
+                lp.height = curH;
+                footballCardView.setLayoutParams(lp);
             }
             footballCardView.setTranslationY(curDy);
         });
         anim.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
+                ViewGroup.LayoutParams lp = footballCardView.getLayoutParams();
+                lp.height = endH;
+                footballCardView.setLayoutParams(lp);
+                footballCardView.setTranslationY(endDy);
                 footballCardAnimating = false;
                 if (!expand) {
                     if (footballRowsContainer != null) footballRowsContainer.setVisibility(View.VISIBLE);
                     if (footballExpandedScroll != null) footballExpandedScroll.setVisibility(View.GONE);
-                    footballCardView.setTranslationY(0f);
-                    footballCardView.getLayoutParams().height = defaultH;
-                    footballCardView.requestLayout();
                     updateFootballWidget();
                 } else {
                     footballCardView.requestFocus();
@@ -9855,20 +9841,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         titleView.setText(mainTitle);
         titleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f);
-        try {
-            titleView.setTypeface(outfit);
-            titleView.setFontVariationSettings("'wght' 600");
-        } catch (Exception ignored) {}
+        applyOutfitWeight(titleView, outfit, 500);   // sama dengan tombol Wi-Fi (outfit 15sp, wght 500)
 
         if (subValue != null) {
             status.setVisibility(View.VISIBLE);
             status.setText(subValue);
             status.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
-            try {
-                status.setTypeface(outfit);
-                status.setFontVariationSettings("'wght' 500");
-            } catch (Exception ignored) {}
-            status.getPaint().setFakeBoldText(false);
+            applyOutfitWeight(status, outfit, 500);
             dot.setVisibility(View.GONE);
         } else if (state == TvInputManager.INPUT_STATE_CONNECTED) {
             status.setVisibility(View.GONE);
@@ -9951,12 +9930,24 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             status.setAlpha(1.0f);
             status.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
             try {
-                Typeface outfit = getResources().getFont(R.font.outfit);
-                status.setTypeface(outfit);
-                status.setFontVariationSettings("'wght' 500");
-                status.getPaint().setFakeBoldText(false);
+                applyOutfitWeight(status, getResources().getFont(R.font.outfit), 500);
             } catch (Exception ignored) {}
         }
+    }
+
+    /**
+     * setTypeface() membuang sumbu wght, dan setFontVariationSettings() diabaikan bila stringnya sama
+     * dengan nilai dari XML, sehingga teks jatuh ke bobot bawaan font yang tipis. Reset dulu supaya
+     * bobot benar-benar diterapkan ulang, tanpa fake bold.
+     */
+    private static void applyOutfitWeight(TextView tv, Typeface outfit, int weight) {
+        if (tv == null) return;
+        try {
+            if (outfit != null) tv.setTypeface(outfit);
+            tv.setFontVariationSettings(null);
+            tv.setFontVariationSettings("'wght' " + weight);
+        } catch (Exception ignored) {}
+        tv.getPaint().setFakeBoldText(false);
     }
 
     // ---- module cards ----------------------------------------------------------------------------
