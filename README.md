@@ -2,13 +2,21 @@
 
 # 📺 Aura TV Home
 
-**Launcher Android TV / STB yang Cepat, Modern, Bersih, dan Elegan**  
-*Mendukung Tema Frosted Glass, Neumorphism, dan Dark Glow dengan Widget Cuaca Presisi & Navigasi Remote Halus.*
+**Launcher Android TV / STB yang Cepat, Ringan, Modern, dan Elegan**  
+*Mendukung Tema Frosted Glass, Neumorphism, dan Dark Glow dengan Live Wallpaper, Widget Sepak Bola, Cuaca Presisi, & Navigasi Remote Halus.*
 
 [![Build & Release APK](https://github.com/luthpunk/aura-tv-home/actions/workflows/build-apk.yml/badge.svg)](https://github.com/luthpunk/aura-tv-home/actions/workflows/build-apk.yml)
 [![Latest Release](https://img.shields.io/github/v/release/luthpunk/aura-tv-home?color=0284C7&label=Rilis%20Terbaru)](https://github.com/luthpunk/aura-tv-home/releases/latest)
 [![Platform](https://img.shields.io/badge/Platform-Android%20TV%20%7C%20Google%20TV%20%7C%20STB-10B981)](#)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
+<br/>
+
+[![Trakteer Kopi di Saweria](https://img.shields.io/badge/☕_Trakteer_Kopi-Saweria-FF813F?style=for-the-badge&logo=kofi&logoColor=white)](https://saweria.co/Luthpunk)
+
+> *Suka dengan launcher ini? Dukung pengembang dengan mentraktir secangkir kopi melalui [**Saweria**](https://saweria.co/Luthpunk).* ☕✨
+
+<br/>
 
 [**📥 Unduh APK Terbaru (aura-tv-home.apk)**](https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk) • [**Fitur**](#-fitur-utama) • [**Tampilan Layar**](#-tampilan-layar-tema) • [**Pemasangan**](#-cara-pemasangan-di-android-tv--stb) • [**Pembaruan OTA**](#-pembaruan-otomatis-ota) • [**Kredit & Lisensi**](#-kredit--lisensi)
 
@@ -36,21 +44,36 @@ Tema gelap dengan aksen kontras neon cyber minimalis dan teks putih bersih yang 
 
 ## ✨ Fitur Utama
 
-- **🚀 Ringan & Cepat:** Dioptimalkan khusus untuk chipset prosesor STB/Android TV (Amlogic, Allwinner, Rockchip) agar perpindahan aplikasi dan respon remote terasa instan tanpa jeda (*zero stutter*).
+- **🚀 Ringan, Irit RAM & Super Cepat:** Dioptimalkan khusus untuk chipset prosesor STB/Android TV (Amlogic, Allwinner, Rockchip) agar perpindahan aplikasi dan respon remote terasa instan tanpa jeda (*zero stutter*).
+- **📦 App Drawer Berbasis RecyclerView & Memory Caching:**
+  - Membuka daftar semua aplikasi secara instan (*zero disk I/O lag*).
+  - Menggunakan arsitektur daur ulang *RecyclerView* yang sangat hemat RAM dan mulus 60 FPS pada remote D-pad.
+  - Tahan tombol **OK** pada aplikasi untuk membuka detail aplikasi / copot pemasangan (*uninstall*).
+- **⚽ Widget Jadwal & Skor Sepak Bola (Football Schedule Widget):**
+  - **Mode Kartu Interaktif:** Menampilkan 3 jadwal pertandingan terdekat lengkap dengan badge skor langsung (LIVE). Kartu dapat diperluas (*expand*) secara *smooth* untuk melihat jadwal lengkap.
+  - **Mode Kapsul Minimal:** Teks berjalan (*ticker marquee*) ringkas yang hemat ruang di layar beranda.
+  - Filter liga terpopuler dunia: Premier League, La Liga, Serie A, Bundesliga, Liga Champions, dan lainnya.
+- **🎬 Dukungan Live Wallpaper (Video MP4) & Wallpaper 4K:**
+  - Mendukung wallpaper video bergerak (*seamless loop*) dengan akselerasi perangkat keras yang hemat daya.
+  - Efek kaca buram (*frosted glass*) di dock dan bilah menu otomatis bersinkronisasi secara dinamis dengan cuplikan video yang sedang berputar.
+  - Beragam kategori wallpaper terintegrasi: Pesona Nusantara, Anime HD, Alam, Lautan, Minimalis Gelap, hingga Live Wallpaper.
 - **🎵 Dynamic Now Playing Pill (Pemutar Musik Kapsul):**
   - Kapsul status dinamis setinggi 42dp yang sejajar dengan bilah menu atas (hanya muncul saat musik diputar).
   - Menampilkan cover album asli, judul lagu berjalan (*marquee*), nama artis, serta tombol kontrol instan `[ ⏯ Play/Pause ]` dan `[ ⏭ Next ]`.
-  - Mendukung berbagai pemutar musik & media (Spotify TV, YouTube TV, SmartTube, Apple Music, VLC, pemutar lagu lokal USB, dll).
-  - Tampilan beradaptasi 100% mengikuti tema aktif (*Frosted Glass*, *Neumorphism*, dan *Dark Glow*).
+  - Mendukung Spotify TV, YouTube TV, SmartTube, Apple Music, VLC, pemutar lagu lokal USB, dan aplikasi media lainnya.
 - **🌤️ Widget Cuaca Kompak & Presisi:**
-  - Menampilkan lokasi, suhu besar, ikon vektor cuaca, dan kondisi cuaca saat ini (*flush left*).
+  - Menampilkan lokasi kota, suhu besar, ikon vektor cuaca, dan kondisi cuaca saat ini.
   - **Slot Ramalan 3 Jam ke Depan:** Memantau ramalan cuaca pada rentang waktu `+3 jam`, `+6 jam`, dan `+9 jam` secara akurat dari Open-Meteo.
   - Dua pil informasi di bagian bawah: **AQI (Indeks Kualitas Udara)** dan **Peluang Hujan (%)**.
-  - Posisi widget terkunci statis tepat di tengah antara Jam dan Nama Aplikasi Baris 1 tanpa bergeser (*no drift*).
-- **🎨 3 Tema Visual:** **Frosted Glass**, **Neumorphism**, dan **Dark Glow**.
+- **📱 Dock Baris Fleksibel (5, 6, atau 7 Aplikasi):**
+  - Pengaturan jumlah kolom aplikasi sebaris sesuai preferensi layar Anda (5, 6, atau 7 aplikasi).
+  - Sebaran bayangan 3D (*dual shadow*) dan efek fokus otomatis menyesuaikan secara proporsional dengan ukuran kartu.
+  - Tinggi intipan baris kedua seragam dan presisi di semua pilihan kolom.
+- **⚡ Smart Boost & Info TV Modern:**
+  - Menampilkan status RAM terpakai, ruang penyimpanan internal, model perangkat, dan versi Android TV.
+  - Tombol **Bersihkan RAM Sekarang** untuk melegakan memori STB dengan sekali klik.
 - **🧭 Navigasi D-Pad Remote Halus:** Animasi fokus *Glider* yang presisi mengalir di antara kartu aplikasi dan tombol menu atas.
 - **🔄 Pembaruan Langsung di TV (OTA Update):** Pengecekan otomatis versi baru langsung dari repositori GitHub ini. Cukup tekan tombol update di TV dan APK akan terinstal langsung.
-- **🛠️ Pengaturan Fleksibel:** Pengaturan baris dan kolom aplikasi, sembunyikan/tampilkan aplikasi tertentu, ganti wallpaper dinamis online/lokal, serta kustomisasi tata letak.
 
 ---
 
@@ -71,7 +94,7 @@ Tidak perlu mengunduh file APK manual atau mengetik perintah terminal. Anda cuku
    - Mengirim dan memasang APK ke TV / STB melalui jalur nirkabel ADB.
    - Menetapkan Aura TV Home sebagai launcher beranda utama default (`set-home-activity` & role Home).
    - Memberikan izin sistem aman (`WRITE_SECURE_SETTINGS`).
-   - Membuka dan menampilkan Aura TV Home langsung di layar TV Anda.
+   - Membuka dan menampilkan Aura TV Home langsung di layar TV Anda.  
    *(Jika suatu saat Anda ingin kembali ke launcher bawaan pabrik TV, cukup klik tombol "Pulihkan launcher bawaan" pada menu yang sama).*
 
 ---
@@ -120,7 +143,7 @@ Jika tombol Home di remote STB Anda dikunci oleh launcher bawaan pabrik (seperti
    *(Untuk mengaktifkannya kembali jika sewaktu-waktu dibutuhkan, cukup ganti kata `disable-user --user 0` menjadi `enable`).*
 
 4. **⚡ Aktifkan Izin Pemutar Musik (Now Playing) via ADB:**
-   Pada sistem Android TV / Google TV, Google menyembunyikan menu pengaturan izin notifikasi dari antarmuka TV Leanback. Agar launcher dapat membaca judul lagu, nama artis, dan cover album secara otomatis, jalankan perintah ini sekali setelah pemasangan (sangat disarankan dieksekusi langsung oleh **Agen AI** atau melalui terminal ADB):
+   Pada sistem Android TV / Google TV, Google menyembunyikan menu pengaturan izin notifikasi dari antarmuka TV Leanback. Agar launcher dapat membaca judul lagu, nama artis, dan cover album secara otomatis, jalankan perintah ini sekali setelah pemasangan:
 
    ```bash
    # Aktifkan izin listener musik ke sistem Android TV
@@ -129,7 +152,22 @@ Jika tombol Home di remote STB Anda dikunci oleh launcher bawaan pabrik (seperti
    # (Opsional) Berikan izin pengelolaan setelan aman agar tersinkronisasi
    adb shell pm grant com.gathin.tvhome android.permission.WRITE_SECURE_SETTINGS
    ```
-   > 💡 **Untuk Agen AI / Skrip Otomatisasi:** Cukup jalankan perintah di atas tepat setelah perintah `adb install -r aura-tv-home.apk` agar fitur Now Playing langsung aktif dan siap digunakan seketika tanpa perlu konfigurasi manual.
+
+---
+
+## ☕ Dukung Pengembang
+
+Jika Anda merasa proyek ini bermanfaat dan membantu mempercantik pengalaman menonton TV di rumah Anda, pertimbangkan untuk memberikan dukungan:
+
+<div align="center">
+
+[![Saweria](https://img.shields.io/badge/Saweria-Trakteer%20Kopi-FF813F?style=for-the-badge&logo=kofi&logoColor=white)](https://saweria.co/Luthpunk)
+
+**[👉 saweria.co/Luthpunk](https://saweria.co/Luthpunk)**
+
+</div>
+
+Dukungan Anda sangat berarti untuk terus mengembangkan fitur-fitur baru dan pemeliharaan aplikasi ini. Terima kasih banyak! ❤️
 
 ---
 
@@ -150,6 +188,7 @@ Proyek ini dibangun dan dikembangkan dengan basis fondasi utama dari repositori 
   *Terima kasih yang sebesar-besarnya kepada pengembang asli atas arsitektur launcher Android TV yang luar biasa.*
 
 ### 🛠️ Pustaka & Aset Pihak Ketiga Lainnya:
+- **Jadwal & Skor Bola:** Football Data API & Feed Olahraga Terbuka.
 - **Prakiraan Cuaca:** [Open-Meteo API](https://open-meteo.com/) *(Non-komersial, lisensi terbuka)*.
 - **Kualitas Udara:** Data APIMS / JAS Malaysia & Open-Meteo Air Quality.
 - **Tipografi:** Font [Outfit](https://fonts.google.com/specimen/Outfit) oleh Rodrigo Fuenzalida & Omnibus-Type *(SIL Open Font License 1.1)*.
