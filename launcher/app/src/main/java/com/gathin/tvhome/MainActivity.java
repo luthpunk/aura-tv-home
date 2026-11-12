@@ -1324,6 +1324,47 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         Backdrop.update(bmp, dm.widthPixels, dm.heightPixels, getWallpaperDimColor(), wallDecoder, handler);
     }
 
+    /** Updates the glass backdrop from the active live wallpaper (if playing) or the static wallpaper. */
+    private void refreshCurrentBackdrop() {
+        if (currentLiveFile != null) {
+            final int g = liveGen;
+            if (liveWallView != null && liveWallView.isAvailable() && liveWallView.getWidth() > 0 && liveWallView.getHeight() > 0) {
+                try {
+                    Bitmap frame = liveWallView.getBitmap(Math.max(1, liveWallView.getWidth() / 4), Math.max(1, liveWallView.getHeight() / 4));
+                    if (frame != null) {
+                        wallDecoder.execute(() -> {
+                            DisplayMetrics dm = getResources().getDisplayMetrics();
+                            Bitmap blur = Backdrop.blur(frame, dm.widthPixels, dm.heightPixels, getWallpaperDimColor());
+                            handler.post(() -> {
+                                if (isDestroyed() || g != liveGen) return;
+                                if (blur != null) Backdrop.present(blur, 250);
+                            });
+                        });
+                        return;
+                    }
+                } catch (Exception | OutOfMemoryError ignored) {}
+            }
+            File thumb = new File(currentLiveFile.getParentFile(), currentLiveFile.getName().replace(".mp4", ".jpg"));
+            if (thumb.exists()) {
+                wallDecoder.execute(() -> {
+                    Bitmap bmp = decodeWallpaper(thumb);
+                    if (bmp != null) {
+                        DisplayMetrics dm = getResources().getDisplayMetrics();
+                        Bitmap blur = Backdrop.blur(bmp, dm.widthPixels, dm.heightPixels, getWallpaperDimColor());
+                        handler.post(() -> {
+                            if (isDestroyed() || g != liveGen) return;
+                            if (blur != null) Backdrop.present(blur, 250);
+                        });
+                    }
+                });
+            }
+            return;
+        }
+        if (wallBitmap != null) {
+            blurBackdrop(wallBitmap);
+        }
+    }
+
     /** Shows the next picture from the wallpapers folder; the position survives restarts. */
     private void showNextWallpaper(boolean fade) {
         if (wallpapers == null || wallpapers.isEmpty()) return;
@@ -4761,9 +4802,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void applyActiveTheme(String key) {
         ThemeManager.setActiveTheme(MainActivity.this, key);
         applyHomeScreenTheme();
-        if (wallBitmap != null) {
-            blurBackdrop(wallBitmap);
-        }
+        refreshCurrentBackdrop();
         if (adapter != null) {
             adapter.invalidateTheme();
         }
@@ -5076,6 +5115,32 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void buildTvInfoSubMenu(FrameLayout panel, LinearLayout rows) {
         addInputRow(rows, null, R.drawable.ic_back, "Kembali", -1, () -> popMenuSubPage(panel, rows));
 
+        // Judul "AURA TV HOME" rata tengah & agak besar di bawah Kembali / di atas info RAM
+        TextView brandTitle = new TextView(this);
+        brandTitle.setText("AURA TV HOME");
+        brandTitle.setGravity(Gravity.CENTER);
+        brandTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17.5f);
+        brandTitle.setLetterSpacing(0.06f);
+        brandTitle.setSingleLine(true);
+        brandTitle.setFocusable(false);
+        brandTitle.setClickable(false);
+        boolean isNeu = ThemeManager.isNeumorphism(this);
+        if (isNeu) {
+            brandTitle.setTextColor(ThemeManager.neu(0xFF1F2429));
+            brandTitle.setShadowLayer(0, 0, 0, 0);
+        } else {
+            brandTitle.setTextColor(0xFFFFFFFF);
+            brandTitle.setShadowLayer(4f, 0, 1f, 0x99000000);
+        }
+        try {
+            applyOutfitWeight(brandTitle, getResources().getFont(R.font.outfit), 700);
+        } catch (Exception ignored) {}
+        LinearLayout.LayoutParams brandLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        int padV = Math.round(7 * density);
+        brandTitle.setPadding(Math.round(12 * density), padV, Math.round(12 * density), padV);
+        rows.addView(brandTitle, brandLp);
+
         long totalMem = 0;
         long usedMem = 0;
         long availMem = 0;
@@ -5103,36 +5168,30 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         } catch (Exception ignored) {}
 
         String ramStr = ramPercent + "% (" + Formatter.formatFileSize(this, usedMem) + " / " + Formatter.formatFileSize(this, totalMem) + ")";
-        addInputRow(rows, null, R.drawable.ic_settings, "RAM : " + ramStr, -1, () -> {});
+        View rRam = addInputRow(rows, null, R.drawable.ic_settings, "RAM : " + ramStr, -1, null);
 
         String storageStr = Formatter.formatFileSize(this, availStorage) + " Bebas (" + Formatter.formatFileSize(this, totalStorage) + ")";
-        addInputRow(rows, null, R.drawable.ic_input, "Penyimpanan : " + storageStr, -1, () -> {});
+        View rSto = addInputRow(rows, null, R.drawable.ic_input, "Penyimpanan : " + storageStr, -1, null);
 
         String deviceName = Build.MANUFACTURER.toUpperCase(Locale.ROOT) + " " + Build.MODEL;
-        addInputRow(rows, null, R.drawable.ic_info, "Model : " + deviceName, -1, () -> {});
+        View rMod = addInputRow(rows, null, R.drawable.ic_info, "Model : " + deviceName, -1, null);
 
         String osVersion = "Android " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")";
-        addInputRow(rows, null, R.drawable.ic_settings, "Sistem : " + osVersion, -1, () -> {});
+        View rSys = addInputRow(rows, null, R.drawable.ic_settings, "Sistem : " + osVersion, -1, null);
+
+        // Baris info tidak bisa disorot namun tetap solid 100% agar mudah terbaca
+        for (View infoRow : new View[]{rRam, rSto, rMod, rSys}) {
+            if (infoRow == null) continue;
+            View t = infoRow.findViewById(R.id.title);
+            View ic = infoRow.findViewById(R.id.icon);
+            if (t != null) t.setAlpha(1.0f);
+            if (ic != null) ic.setAlpha(1.0f);
+        }
 
         addInputRow(rows, null, R.drawable.ic_trash, "Bersihkan RAM Sekarang", -1, () -> {
             SoundEffects.playSelect();
+            closeMenuAndFocusApp();
             smartBoostTv();
-            handler.postDelayed(() -> {
-                if (openMenu == panel) {
-                    panel.setFocusable(true);
-                    panel.setFocusableInTouchMode(true);
-                    panel.requestFocus();
-                    rows.removeAllViews();
-                    buildTvInfoSubMenu(panel, rows);
-                    bindMenuKeyListeners(panel, rows, false);
-                    int count = rows.getChildCount();
-                    if (count > 0) {
-                        View last = rows.getChildAt(count - 1);
-                        if (last != null) last.requestFocus();
-                    }
-                    panel.setFocusable(false);
-                }
-            }, 600);
         });
     }
 
@@ -7324,9 +7383,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     () -> {
                         ThemeManager.setActiveTheme(MainActivity.this, opt.key);
                         applyHomeScreenTheme();
-                        if (wallBitmap != null) {
-                            blurBackdrop(wallBitmap);
-                        }
+                        refreshCurrentBackdrop();
                         if (adapter != null) {
                             adapter.invalidateTheme();
                         }
