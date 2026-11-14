@@ -8701,6 +8701,29 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         return appList;
     }
 
+    private void syncOverlayFocusBlocking() {
+        if (!(mainContent instanceof ViewGroup)) return;
+        boolean hasOverlay = appDrawerOverlay != null || addAppOverlay != null;
+        ((ViewGroup) mainContent).setDescendantFocusability(
+                hasOverlay ? ViewGroup.FOCUS_BLOCK_DESCENDANTS : ViewGroup.FOCUS_AFTER_DESCENDANTS);
+    }
+
+    private FrameLayout createTrappedOverlay(int bgColor, Runnable onClose) {
+        FrameLayout overlay = new FrameLayout(this) {
+            @Override
+            public View focusSearch(View focused, int direction) {
+                View next = android.view.FocusFinder.getInstance().findNextFocus(this, focused, direction);
+                return next != null ? next : focused;
+            }
+        };
+        overlay.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
+        overlay.setBackgroundColor(bgColor);
+        overlay.setClickable(true);
+        overlay.setFocusable(false);
+        overlay.setOnClickListener(v -> onClose.run());
+        return overlay;
+    }
+
     private void showGlassAppDrawer() {
         if (appDrawerOverlay != null || isFinishing() || isDestroyed()) return;
 
@@ -8709,11 +8732,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         boolean isDark = ThemeManager.isDarkGlow(this);
         boolean isNeu = ThemeManager.isNeumorphism(this);
 
-        FrameLayout overlay = new FrameLayout(this);
-        overlay.setBackgroundColor(isDark ? 0xDD000000 : (isNeu ? ThemeManager.neu(0x99EDEAE4) : 0x78050912));
-        overlay.setClickable(true);
-        overlay.setFocusable(false);
-        overlay.setOnClickListener(v -> closeAppDrawer(true));
+        FrameLayout overlay = createTrappedOverlay(
+                isDark ? 0xDD000000 : (isNeu ? ThemeManager.neu(0x99EDEAE4) : 0x78050912),
+                () -> closeAppDrawer(true));
 
         int maxW = Math.min(Math.round(860 * density), root.getWidth() - Math.round(72 * density));
         int maxH = Math.min(Math.round(496 * density), root.getHeight() - Math.round(64 * density));
@@ -8796,7 +8817,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         gridRv.setVerticalScrollBarEnabled(false);
         gridRv.setClipToPadding(false);
         gridRv.setClipChildren(false);
+        gridRv.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
         gridRv.setPadding(gridPad, gridPad, gridPad, gridPad);
+        final int[] pendingFocusPos = {-1};
 
         class DrawerAdapter extends RecyclerView.Adapter<DrawerAdapter.VH> {
             final List<DrawerAppItem> items;
@@ -8965,13 +8988,53 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 });
 
                 holder.itemView.setOnKeyListener((v, keyCode, event) -> {
-                    if (event.getAction() == KeyEvent.ACTION_DOWN) {
-                        if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE) {
-                            closeAppDrawer(true);
-                            return true;
-                        }
+                    if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+                    if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE) {
+                        closeAppDrawer(true);
+                        return true;
                     }
-                    return false;
+                    if (keyCode != KeyEvent.KEYCODE_DPAD_LEFT
+                            && keyCode != KeyEvent.KEYCODE_DPAD_RIGHT
+                            && keyCode != KeyEvent.KEYCODE_DPAD_UP
+                            && keyCode != KeyEvent.KEYCODE_DPAD_DOWN) {
+                        return false;
+                    }
+                    int pos = holder.getBindingAdapterPosition();
+                    int total = items.size();
+                    if (pos == RecyclerView.NO_POSITION || total == 0) return true;
+                    int targetPos;
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                        if (pos % COLS == 0) return true;
+                        targetPos = pos - 1;
+                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                        if ((pos % COLS) == (COLS - 1) || pos + 1 >= total) return true;
+                        targetPos = pos + 1;
+                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                        if (pos < COLS) return true;
+                        targetPos = pos - COLS;
+                    } else {
+                        if ((pos / COLS) >= ((total - 1) / COLS)) return true;
+                        targetPos = Math.min(pos + COLS, total - 1);
+                    }
+                    RecyclerView.LayoutManager lm = gridRv.getLayoutManager();
+                    View target = lm != null ? lm.findViewByPosition(targetPos) : null;
+                    if (target != null) {
+                        pendingFocusPos[0] = -1;
+                        target.requestFocus();
+                        SoundEffects.playNav();
+                    } else if (lm != null) {
+                        pendingFocusPos[0] = targetPos;
+                        gridRv.scrollToPosition(targetPos);
+                        gridRv.post(() -> {
+                            if (appDrawerOverlay == overlay && pendingFocusPos[0] == targetPos) {
+                                pendingFocusPos[0] = -1;
+                                View delayed = lm.findViewByPosition(targetPos);
+                                if (delayed != null) delayed.requestFocus();
+                            }
+                        });
+                        SoundEffects.playNav();
+                    }
+                    return true;
                 });
             }
 
@@ -9004,6 +9067,25 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         appDrawerOverlay = overlay;
         appDrawerPanel = panel;
+        syncOverlayFocusBlocking();
+        if (glider != null) glider.hideNow();
+        hideGlass();
+        if (mainContent != null) mainContent.clearFocus();
+        if (appList.isEmpty()) {
+            overlay.setFocusable(true);
+            overlay.setOnKeyListener((v, keyCode, event) -> {
+                if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+                if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE) {
+                    closeAppDrawer(true);
+                    return true;
+                }
+                return keyCode == KeyEvent.KEYCODE_DPAD_LEFT
+                        || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
+                        || keyCode == KeyEvent.KEYCODE_DPAD_UP
+                        || keyCode == KeyEvent.KEYCODE_DPAD_DOWN;
+            });
+            overlay.requestFocus();
+        }
         root.addView(overlay, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
@@ -9032,6 +9114,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (overlay == null) return;
         appDrawerOverlay = null;
         appDrawerPanel = null;
+        if (overlay instanceof ViewGroup) {
+            ((ViewGroup) overlay).setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+        }
+        syncOverlayFocusBlocking();
         if (restoreFocus) {
             SoundEffects.playNav();
             focusTile(lastFocused);
@@ -9058,11 +9144,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         boolean isDark = ThemeManager.isDarkGlow(this);
         boolean isNeu = ThemeManager.isNeumorphism(this);
 
-        FrameLayout overlay = new FrameLayout(this);
-        overlay.setBackgroundColor(isDark ? 0xCC000000 : (isNeu ? ThemeManager.neu(0x88F0F2F5) : 0x4D050912));
-        overlay.setClickable(true);
-        overlay.setFocusable(false);
-        overlay.setOnClickListener(v -> closeAddAppSheet(true));
+        FrameLayout overlay = createTrappedOverlay(
+                isDark ? 0xCC000000 : (isNeu ? ThemeManager.neu(0x88F0F2F5) : 0x4D050912),
+                () -> closeAddAppSheet(true));
 
         int sheetW = Math.max(Math.round(320 * density),
                 Math.min(Math.round(360 * density), Math.round(root.getWidth() * 0.35f)));
@@ -9372,6 +9456,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         addAppOverlay = overlay;
         addAppPanel = panel;
+        syncOverlayFocusBlocking();
+        if (glider != null) glider.hideNow();
+        hideGlass();
+        if (mainContent != null) mainContent.clearFocus();
         root.addView(overlay, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
@@ -9398,6 +9486,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (overlay == null) return;
         addAppOverlay = null;
         addAppPanel = null;
+        if (overlay instanceof ViewGroup) {
+            ((ViewGroup) overlay).setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+        }
+        syncOverlayFocusBlocking();
         if (restoreFocus) {
             SoundEffects.playNav();
             focusTile(Math.min(lastFocused, Math.max(0, adapter.getItemCount() - 1)));
