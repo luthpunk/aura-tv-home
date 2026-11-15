@@ -1,11 +1,7 @@
-• Mengembalikan Unggah Wallpaper: Fitur upload wallpaper nirkabel via QR Code serverless kembali hadir di sub-menu wallpaper
-• Update Kategori Wallpaper:
-  - 🇮🇩 Pesona Nusantara (Genap 10 foto pilihan)
-  - 🎌 Anime HD (Genap 10 foto pilihan)
-  - 🌊 Lautan & Pantai (10 foto 4K baru)
-  - 🏙️ Metropolis Modern & 🌌 Luar Angkasa dihapus agar layout menu tetap presisi 9 baris
-• Fitur Baru Live Wallpaper (Beta):
-  - Dukungan video wallpaper latar belakang 1080p/720p H.264
-  - Hardware decoding super ringan (beban CPU < 2%, TV tetap dingin)
-  - Otomatis senyap (mute) dan otomatis pause saat membuka aplikasi lain
-  - Koleksi awal: Cat Sunlight Garden, Amiya x Doctor Fireworks, Arona Cloud Sky Classroom
+• Optimasi launcher (RecyclerView & caching pada App Drawer, perbaikan focus trap agar sorotan tidak tembus ke latar belakang, serta peningkatan kelancaran UI)
+• Perbaikan tombol Matikan TV dan Mulai Ulang TV yang tidak berfungsi di TV non-root
+• Perbaikan Live Wallpaper yang terkadang tidak bergerak saat perpindahan wallpaper
+• Penyesuaian ukuran font agar lebih proporsional
+• Penambahan widget Jadwal Sepak Bola (Beta)
+• Penghapusan menu Screensaver dengan tetap mempertahankan fungsinya
+• Penambahan menu Dock untuk mengatur jumlah kolom per baris (5 / 6 / 7 aplikasi)
