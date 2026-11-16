@@ -4249,7 +4249,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             PrayerTimes.syncIfDue(this, () -> handler.post(this::updatePrayerTimes));
         }
         if (root != null) {
-            root.post(this::alignTopRow);
+            root.post(this::alignTopButtons);
         }
     }
 
@@ -4321,7 +4321,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             setPrayerWidgetEnabled(false);
             applyPrayerWidgetMode();
         } else if (root != null) {
-            root.post(this::alignTopRow);
+            root.post(this::alignTopButtons);
         }
         updateFootballWidget();
         FootballScheduleManager.syncIfDue(this, () -> handler.post(this::updateFootballWidget));
