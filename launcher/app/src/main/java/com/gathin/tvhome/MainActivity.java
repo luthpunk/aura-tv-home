@@ -8571,13 +8571,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         btnInputs.setVisibility(any ? View.VISIBLE : View.GONE);
     }
 
-    /** The Live TV app's launch intent: its leanback entry point, or the configured action if it has none. */
+    /** The Live TV app's launch intent: leanback entry point, configured action, or standard launcher fallback. */
     private Intent liveTvIntent() {
         if (liveTvPkg.isEmpty()) return null;
-        Intent i = getPackageManager().getLeanbackLaunchIntentForPackage(liveTvPkg);
-        if (i != null || liveTvAction.isEmpty()) return i;
-        Intent byAction = new Intent(liveTvAction).setPackage(liveTvPkg);
-        return getPackageManager().resolveActivity(byAction, 0) != null ? byAction : null;
+        PackageManager pm = getPackageManager();
+        Intent i = pm.getLeanbackLaunchIntentForPackage(liveTvPkg);
+        if (i != null) return i;
+        if (!liveTvAction.isEmpty()) {
+            Intent byAction = new Intent(liveTvAction).setPackage(liveTvPkg);
+            if (pm.resolveActivity(byAction, 0) != null) return byAction;
+        }
+        return pm.getLaunchIntentForPackage(liveTvPkg);
     }
 
     /** The TV's own source-selection panel, for TVs that have no TvInputManager (TCL Android TV 9). */
@@ -8600,6 +8604,24 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         } catch (ActivityNotFoundException e) {
             showToast(R.string.not_available);
         }
+    }
+
+    /** Launches the tuner view intent if handled, falling back to the Live TV app's direct launcher intent. */
+    private void openLiveTv(Intent primary, Intent fallback) {
+        SoundEffects.playSelect();
+        try {
+            startActivity(new Intent(primary).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            return;
+        } catch (RuntimeException e) {
+            if (fallback != null && fallback != primary) {
+                try {
+                    startActivity(new Intent(fallback).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                    return;
+                } catch (ActivityNotFoundException ignored) {
+                }
+            }
+        }
+        showToast(R.string.not_available);
     }
 
     /** Switches to a passthrough input (HDMI, AV). The standard way is ACTION_VIEW on its channel URI,
@@ -9572,15 +9594,21 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (rows.getChildCount() == 0 && !sourcePanelService.isEmpty()) {
             addInputRow(rows, close, R.drawable.ic_input, getString(R.string.inputs), -1, this::openSourcePanel);
         }
-        Intent liveTv = liveTvIntent();
+        Intent fallbackLiveTv = liveTvIntent();
+        Intent liveTv = fallbackLiveTv;
         if (liveTv != null && tunerId != null) {
-            liveTv = new Intent(Intent.ACTION_VIEW)
+            Intent tunerView = new Intent(Intent.ACTION_VIEW)
                     .setDataAndType(TvContract.buildChannelUriForPassthroughInput(tunerId), "vnd.android.cursor.item/channel")
                     .setPackage(liveTvPkg);
+            if (tunerView.resolveActivity(getPackageManager()) != null) {
+                liveTv = tunerView;
+            }
         }
         if (liveTv != null && config.showLiveTv) {
-            final Intent liveTvIntent = liveTv;
-            addInputRow(rows, close, R.drawable.ic_livetv, getString(R.string.live_tv), -1, () -> open(liveTvIntent));
+            final Intent primaryIntent = liveTv;
+            final Intent fallbackIntent = fallbackLiveTv;
+            addInputRow(rows, close, R.drawable.ic_livetv, getString(R.string.live_tv), -1,
+                    () -> openLiveTv(primaryIntent, fallbackIntent));
         }
         if (rows.getChildCount() == 0) {
             showToast(R.string.no_inputs);
