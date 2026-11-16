@@ -6435,17 +6435,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         else titleView.setShadowLayer(4 * density, 0, 1 * density, 0xDD000000);
         titleCol.addView(titleView);
 
-        TextView subView = new TextView(this);
-        subView.setText("Notifikasi popup kartu kaca melayang di atas semua aplikasi & pengaturan audio adzan");
-        subView.setTextSize(12.5f);
-        subView.setTextColor(isNeu ? ThemeManager.neu(0xFF5A626E) : 0xD9FFFFFF);
-        subView.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
-        subView.setFontVariationSettings("'wght' 600");
-        if (isNeu) subView.setShadowLayer(0, 0, 0, 0);
-        else subView.setShadowLayer(3 * density, 0, 1 * density, 0xCC000000);
-        subView.setPadding(0, (int) (2 * density), 0, 0);
-        titleCol.addView(subView);
-
         headerRow.addView(titleCol, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         rootContainer.addView(headerRow);
 
@@ -6477,7 +6466,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         final TextView masterStatusTag = new TextView(this);
         LinearLayout masterRow = createDialogRow(
                 "🔔 Notifikasi Popup Adzan TV",
-                "Tampilkan kartu waktu sholat melayang di atas Netflix, YouTube & semua aplikasi",
+                null,
                 masterStatusTag,
                 null,
                 () -> {
@@ -6572,7 +6561,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         final TextView testTag = new TextView(this);
         LinearLayout testRow = createDialogRow(
                 "▶️ Uji Popup Adzan Sekarang",
-                "Menampilkan kartu melayang & memutar audio pilihan",
+                null,
                 testTag,
                 null,
                 () -> {
@@ -6592,35 +6581,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 isNeu ? ThemeManager.neu(new int[]{0xFF1F2429, 0xFF0284C7})
                         : (isDark ? new int[]{0xFF00F0FF, 0xFF00F0FF} : new int[]{0xFF000000, 0xFF38BDF8})));
         rightCol.addView(testRow);
-
-        // Info Card
-        LinearLayout infoCard = new LinearLayout(this);
-        infoCard.setOrientation(LinearLayout.VERTICAL);
-        infoCard.setPadding((int) (12 * density), (int) (8 * density), (int) (12 * density), (int) (8 * density));
-        if (isNeu) {
-            infoCard.setBackground(new NeumorphicDrawable(9 * density, density, NeumorphicDrawable.MODE_RECESSED, false));
-        } else {
-            GradientDrawable infoBg = new GradientDrawable();
-            infoBg.setColor(isDark ? 0xFF0A0C12 : 0x12FFFFFF);
-            infoBg.setCornerRadius(9 * density);
-            infoBg.setStroke(Math.max(1, (int) (1 * density)), isDark ? 0x3300F0FF : 0x22FFFFFF);
-            infoCard.setBackground(infoBg);
-        }
-
-        TextView infoText = new TextView(this);
-        infoText.setText("💡 Jadwal sholat disinkronkan otomatis sesuai lokasi kota (" + zoneCode + "). Kartu adzan tetap muncul di atas semua aplikasi TV.");
-        infoText.setTextSize(11f);
-        infoText.setTextColor(isNeu ? ThemeManager.neu(0xFF4A5568) : 0xB3FFFFFF);
-        infoText.setTypeface(getResources().getFont(R.font.outfit), Typeface.NORMAL);
-        infoText.setFontVariationSettings("'wght' 500");
-        infoText.setLineSpacing(0, 1.25f);
-        infoCard.addView(infoText);
-
-        LinearLayout.LayoutParams infoLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        infoLp.topMargin = (int) (4 * density);
-        infoLp.bottomMargin = (int) (5 * density);
-        infoCard.setLayoutParams(infoLp);
-        rightCol.addView(infoCard);
 
         // Tombol Tutup
         final TextView closeTag = new TextView(this);
@@ -6709,7 +6669,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         showThemedListDialog(
                 "🔊 Pilih Audio Adzan",
-                "Pilih lantunan adzan atau nada pengingat waktu sholat",
+                null,
                 items,
                 null,
                 null
