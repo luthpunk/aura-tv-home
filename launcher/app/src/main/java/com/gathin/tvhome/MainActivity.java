@@ -87,7 +87,6 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.PopupWindow;
-import android.widget.RelativeLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -3009,15 +3008,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // must not be counted twice.
         alignCard.set(0, 0, card.getWidth(), card.getHeight());
         root.offsetDescendantRectToMyCoords(card, alignCard);
+        final int lastCardRight = alignCard.right;
         alignButton.set(0, 0, topSettings.getWidth(), topSettings.getHeight());
         root.offsetDescendantRectToMyCoords(topSettings, alignButton);
-        float shift = alignCard.right - alignButton.right;
+        float shift = lastCardRight - alignButton.right;
         if (Math.abs(topRow.getTranslationX() - shift) >= 1f) topRow.setTranslationX(shift);
 
         if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE && footballCardView.getWidth() > 0) {
             alignButton.set(0, 0, footballCardView.getWidth(), footballCardView.getHeight());
             root.offsetDescendantRectToMyCoords(footballCardView, alignButton);
-            float fShift = footballCardView.getTranslationX() + (alignCard.right - alignButton.right);
+            float fShift = lastCardRight - alignButton.right;
             if (Math.abs(footballCardView.getTranslationX() - fShift) >= 1f) {
                 footballCardView.setTranslationX(fShift);
             }
@@ -3025,7 +3025,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (footballPillMinimalView != null && footballPillMinimalView.getVisibility() == View.VISIBLE && footballPillMinimalView.getWidth() > 0) {
             alignButton.set(0, 0, footballPillMinimalView.getWidth(), footballPillMinimalView.getHeight());
             root.offsetDescendantRectToMyCoords(footballPillMinimalView, alignButton);
-            float fShift = footballPillMinimalView.getTranslationX() + (alignCard.right - alignButton.right);
+            float fShift = lastCardRight - alignButton.right;
             if (Math.abs(footballPillMinimalView.getTranslationX() - fShift) >= 1f) {
                 footballPillMinimalView.setTranslationX(fShift);
             }
@@ -3041,15 +3041,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     heroShelf.setX(alignCard.left);
                 }
                 if (prayerCardView != null && prayerCardView.getVisibility() == View.VISIBLE && prayerCardView.getWidth() > 0) {
-                    alignButton.set(0, 0, prayerCardView.getWidth(), prayerCardView.getHeight());
-                    root.offsetDescendantRectToMyCoords(prayerCardView, alignButton);
                     float pShift;
                     if (PRAYER_MODE_LEFT.equals(getPrayerWidgetMode())) {
-                        pShift = prayerCardView.getTranslationX() + (alignCard.left - alignButton.left);
+                        // prayerCardView is anchored layout_alignParentStart in XML, matching leftBlock & weather widgets.
+                        pShift = 0f;
                     } else {
-                        Rect rightCardRect = new Rect(0, 0, card.getWidth(), card.getHeight());
-                        root.offsetDescendantRectToMyCoords(card, rightCardRect);
-                        pShift = prayerCardView.getTranslationX() + (rightCardRect.right - alignButton.right);
+                        alignButton.set(0, 0, prayerCardView.getWidth(), prayerCardView.getHeight());
+                        root.offsetDescendantRectToMyCoords(prayerCardView, alignButton);
+                        pShift = lastCardRight - alignButton.right;
                     }
                     if (Math.abs(prayerCardView.getTranslationX() - pShift) >= 1f) {
                         prayerCardView.setTranslationX(pShift);
@@ -3064,22 +3063,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     // and gridWrap.getTop() + grid.getPaddingTop() is the stationary parked dock top).
                     float clockBottomInMain = lb.getBottom();
                     float parkedDockTopInMain = gridWrap.getTop() + grid.getPaddingTop();
-                    float shelfH = (heroName != null && heroName.getHeight() > 0)
-                            ? heroName.getHeight() : (24f * density);
+                    float shelfH = 24f * density;
                     float shelfTopInMain = parkedDockTopInMain - (HERO_GAP_DP * density) - shelfH;
-                    float targetCenterY = (clockBottomInMain + shelfTopInMain) * 0.5f;
-                    // Fixed safe top clears the 28dp minimal/marquee slot (+6dp top + 8dp gap)
-                    // regardless of whether minimal/marquee is ON or OFF, so fixed cards never jump.
-                    float minSafeTop = clockBottomInMain + (42f * density);
 
                     if (activeWea != null && activeWea.getHeight() > 0) {
-                        float maxTop = shelfTopInMain - activeWea.getHeight() - (4f * density);
-                        float desiredTopInMain = targetCenterY - (activeWea.getHeight() * 0.5f);
-                        if (desiredTopInMain < minSafeTop && maxTop >= desiredTopInMain) {
-                            desiredTopInMain = Math.min(minSafeTop, maxTop);
-                        }
-                        float baseTopInMain = activeWea.getTop();
-                        float dy = Math.round(desiredTopInMain - baseTopInMain);
+                        float desiredTopInMain = computeBigWidgetTop(clockBottomInMain, shelfTopInMain, activeWea.getHeight());
+                        float dy = Math.round(desiredTopInMain - activeWea.getTop());
                         if (Math.abs(activeWea.getTranslationY() - dy) >= 1f) {
                             activeWea.setTranslationY(dy);
                         }
@@ -3096,11 +3085,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                             fDy = Math.round(eb[0] - footballCardView.getTop());
                         } else {
                             targetH = Math.round(153f * density);
-                            float maxTop = shelfTopInMain - targetH - (4f * density);
-                            float desiredTop = targetCenterY - (targetH * 0.5f);
-                            if (desiredTop < minSafeTop && maxTop >= desiredTop) {
-                                desiredTop = Math.min(minSafeTop, maxTop);
-                            }
+                            float desiredTop = computeBigWidgetTop(clockBottomInMain, shelfTopInMain, targetH);
                             fDy = Math.round(desiredTop - footballCardView.getTop());
                         }
                         if (targetH > 0 && footballCardView.getLayoutParams().height != targetH) {
@@ -3114,11 +3099,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
                     if (prayerCardView != null && prayerCardView.getVisibility() == View.VISIBLE) {
                         int pTargetH = Math.round(153f * density);
-                        float maxTop = shelfTopInMain - pTargetH - (4f * density);
-                        float desiredTop = targetCenterY - (pTargetH * 0.5f);
-                        if (desiredTop < minSafeTop && maxTop >= desiredTop) {
-                            desiredTop = Math.min(minSafeTop, maxTop);
-                        }
+                        float desiredTop = computeBigWidgetTop(clockBottomInMain, shelfTopInMain, pTargetH);
                         float pDy = Math.round(desiredTop - prayerCardView.getTop());
                         if (Math.abs(prayerCardView.getTranslationY() - pDy) >= 1f) {
                             prayerCardView.setTranslationY(pDy);
@@ -3930,24 +3911,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         int goldColor = (isNeu && !isNeuDark) ? 0xFFD97706 : 0xFFFACC15;
         int cutoutColor = isNeu ? (isNeuDark ? 0xFF1E2430 : 0xFFE2E8F0) : (isDark ? 0xFF0A0C12 : 0xFF343B48);
 
+        int padH = Math.round(2f * density);
+        int padV = Math.round(5f * density);
         for (int i = 0; i < 6; i++) {
             boolean isNext = (i == nextIdx);
             View slot = prayerSlots[i];
             if (slot != null) {
                 if (isNext) {
                     if (isNeu) {
-                        GradientDrawable tintOverlay = new GradientDrawable(
-                                GradientDrawable.Orientation.TL_BR,
-                                isNeuDark
-                                        ? new int[]{0x4DFACC15, 0x33B45309}
-                                        : new int[]{0x42FACC15, 0x26F59E0B});
-                        tintOverlay.setCornerRadius(slotRadius);
-                        tintOverlay.setStroke(Math.max(1, Math.round(1.4f * density)),
-                                isNeuDark ? 0xFFFACC15 : 0xFFD97706);
-                        slot.setBackground(new android.graphics.drawable.LayerDrawable(new Drawable[]{
-                                new NeumorphicDrawable(slotRadius, density, NeumorphicDrawable.MODE_EXTRUDED, true),
-                                tintOverlay
-                        }));
+                        slot.setBackground(new NeumorphicDrawable(slotRadius, density,
+                                NeumorphicDrawable.MODE_EXTRUDED, true).setGoldAccent(isNeuDark));
                     } else {
                         GradientDrawable activeBg = new GradientDrawable(
                                 GradientDrawable.Orientation.TL_BR,
@@ -3972,6 +3945,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     sBg.setStroke(Math.max(1, Math.round(1.0f * density)), 0x4DFFFFFF);
                     slot.setBackground(sBg);
                 }
+                // Preserve exact slot padding so stroke/drawable changes never deform any slot.
+                slot.setPadding(padH, padV, padH, padV);
             }
             if (prayerSlotIcons[i] != null) {
                 prayerSlotIcons[i].setThemeColors(mainTextColor, cutoutColor, goldColor);
@@ -4342,16 +4317,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         float alpha = isDockRow ? 1f : 0f;
         if (prayerCardView != null) {
             if (enabled) {
-                RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) prayerCardView.getLayoutParams();
-                if (PRAYER_MODE_LEFT.equals(mode)) {
-                    lp.removeRule(RelativeLayout.ALIGN_PARENT_END);
-                    lp.addRule(RelativeLayout.ALIGN_PARENT_START, RelativeLayout.TRUE);
-                } else {
-                    lp.removeRule(RelativeLayout.ALIGN_PARENT_START);
-                    lp.addRule(RelativeLayout.ALIGN_PARENT_END, RelativeLayout.TRUE);
-                }
-                prayerCardView.setLayoutParams(lp);
-                prayerCardView.setTranslationX(0f);
                 prayerCardView.setVisibility(View.VISIBLE);
                 prayerCardView.setAlpha(alpha);
                 prayerCardView.setFocusable(isDockRow);
@@ -4367,6 +4332,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (enabled) {
             PrayerTimes.syncIfDue(this, () -> handler.post(this::updatePrayerTimes));
         }
+        alignTopButtons();
         if (root != null) {
             root.post(this::alignTopButtons);
         }
@@ -4600,17 +4566,32 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         return new float[]{top, bottom};
     }
 
-    /** Geser Y kartu bola dalam keadaan normal (tengah antara jam dan shelf), sama seperti alignTopRow. */
+    /**
+     * Fixed vertical top coordinate (in mainContent coords) for all large cards so they clear
+     * the 28dp minimal/marquee zone (+neumorphic shadows) and never move when small/marquee pills toggle.
+     */
+    private float computeBigWidgetTop(float clockBottomInMain, float shelfTopInMain, float cardH) {
+        float bandBottom = clockBottomInMain + (32f * density); // 4dp top margin + 28dp pill height
+        float minSafeTop = clockBottomInMain + (44f * density); // 12dp clearance for outer shadows
+        float maxTop = shelfTopInMain - cardH - (6f * density);
+        float desiredTop = (bandBottom + shelfTopInMain) * 0.5f - (cardH * 0.5f);
+        if (desiredTop < minSafeTop && maxTop >= desiredTop) {
+            desiredTop = Math.min(minSafeTop, maxTop);
+        }
+        return desiredTop;
+    }
+
+    /** Geser Y kartu bola dalam keadaan normal, konsisten 100% dengan {@link #alignTopButtons()}. */
     private float footballNormalDy(int cardH) {
         View lb = findViewById(R.id.leftBlock);
         if (lb == null || gridWrap == null || grid == null || grid.getPaddingTop() <= 0) {
             return footballCardView.getTranslationY();
         }
         float parkedDockTopInMain = gridWrap.getTop() + grid.getPaddingTop();
-        float shelfH = (heroName != null && heroName.getHeight() > 0) ? heroName.getHeight() : (24f * density);
+        float shelfH = 24f * density;
         float shelfTopInMain = parkedDockTopInMain - (HERO_GAP_DP * density) - shelfH;
-        float centerY = (lb.getBottom() + shelfTopInMain) * 0.5f;
-        return Math.round(centerY - cardH * 0.5f - footballCardView.getTop());
+        float desiredTop = computeBigWidgetTop(lb.getBottom(), shelfTopInMain, cardH);
+        return Math.round(desiredTop - footballCardView.getTop());
     }
 
     private void expandFootballCard(boolean expand) {

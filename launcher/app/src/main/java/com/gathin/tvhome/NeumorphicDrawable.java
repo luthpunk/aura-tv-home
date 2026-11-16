@@ -49,6 +49,11 @@ public final class NeumorphicDrawable extends Drawable {
     private final RectF rect = new RectF();
     private final Path clipPath = new Path();
     private final int[] at = new int[2], highlightAt = new int[2];
+    private final Matrix instanceGradMatrix = new Matrix();
+    private LinearGradient instanceFillGrad, instanceRimGrad;
+    private int instanceModeLoaded = -1;
+    private boolean instanceDarkLoaded = false;
+    private int goldAccentMode = 0; // 0 = none, 1 = light gold, 2 = dark gold
     private int alpha = 255;
 
     // Reusable static drawing primitives for zero-allocation rendering
@@ -137,6 +142,36 @@ public final class NeumorphicDrawable extends Drawable {
         this.paintsShape = paintsShape;
     }
 
+    /** Adds an integrated golden highlight fill and rim without altering drawable padding. */
+    public NeumorphicDrawable setGoldAccent(boolean dark) {
+        this.goldAccentMode = dark ? 2 : 1;
+        invalidateSelf();
+        return this;
+    }
+
+    private void ensureInstanceShaders(int activeMode) {
+        if (instanceFillGrad != null && instanceModeLoaded == activeMode && instanceDarkLoaded == sDark) {
+            return;
+        }
+        instanceModeLoaded = activeMode;
+        instanceDarkLoaded = sDark;
+        if (activeMode == MODE_RECESSED) {
+            instanceFillGrad = unit(sDark
+                    ? new int[]{0xFF0E0F15, 0xFF12141A, 0xFF171920}
+                    : new int[]{0xFFD6D1C7, 0xFFE1DED6, 0xFFEAE7E0});
+            instanceRimGrad = unit(sDark
+                    ? new int[]{0xB305060A, 0x4005060A, 0x8C2F3546}
+                    : new int[]{0x4E1A1610, 0x141A1610, 0xF8FFFFFF});
+        } else {
+            instanceFillGrad = unit(sDark
+                    ? new int[]{0xFF1E212B, 0xFF191C24, 0xFF15171E}
+                    : new int[]{0xFFF6F4EF, 0xFFEDEAE4, 0xFFE3DFD7});
+            instanceRimGrad = unit(sDark
+                    ? new int[]{0xB3343A4D, 0x40282D3B, 0x8C05060A}
+                    : new int[]{0xFFFFFFFF, 0x70FFFFFF, 0x321A1610});
+        }
+    }
+
     @Override
     public void draw(@NonNull Canvas canvas) {
         Rect b = getBounds();
@@ -145,7 +180,9 @@ public final class NeumorphicDrawable extends Drawable {
         rect.set(b);
 
         if (mode == MODE_RECESSED) {
-            drawRecessed(canvas, rect, radius, density, a);
+            ensureInstanceShaders(MODE_RECESSED);
+            drawRecessedWith(canvas, rect, radius, density, a,
+                    instanceFillGrad, instanceRimGrad, instanceGradMatrix);
             return;
         }
 
@@ -168,10 +205,32 @@ public final class NeumorphicDrawable extends Drawable {
 
         float extrudedAlpha = (1f - covered) * a;
         if (extrudedAlpha > 0f) {
-            drawExtruded(canvas, rect, radius, density, extrudedAlpha, drawOuterShadow);
+            ensureInstanceShaders(MODE_EXTRUDED);
+            drawExtrudedWith(canvas, rect, radius, density, extrudedAlpha, drawOuterShadow,
+                    instanceFillGrad, instanceRimGrad, instanceGradMatrix);
+        }
+        if (goldAccentMode != 0 && a > 0f) {
+            int tintColor = (goldAccentMode == 2) ? 0x3DFACC15 : 0x33FACC15;
+            int strokeColor = (goldAccentMode == 2) ? 0xFFFACC15 : 0xFFD97706;
+            FILL_PAINT.setShader(null);
+            FILL_PAINT.setColor(tintColor);
+            FILL_PAINT.setAlpha(Math.round(((tintColor >>> 24) & 0xFF) * a));
+            canvas.drawRoundRect(rect, radius, radius, FILL_PAINT);
+
+            float strokeW = Math.max(1f, 1.4f * density);
+            float inset = strokeW * 0.5f;
+            TMP_RECT.set(rect.left + inset, rect.top + inset, rect.right - inset, rect.bottom - inset);
+            STROKE_PAINT.setShader(null);
+            STROKE_PAINT.setStrokeWidth(strokeW);
+            STROKE_PAINT.setColor(strokeColor);
+            STROKE_PAINT.setAlpha(Math.round(255 * a));
+            float rr = Math.max(0f, radius - inset);
+            canvas.drawRoundRect(TMP_RECT, rr, rr, STROKE_PAINT);
         }
         if (!paintsShape && covered > 0f && glider == null) {
-            drawRecessed(canvas, rect, radius, density, covered * a);
+            ensureInstanceShaders(MODE_RECESSED);
+            drawRecessedWith(canvas, rect, radius, density, covered * a,
+                    instanceFillGrad, instanceRimGrad, instanceGradMatrix);
         }
 
         // For dropdown menu panels (paintsShape == true): paint the gliding recessed row over the panel
@@ -193,6 +252,14 @@ public final class NeumorphicDrawable extends Drawable {
      */
     public static void drawExtruded(@NonNull Canvas c, @NonNull RectF bounds, float r,
                                     float density, float alpha, boolean withOuterShadow) {
+        drawExtrudedWith(c, bounds, r, density, alpha, withOuterShadow,
+                EXTRUDED_FILL_GRAD, EXTRUDED_RIM_GRAD, GRAD_MATRIX);
+    }
+
+    private static void drawExtrudedWith(@NonNull Canvas c, @NonNull RectF bounds, float r,
+                                         float density, float alpha, boolean withOuterShadow,
+                                         @NonNull LinearGradient fillGrad, @NonNull LinearGradient rimGrad,
+                                         @NonNull Matrix gradMatrix) {
         if (bounds.isEmpty() || alpha <= 0f) return;
 
         if (withOuterShadow) {
@@ -200,12 +267,12 @@ public final class NeumorphicDrawable extends Drawable {
         }
 
         // Convex warm porcelain body fill
-        GRAD_MATRIX.reset();
-        GRAD_MATRIX.setScale(Math.max(1f, bounds.width()), Math.max(1f, bounds.height()));
-        GRAD_MATRIX.postTranslate(bounds.left, bounds.top);
-        EXTRUDED_FILL_GRAD.setLocalMatrix(GRAD_MATRIX);
+        gradMatrix.reset();
+        gradMatrix.setScale(Math.max(1f, bounds.width()), Math.max(1f, bounds.height()));
+        gradMatrix.postTranslate(bounds.left, bounds.top);
+        fillGrad.setLocalMatrix(gradMatrix);
 
-        FILL_PAINT.setShader(EXTRUDED_FILL_GRAD);
+        FILL_PAINT.setShader(fillGrad);
         FILL_PAINT.setAlpha(Math.round(255 * alpha));
         c.drawRoundRect(bounds, r, r, FILL_PAINT);
         FILL_PAINT.setShader(null);
@@ -214,13 +281,13 @@ public final class NeumorphicDrawable extends Drawable {
         float strokeW = 1.5f * density;
         float inset = strokeW * 0.5f;
         TMP_RECT.set(bounds.left + inset, bounds.top + inset, bounds.right - inset, bounds.bottom - inset);
-        GRAD_MATRIX.reset();
-        GRAD_MATRIX.setScale(Math.max(1f, TMP_RECT.width()), Math.max(1f, TMP_RECT.height()));
-        GRAD_MATRIX.postTranslate(TMP_RECT.left, TMP_RECT.top);
-        EXTRUDED_RIM_GRAD.setLocalMatrix(GRAD_MATRIX);
+        gradMatrix.reset();
+        gradMatrix.setScale(Math.max(1f, TMP_RECT.width()), Math.max(1f, TMP_RECT.height()));
+        gradMatrix.postTranslate(TMP_RECT.left, TMP_RECT.top);
+        rimGrad.setLocalMatrix(gradMatrix);
 
         STROKE_PAINT.setStrokeWidth(strokeW);
-        STROKE_PAINT.setShader(EXTRUDED_RIM_GRAD);
+        STROKE_PAINT.setShader(rimGrad);
         STROKE_PAINT.setAlpha(Math.round(255 * alpha));
         float rr = Math.max(0f, r - inset);
         c.drawRoundRect(TMP_RECT, rr, rr, STROKE_PAINT);
@@ -321,15 +388,23 @@ public final class NeumorphicDrawable extends Drawable {
      */
     public static void drawRecessed(@NonNull Canvas c, @NonNull RectF bounds, float r,
                                     float density, float alpha) {
+        drawRecessedWith(c, bounds, r, density, alpha,
+                RECESSED_FILL_GRAD, RECESSED_RIM_GRAD, GRAD_MATRIX);
+    }
+
+    private static void drawRecessedWith(@NonNull Canvas c, @NonNull RectF bounds, float r,
+                                         float density, float alpha,
+                                         @NonNull LinearGradient fillGrad, @NonNull LinearGradient rimGrad,
+                                         @NonNull Matrix gradMatrix) {
         if (bounds.isEmpty() || alpha <= 0f) return;
 
         // 1. Concave cavity base fill
-        GRAD_MATRIX.reset();
-        GRAD_MATRIX.setScale(Math.max(1f, bounds.width()), Math.max(1f, bounds.height()));
-        GRAD_MATRIX.postTranslate(bounds.left, bounds.top);
-        RECESSED_FILL_GRAD.setLocalMatrix(GRAD_MATRIX);
+        gradMatrix.reset();
+        gradMatrix.setScale(Math.max(1f, bounds.width()), Math.max(1f, bounds.height()));
+        gradMatrix.postTranslate(bounds.left, bounds.top);
+        fillGrad.setLocalMatrix(gradMatrix);
 
-        FILL_PAINT.setShader(RECESSED_FILL_GRAD);
+        FILL_PAINT.setShader(fillGrad);
         FILL_PAINT.setAlpha(Math.round(255 * alpha));
         c.drawRoundRect(bounds, r, r, FILL_PAINT);
         FILL_PAINT.setShader(null);
@@ -378,13 +453,13 @@ public final class NeumorphicDrawable extends Drawable {
         float rimW = 1.35f * density;
         float inset = rimW * 0.5f;
         TMP_RECT.set(bounds.left + inset, bounds.top + inset, bounds.right - inset, bounds.bottom - inset);
-        GRAD_MATRIX.reset();
-        GRAD_MATRIX.setScale(Math.max(1f, TMP_RECT.width()), Math.max(1f, TMP_RECT.height()));
-        GRAD_MATRIX.postTranslate(TMP_RECT.left, TMP_RECT.top);
-        RECESSED_RIM_GRAD.setLocalMatrix(GRAD_MATRIX);
+        gradMatrix.reset();
+        gradMatrix.setScale(Math.max(1f, TMP_RECT.width()), Math.max(1f, TMP_RECT.height()));
+        gradMatrix.postTranslate(TMP_RECT.left, TMP_RECT.top);
+        rimGrad.setLocalMatrix(gradMatrix);
 
         STROKE_PAINT.setStrokeWidth(rimW);
-        STROKE_PAINT.setShader(RECESSED_RIM_GRAD);
+        STROKE_PAINT.setShader(rimGrad);
         STROKE_PAINT.setAlpha(Math.round(255 * alpha));
         float rr = Math.max(0f, r - inset);
         c.drawRoundRect(TMP_RECT, rr, rr, STROKE_PAINT);
