@@ -170,7 +170,7 @@ public class WeatherActivity extends Activity {
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (event.getAction() == KeyEvent.ACTION_DOWN
-                && (event.keyCode == KeyEvent.KEYCODE_DPAD_CENTER || event.keyCode == KeyEvent.KEYCODE_ENTER)) {
+                && (event.getKeyCode() == KeyEvent.KEYCODE_DPAD_CENTER || event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
             View focused = getCurrentFocus();
             if (focused != null && focused.getId() != R.id.root) {
                 focused.performClick();
@@ -388,7 +388,7 @@ public class WeatherActivity extends Activity {
             } else {
                 hArray = days.get(0).hourlyTemps;
             }
-            int p = cached.pressure > 0 ? cached.pressure : 1010;
+            int p = 1010;
             String title = cached.condition != null && !cached.condition.isEmpty()
                     ? cached.condition : conditionTitle(cached.weatherCode);
             current = new WeatherState(
