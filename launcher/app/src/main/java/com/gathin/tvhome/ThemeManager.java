@@ -17,8 +17,9 @@ public final class ThemeManager {
     public static final String THEME_DARK_GLOW = "dark_glow";
     public static final String THEME_NEUMORPHISM_DARK = "neumorphism_dark";
 
-    /** Cached so static drawers / color mapping know the variant without a Context. */
+    /** Cached in RAM so draw() hot paths avoid reading SharedPreferences every frame. */
     private static volatile boolean sNeuDark = false;
+    private static volatile String sActiveTheme = null;
 
     private static final String PREFS_NAME = "tvhome_theme_prefs";
     private static final String KEY_ACTIVE_THEME = "active_theme";
@@ -29,10 +30,13 @@ public final class ThemeManager {
      * Gets the currently active theme identifier.
      */
     public static String getActiveTheme(Context context) {
+        String cached = sActiveTheme;
+        if (cached != null) return cached;
         if (context == null) return THEME_FROSTED_GLASS;
         SharedPreferences sp = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String theme = sp.getString(KEY_ACTIVE_THEME, THEME_FROSTED_GLASS);
         updateNeuDark(THEME_NEUMORPHISM_DARK.equalsIgnoreCase(theme));
+        sActiveTheme = theme;
         return theme;
     }
 
@@ -48,6 +52,7 @@ public final class ThemeManager {
      */
     public static void setActiveTheme(Context context, String theme) {
         if (context == null || theme == null) return;
+        sActiveTheme = theme;
         SharedPreferences sp = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         sp.edit().putString(KEY_ACTIVE_THEME, theme).apply();
         updateNeuDark(THEME_NEUMORPHISM_DARK.equalsIgnoreCase(theme));

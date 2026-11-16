@@ -57,6 +57,8 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
 
     private final RectF rect = new RectF();
     private final RectF tileBounds = new RectF();
+    private final RectF shadowRect = new RectF();
+    private final RectF clipArea = new RectF();
     /** The tray as last drawn, in the grid's coordinates: where the focus shape shows on it. */
     final RectF area = new RectF();
 
@@ -138,9 +140,9 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
 
         if (isDark) {
             // Dark Glow: Deep OLED black dock tray with cyber cyan subtle rim
-            RectF trayShadow = new RectF(rect);
-            trayShadow.offset(0, 4f * density);
-            c.drawRoundRect(trayShadow, radius, radius, darkTrayShadow);
+            shadowRect.set(rect);
+            shadowRect.offset(0, 4f * density);
+            c.drawRoundRect(shadowRect, radius, radius, darkTrayShadow);
 
             c.drawRoundRect(rect, radius, radius, darkTrayFill);
 
@@ -171,9 +173,9 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         } else {
             // Default: Frosted Glass
             // Soft drop shadow under the glass dock tray
-            RectF trayShadow = new RectF(rect);
-            trayShadow.offset(0, 4f * density);
-            c.drawRoundRect(trayShadow, radius, radius, trayShadowPaint);
+            shadowRect.set(rect);
+            shadowRect.offset(0, 4f * density);
+            c.drawRoundRect(shadowRect, radius, radius, trayShadowPaint);
 
             blur.draw(c, parent, rect, radius, 1f);
             c.drawRoundRect(rect, radius, radius, band);
@@ -213,7 +215,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
             parent.getLocationInWindow(at);
             glider.getLocationInWindow(gliderAt);
             c.save();
-            RectF clipArea = new RectF(rect);
+            clipArea.set(rect);
             float shadowBleed = 36f * density;
             clipArea.inset(-shadowBleed, -shadowBleed);
             c.clipRect(clipArea);

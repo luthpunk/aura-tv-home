@@ -16,6 +16,7 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -50,41 +51,71 @@ public class AzanActivity extends Activity {
         Typeface outfit = getResources().getFont(R.font.outfit);
         Typeface amiri = getResources().getFont(R.font.amiri_quran);
 
-        // A floating card at the top of the screen; the app or Home behind it stays in view.
+        // Ensure ThemeManager palette is initialized before reading theme colors
+        ThemeManager.getActiveTheme(this);
+        boolean isNeu = ThemeManager.isNeumorphism(this);
+        boolean isNeuDark = ThemeManager.isNeumorphismDark(this);
+        boolean isDarkGlow = ThemeManager.isDarkGlow(this);
+
+        // Centered floating card matching active theme over whatever app is open.
         Window w = getWindow();
         w.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        w.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        w.setGravity(Gravity.CENTER);
         WindowManager.LayoutParams lp = w.getAttributes();
-        lp.y = dp(40);
+        lp.y = 0;
         w.setAttributes(lp);
         boolean blur = false;
-        if (Build.VERSION.SDK_INT >= 31) {
+        if (!isNeu && !isDarkGlow && Build.VERSION.SDK_INT >= 31) {
             WindowManager wm = getSystemService(WindowManager.class);
             if (wm != null && wm.isCrossWindowBlurEnabled()) {
-                // Frosted glass: what is behind the card shows through it, blurred.
                 w.setBackgroundBlurRadius(dp(30));
                 blur = true;
             }
         }
 
+        int accentColor = (isNeu && !isNeuDark) ? 0xFFD97706 : 0xFFFFA726;
+        int primaryTextColor = isNeu ? ThemeManager.neu(0xFF2B3036) : 0xFFFFFFFF;
+        int labelTextColor = isNeu ? ThemeManager.neu(0xFF4A525D) : 0xB3FFFFFF;
+        int timeTextColor = isNeu ? ThemeManager.neu(0xFF5A626E) : 0xCCFFFFFF;
+        int hintTextColor = isNeu ? ThemeManager.neu(0xFF5A626E) : 0x99FFFFFF;
+        int dividerColor = isNeu ? ThemeManager.neu(0x1F000000) : (isDarkGlow ? 0x3800F0FF : 0x33FFFFFF);
+
+        FrameLayout wrapper = new FrameLayout(this);
+        wrapper.setClipChildren(false);
+        wrapper.setClipToPadding(false);
+        int outerPad = dp(isNeu ? 18 : 8);
+        wrapper.setPadding(outerPad, outerPad, outerPad, outerPad);
+
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.HORIZONTAL);
         card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(dp(30), dp(20), dp(34), dp(20));
-        GradientDrawable glass = new GradientDrawable();
-        // Tinted enough to read over a bright film even where the TV does not blur (this BRAVIA reports
-        // blur on but draws the background sharp).
-        glass.setColor(blur ? 0xB3101826 : 0xE0141C2C);
-        glass.setCornerRadius(dp(28));
-        glass.setStroke(Math.max(1, dp(1.5f)), 0x59FFFFFF);
-        card.setBackground(glass);
-        card.setClipToOutline(true);
-        card.setElevation(dp(16));
+        card.setPadding(dp(30), dp(22), dp(34), dp(22));
+        if (isNeu) {
+            card.setBackground(new NeumorphicDrawable(dp(26), density, NeumorphicDrawable.MODE_EXTRUDED, true));
+            card.setElevation(0f);
+        } else if (isDarkGlow) {
+            GradientDrawable dgBg = new GradientDrawable();
+            dgBg.setColor(0xF008090D);
+            dgBg.setCornerRadius(dp(26));
+            dgBg.setStroke(Math.max(1, dp(1.5f)), 0xFF00F0FF);
+            card.setBackground(dgBg);
+            card.setClipToOutline(true);
+            card.setElevation(dp(16));
+        } else {
+            GradientDrawable glass = new GradientDrawable(
+                    GradientDrawable.Orientation.TOP_BOTTOM,
+                    blur ? new int[]{0xB3161E2E, 0xB30F1622} : new int[]{0xE6222938, 0xE6161C27});
+            glass.setCornerRadius(dp(26));
+            glass.setStroke(Math.max(1, dp(1.5f)), 0x59FFFFFF);
+            card.setBackground(glass);
+            card.setClipToOutline(true);
+            card.setElevation(dp(16));
+        }
 
-        TextView takbir = text("ٱللَّهُ أَكْبَرُ", amiri, 40, 0xFFF5D489, 400);
+        TextView takbir = text("ٱللَّهُ أَكْبَرُ", amiri, 40, accentColor, 400);
         card.addView(takbir);
         View line = new View(this);
-        line.setBackgroundColor(0x33FFFFFF);
+        line.setBackgroundColor(dividerColor);
         LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(Math.max(1, dp(1)), dp(70));
         llp.leftMargin = dp(26);
         llp.rightMargin = dp(26);
@@ -96,7 +127,7 @@ public class AzanActivity extends Activity {
         if (town == null || town.isEmpty()) {
             town = Location.prefs(this).getString("now_town", "");
         }
-        TextView label = text(town.isEmpty() ? "ADZAN" : "ADZAN  ·  " + town.toUpperCase(java.util.Locale.ROOT), outfit, 12, 0xB3FFFFFF, 600);
+        TextView label = text(town.isEmpty() ? "ADZAN" : "ADZAN  ·  " + town.toUpperCase(java.util.Locale.ROOT), outfit, 12, labelTextColor, 600);
         label.setLetterSpacing(0.22f);
         label.setGravity(Gravity.START);
         words.addView(label);
@@ -105,22 +136,24 @@ public class AzanActivity extends Activity {
         nameRow.setOrientation(LinearLayout.HORIZONTAL);
         nameRow.setGravity(Gravity.BOTTOM);
         nameRow.setPadding(0, dp(2), 0, dp(2));
-        TextView name = text(PrayerTimes.NAMES[Math.max(0, Math.min(prayer, PrayerTimes.NAMES.length - 1))], outfit, 28, 0xFFFFFFFF, 500);
+        TextView name = text(PrayerTimes.NAMES[Math.max(0, Math.min(prayer, PrayerTimes.NAMES.length - 1))], outfit, 28, primaryTextColor, 500);
         name.setSingleLine(true);
         nameRow.addView(name);
-        TextView time = text(when, outfit, 20, 0xCCFFFFFF, 300);
+        TextView time = text(when, outfit, 20, timeTextColor, 300);
         time.setSingleLine(true);
         time.setPadding(dp(14), 0, 0, dp(3));
         nameRow.addView(time);
         words.addView(nameRow);
-        hint = text("Tekan Back / OK untuk tutup", outfit, 12, 0x99FFFFFF, 400);
+        hint = text("Tekan Back / OK untuk tutup", outfit, 12, hintTextColor, 400);
         hint.setGravity(Gravity.START);
         words.addView(hint);
         card.addView(words);
         card.setFocusable(true);
         card.setClickable(true);
         card.setOnClickListener(v -> finish());
-        setContentView(card);
+        wrapper.addView(card, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
+        setContentView(wrapper);
 
         String soundChoice = Azan.getSoundChoice(this);
         if (Azan.SOUND_SILENT.equals(soundChoice)) {

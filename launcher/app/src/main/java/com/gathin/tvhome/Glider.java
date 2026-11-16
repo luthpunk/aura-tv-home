@@ -313,7 +313,7 @@ final class Glider extends View {
         }
         if (isNeu) {
             NeumorphicDrawable.drawOuterDualShadows(canvas, shape, r, density, opacity * Math.max(0.65f, shadowMix), 1.35f * AppAdapter.tileShadowScale);
-            if (paneHidden) return;
+            if (paneHidden || !moving()) return;
             NeumorphicDrawable.drawExtruded(canvas, shape, r, density, opacity, false);
             NeumorphicDrawable.drawTileFocusRim(canvas, shape, r, density, opacity);
             return;
@@ -436,8 +436,24 @@ final class Glider extends View {
         return MeasureSpec.getMode(spec) == MeasureSpec.EXACTLY ? MeasureSpec.getSize(spec) : 0;
     }
 
+    private boolean isInsideCompanionArea(int idx) {
+        if (idx >= companions.size()) return false;
+        RectF only = companionAreas.get(idx);
+        if (only == null || only.isEmpty()) return false;
+        View v = companions.get(idx);
+        getLocationInWindow(gliderAt);
+        v.getLocationInWindow(companionAt);
+        float dx = companionAt[0] - gliderAt[0], dy = companionAt[1] - gliderAt[1];
+        float t = edges[TOP] + yShift, b = edges[BOTTOM] + yShift;
+        return (edges[LEFT] >= only.left + dx) && (edges[RIGHT] <= only.right + dx)
+                && (t >= only.top + dy) && (b <= only.bottom + dy);
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
+        if (style != DARK && ThemeManager.isNeumorphism(getContext()) && isInsideCompanionArea(0)) {
+            return;
+        }
         drawShape(canvas, 0f, 0f, this);
     }
 }

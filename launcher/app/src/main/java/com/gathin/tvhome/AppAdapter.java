@@ -1168,9 +1168,6 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             rimAnimator.addUpdateListener(a -> {
                 focusLevel = (float) a.getAnimatedValue();
                 focusRim.invalidate();
-                if (card.getParent() != null && card.getParent().getParent() instanceof View) {
-                    ((View) card.getParent().getParent()).invalidate();
-                }
             });
             rimAnimator.start();
         }

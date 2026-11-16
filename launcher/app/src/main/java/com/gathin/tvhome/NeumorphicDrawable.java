@@ -1,5 +1,6 @@
 package com.gathin.tvhome;
 
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.ColorFilter;
 import android.graphics.LinearGradient;
@@ -56,7 +57,15 @@ public final class NeumorphicDrawable extends Drawable {
     private int goldAccentMode = 0; // 0 = none, 1 = light gold, 2 = dark gold
     private int alpha = 255;
 
+    // Offscreen surface cache for static widgets/cards/pills (eliminates per-redraw clipPath & shadow feather passes)
+    private Bitmap cachedBitmap;
+    private int cachedW, cachedH, cachedPad, cachedMode = -1, cachedGold = -1;
+    private boolean cachedDark, cachedOuterShadow;
+    private int lastBoundsW, lastBoundsH;
+
     // Reusable static drawing primitives for zero-allocation rendering
+    private static final Paint BITMAP_PAINT = new Paint(Paint.FILTER_BITMAP_FLAG);
+    private static final RectF CACHE_RECT = new RectF();
     private static final RectF TMP_RECT = new RectF();
     private static final Path TMP_PATH = new Path();
     private static final Matrix GRAD_MATRIX = new Matrix();
@@ -145,8 +154,83 @@ public final class NeumorphicDrawable extends Drawable {
     /** Adds an integrated golden highlight fill and rim without altering drawable padding. */
     public NeumorphicDrawable setGoldAccent(boolean dark) {
         this.goldAccentMode = dark ? 2 : 1;
+        cachedBitmap = null;
         invalidateSelf();
         return this;
+    }
+
+    private void drawProcedural(@NonNull Canvas canvas, @NonNull RectF targetRect, int renderMode,
+                                float alphaVal, boolean withOuterShadow, int goldMode) {
+        if (renderMode == MODE_RECESSED) {
+            ensureInstanceShaders(MODE_RECESSED);
+            drawRecessedWith(canvas, targetRect, radius, density, alphaVal,
+                    instanceFillGrad, instanceRimGrad, instanceGradMatrix);
+            return;
+        }
+        ensureInstanceShaders(MODE_EXTRUDED);
+        drawExtrudedWith(canvas, targetRect, radius, density, alphaVal, withOuterShadow,
+                instanceFillGrad, instanceRimGrad, instanceGradMatrix);
+        if (goldMode != 0 && alphaVal > 0f) {
+            int tintColor = (goldMode == 2) ? 0x3DFFA726 : 0x33FFA726;
+            int strokeColor = (goldMode == 2) ? 0xFFFFA726 : 0xFFD97706;
+            FILL_PAINT.setShader(null);
+            FILL_PAINT.setColor(tintColor);
+            FILL_PAINT.setAlpha(Math.round(((tintColor >>> 24) & 0xFF) * alphaVal));
+            canvas.drawRoundRect(targetRect, radius, radius, FILL_PAINT);
+
+            float strokeW = Math.max(1f, 1.4f * density);
+            float inset = strokeW * 0.5f;
+            TMP_RECT.set(targetRect.left + inset, targetRect.top + inset,
+                    targetRect.right - inset, targetRect.bottom - inset);
+            STROKE_PAINT.setShader(null);
+            STROKE_PAINT.setStrokeWidth(strokeW);
+            STROKE_PAINT.setColor(strokeColor);
+            STROKE_PAINT.setAlpha(Math.round(255 * alphaVal));
+            float rr = Math.max(0f, radius - inset);
+            canvas.drawRoundRect(TMP_RECT, rr, rr, STROKE_PAINT);
+        }
+    }
+
+    private void drawFromCacheOrRender(@NonNull Canvas canvas, @NonNull Rect b, int renderMode,
+                                       float alphaVal, boolean withOuterShadow, int goldMode) {
+        int w = b.width();
+        int h = b.height();
+        if (w <= 0 || h <= 0 || w > 1400 || h > 900) {
+            drawProcedural(canvas, rect, renderMode, alphaVal, withOuterShadow, goldMode);
+            return;
+        }
+        boolean resizing = (lastBoundsW != 0 && (lastBoundsW != w || lastBoundsH != h));
+        lastBoundsW = w;
+        lastBoundsH = h;
+        if (resizing) {
+            cachedBitmap = null;
+            drawProcedural(canvas, rect, renderMode, alphaVal, withOuterShadow, goldMode);
+            return;
+        }
+        if (cachedBitmap == null || cachedW != w || cachedH != h || cachedMode != renderMode
+                || cachedDark != sDark || cachedOuterShadow != withOuterShadow || cachedGold != goldMode) {
+            int pad = (renderMode == MODE_EXTRUDED && withOuterShadow) ? (int) Math.ceil(7f * density) : 0;
+            try {
+                Bitmap bmp = Bitmap.createBitmap(w + pad * 2, h + pad * 2, Bitmap.Config.ARGB_8888);
+                Canvas offscreen = new Canvas(bmp);
+                CACHE_RECT.set(pad, pad, pad + w, pad + h);
+                drawProcedural(offscreen, CACHE_RECT, renderMode, 1f, withOuterShadow, goldMode);
+                cachedBitmap = bmp;
+                cachedW = w;
+                cachedH = h;
+                cachedPad = pad;
+                cachedMode = renderMode;
+                cachedDark = sDark;
+                cachedOuterShadow = withOuterShadow;
+                cachedGold = goldMode;
+            } catch (OutOfMemoryError e) {
+                cachedBitmap = null;
+                drawProcedural(canvas, rect, renderMode, alphaVal, withOuterShadow, goldMode);
+                return;
+            }
+        }
+        BITMAP_PAINT.setAlpha(Math.round(255 * alphaVal));
+        canvas.drawBitmap(cachedBitmap, b.left - cachedPad, b.top - cachedPad, BITMAP_PAINT);
     }
 
     private void ensureInstanceShaders(int activeMode) {
@@ -180,9 +264,7 @@ public final class NeumorphicDrawable extends Drawable {
         rect.set(b);
 
         if (mode == MODE_RECESSED) {
-            ensureInstanceShaders(MODE_RECESSED);
-            drawRecessedWith(canvas, rect, radius, density, a,
-                    instanceFillGrad, instanceRimGrad, instanceGradMatrix);
+            drawFromCacheOrRender(canvas, b, MODE_RECESSED, a, false, 0);
             return;
         }
 
@@ -203,34 +285,17 @@ public final class NeumorphicDrawable extends Drawable {
             }
         }
 
+        if (!paintsShape && covered == 0f) {
+            drawFromCacheOrRender(canvas, b, MODE_EXTRUDED, a, drawOuterShadow, goldAccentMode);
+            return;
+        }
+
         float extrudedAlpha = (1f - covered) * a;
         if (extrudedAlpha > 0f) {
-            ensureInstanceShaders(MODE_EXTRUDED);
-            drawExtrudedWith(canvas, rect, radius, density, extrudedAlpha, drawOuterShadow,
-                    instanceFillGrad, instanceRimGrad, instanceGradMatrix);
-        }
-        if (goldAccentMode != 0 && a > 0f) {
-            int tintColor = (goldAccentMode == 2) ? 0x3DFFA726 : 0x33FFA726;
-            int strokeColor = (goldAccentMode == 2) ? 0xFFFFA726 : 0xFFD97706;
-            FILL_PAINT.setShader(null);
-            FILL_PAINT.setColor(tintColor);
-            FILL_PAINT.setAlpha(Math.round(((tintColor >>> 24) & 0xFF) * a));
-            canvas.drawRoundRect(rect, radius, radius, FILL_PAINT);
-
-            float strokeW = Math.max(1f, 1.4f * density);
-            float inset = strokeW * 0.5f;
-            TMP_RECT.set(rect.left + inset, rect.top + inset, rect.right - inset, rect.bottom - inset);
-            STROKE_PAINT.setShader(null);
-            STROKE_PAINT.setStrokeWidth(strokeW);
-            STROKE_PAINT.setColor(strokeColor);
-            STROKE_PAINT.setAlpha(Math.round(255 * a));
-            float rr = Math.max(0f, radius - inset);
-            canvas.drawRoundRect(TMP_RECT, rr, rr, STROKE_PAINT);
+            drawProcedural(canvas, rect, MODE_EXTRUDED, extrudedAlpha, drawOuterShadow, goldAccentMode);
         }
         if (!paintsShape && covered > 0f && glider == null) {
-            ensureInstanceShaders(MODE_RECESSED);
-            drawRecessedWith(canvas, rect, radius, density, covered * a,
-                    instanceFillGrad, instanceRimGrad, instanceGradMatrix);
+            drawProcedural(canvas, rect, MODE_RECESSED, covered * a, false, 0);
         }
 
         // For dropdown menu panels (paintsShape == true): paint the gliding recessed row over the panel

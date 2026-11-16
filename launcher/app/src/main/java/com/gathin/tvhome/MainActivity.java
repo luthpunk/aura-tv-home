@@ -170,8 +170,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** Whether the glider is on the top menu, so a move down travels dark. */
     private boolean gliderOnPill;
     private final int[] pillAt = new int[2], rootAt = new int[2];
-    /** The top-right buttons and the two rectangles used to line them up with the dock. */
-    private View topRow, topSettings;
+    /** The top-right buttons, top-left clock block and rectangles used to line them up with the dock. */
+    private View topRow, topSettings, leftBlockView;
     private final Rect alignCard = new Rect(), alignButton = new Rect();
     /** How much of the space between the side paddings the top shelf may use. */
     private static final float HERO_WIDTH_SHARE = 0.40f;
@@ -620,7 +620,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             weatherPillMinimalView.setOnKeyListener((v, keyCode, event) -> {
                 if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
                 if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    if (prayerCardView != null && PRAYER_MODE_LEFT.equals(getPrayerWidgetMode())
+                            && prayerCardView.getVisibility() == View.VISIBLE && prayerCardView.getAlpha() > 0.5f) {
+                        prayerCardView.requestFocus();
+                        return true;
+                    }
                     focusTile(lastFocused % COLUMNS);
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
                     return true;
                 }
                 if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
@@ -799,7 +807,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             nowPlayingCard.setOnKeyListener((v, keyCode, event) -> {
                 if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
                 if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN || keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-                    View leftCard = activeLeftCard();
+                    View leftCard = activeTopLeftCard();
                     if (leftCard != null) {
                         leftCard.requestFocus();
                         return true;
@@ -930,6 +938,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 }
                 if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
                     if (isLeft) {
+                        if (weatherPillMinimalView != null && weatherPillMinimalView.getVisibility() == View.VISIBLE
+                                && weatherPillMinimalView.getAlpha() > 0.5f) {
+                            weatherPillMinimalView.requestFocus();
+                            return true;
+                        }
                         if (nowPlayingCard != null && nowPlayingCard.getVisibility() == View.VISIBLE) {
                             nowPlayingCard.requestFocus();
                             return true;
@@ -1151,7 +1164,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (keyCode == KeyEvent.KEYCODE_DPAD_UP) return true;
             if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
                 if (v.getId() == R.id.btnWifi || v.getId() == R.id.btnInputs) {
-                    View leftCard = activeLeftCard();
+                    View leftCard = activeTopLeftCard();
                     if (leftCard != null) {
                         leftCard.requestFocus();
                         return true;
@@ -1218,7 +1231,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         nowPlayingCard.requestFocus();
                         return true;
                     }
-                    View leftCard = activeLeftCard();
+                    View leftCard = activeTopLeftCard();
                     if (leftCard != null) {
                         leftCard.requestFocus();
                         return true;
@@ -1357,23 +1370,32 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         setWallpaper(bmp, fade, null);
     }
 
-    /** Theme-dependent wallpaper filter. Neumorphism Light gets high-key porcelain wash. */
+    /** Theme-dependent wallpaper filter. Neumorphism Light/Dark use solid canvas and skip full-screen overdraw. */
     private void applyWallpaperColorFilter() {
         updateLiveDimOverlay();
+        if (!wallpaperFullscreen && ThemeManager.isNeumorphism(this)) {
+            int solidCanvas = ThemeManager.isNeumorphismDark(this) ? 0xFF171A22 : 0xFFEDEAE4;
+            if (root != null) root.setBackgroundColor(solidCanvas);
+            if (wallView != null && wallView.getVisibility() != View.GONE) {
+                wallView.setVisibility(View.GONE);
+            }
+            return;
+        }
         if (wallView == null) return;
+        if (wallView.getVisibility() != View.VISIBLE) {
+            wallView.setVisibility(View.VISIBLE);
+        }
         if (wallpaperFullscreen) {
             wallView.clearColorFilter();
             return;
         }
         if (ThemeManager.isDarkGlow(this)) {
             wallView.setColorFilter(0xFF222222, android.graphics.PorterDuff.Mode.MULTIPLY);
-        } else if (ThemeManager.isNeumorphismDark(this)) {
-            // Neumorphism Dark: near-solid charcoal-navy canvas (reference 1794194557112.jpg)
-            wallView.setColorFilter(new android.graphics.PorterDuffColorFilter(0xF2171A22, android.graphics.PorterDuff.Mode.SRC_ATOP));
-        } else if (ThemeManager.isNeumorphism(this)) {
-            wallView.setColorFilter(new android.graphics.PorterDuffColorFilter(0xEAEDEAE4, android.graphics.PorterDuff.Mode.SRC_ATOP));
         } else {
             wallView.setColorFilter(0xFF6E6E6E, android.graphics.PorterDuff.Mode.MULTIPLY);
+        }
+        if (wallBitmap != null && !wallBitmap.hasAlpha() && root != null) {
+            root.setBackground(null);
         }
     }
 
@@ -1423,7 +1445,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // An opaque picture covers the whole screen, so the black window and the plain background
         // under it are never seen. Painting them anyway cost two full-screen passes on every frame,
         // and this TV's graphics chip, not the app, is what holds each frame back.
-        if (!bmp.hasAlpha()) {
+        if (!bmp.hasAlpha() && !ThemeManager.isNeumorphism(this)) {
             root.setBackground(null);
             getWindow().setBackgroundDrawable(null);
         }
@@ -1431,12 +1453,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** Hands the picture now on screen to the glass, which blurs it once, off the main thread. */
     private void blurBackdrop(android.graphics.Bitmap bmp) {
+        if (ThemeManager.isNeumorphism(this) || ThemeManager.isDarkGlow(this)) return;
         android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
         Backdrop.update(bmp, dm.widthPixels, dm.heightPixels, getWallpaperDimColor(), wallDecoder, handler);
     }
 
     /** Updates the glass backdrop from the active live wallpaper (if playing) or the static wallpaper. */
     private void refreshCurrentBackdrop() {
+        if (ThemeManager.isNeumorphism(this) || ThemeManager.isDarkGlow(this)) return;
         if (currentLiveFile != null) {
             final int g = liveGen;
             if (liveWallView != null && liveWallView.isAvailable() && liveWallView.getWidth() > 0 && liveWallView.getHeight() > 0) {
@@ -1505,8 +1529,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             // changes with the wallpaper rather than after it. The first picture of a fresh start does
             // not wait for its blur: Home is held for it, and the glass catches up a moment later.
             android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
-            android.graphics.Bitmap blur = firstPicture ? null
-                    : Backdrop.blur(bmp, dm.widthPixels, dm.heightPixels, getWallpaperDimColor());
+            boolean needBlur = !firstPicture && !ThemeManager.isNeumorphism(this) && !ThemeManager.isDarkGlow(this);
+            android.graphics.Bitmap blur = needBlur
+                    ? Backdrop.blur(bmp, dm.widthPixels, dm.heightPixels, getWallpaperDimColor())
+                    : null;
             handler.post(() -> {
                 if (isDestroyed() || gen != wallGen) return;
                 if (currentLiveFile != null || liveWallView != null) {
@@ -3061,7 +3087,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         prayerCardView.setTranslationX(pShift);
                     }
                 }
-                View lb = findViewById(R.id.leftBlock);
+                if (leftBlockView == null) leftBlockView = findViewById(R.id.leftBlock);
+                View lb = leftBlockView;
                 View activeWea = (weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE)
                         ? weatherAirQualityView
                         : null;
@@ -4288,6 +4315,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (FootballScheduleManager.MODE_MINIMAL.equals(mode)) return "Marquee";
         if (FootballScheduleManager.MODE_LARGE.equals(mode)) return "Besar";
         return "OFF";
+    }
+
+    private View activeTopLeftCard() {
+        if (weatherPillMinimalView != null && weatherPillMinimalView.getVisibility() == View.VISIBLE && weatherPillMinimalView.getAlpha() > 0.5f) {
+            return weatherPillMinimalView;
+        }
+        return activeLeftCard();
     }
 
     private View activeLeftCard() {
