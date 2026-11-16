@@ -570,14 +570,21 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     focusTile(lastFocused % COLUMNS);
                     return true;
                 }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                    View target = (btnWifi != null && btnWifi.getVisibility() == View.VISIBLE) ? btnWifi
+                            : (btnInputs != null && btnInputs.getVisibility() == View.VISIBLE) ? btnInputs
+                            : findViewById(R.id.btnSettings);
+                    if (target != null) {
+                        target.requestFocus();
+                        return true;
+                    }
+                }
                 if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
                     View rightCard = activeRightLargeCard();
                     if (rightCard != null) {
                         rightCard.requestFocus();
                         return true;
                     }
-                }
-                if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT || keyCode == KeyEvent.KEYCODE_DPAD_UP) {
                     if (nowPlayingCard != null && nowPlayingCard.getVisibility() == View.VISIBLE) {
                         nowPlayingCard.requestFocus();
                         return true;
@@ -631,14 +638,21 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
                     return true;
                 }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                    View target = (btnWifi != null && btnWifi.getVisibility() == View.VISIBLE) ? btnWifi
+                            : (btnInputs != null && btnInputs.getVisibility() == View.VISIBLE) ? btnInputs
+                            : findViewById(R.id.btnSettings);
+                    if (target != null) {
+                        target.requestFocus();
+                        return true;
+                    }
+                }
                 if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
                     View rightCard = activeRightLargeCard();
                     if (rightCard != null) {
                         rightCard.requestFocus();
                         return true;
                     }
-                }
-                if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT || keyCode == KeyEvent.KEYCODE_DPAD_UP) {
                     if (nowPlayingCard != null && nowPlayingCard.getVisibility() == View.VISIBLE) {
                         nowPlayingCard.requestFocus();
                         return true;
@@ -736,13 +750,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     View leftCard = activeLeftCard();
                     if (leftCard != null) {
                         leftCard.requestFocus();
-                        return true;
                     }
+                    return true;
                 }
                 if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-                    View target = (btnCandyBox != null && btnCandyBox.getVisibility() == View.VISIBLE) ? btnCandyBox
+                    View target = (btnWifi != null && btnWifi.getVisibility() == View.VISIBLE) ? btnWifi
+                            : (btnCandyBox != null && btnCandyBox.getVisibility() == View.VISIBLE) ? btnCandyBox
                             : (topSettings != null && topSettings.getVisibility() == View.VISIBLE) ? topSettings
-                            : (btnWifi != null && btnWifi.getVisibility() == View.VISIBLE) ? btnWifi
                             : findViewById(R.id.btnSettings);
                     if (target != null) {
                         target.requestFocus();
@@ -910,10 +924,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         View leftCard = activeLeftCard();
                         if (leftCard != null) {
                             leftCard.requestFocus();
-                            return true;
                         }
                     }
-                    return isLeft;
+                    return true;
                 }
                 if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
                     if (isLeft) {
@@ -943,21 +956,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                             weatherPillMinimalView.requestFocus();
                             return true;
                         }
-                        if (nowPlayingCard != null && nowPlayingCard.getVisibility() == View.VISIBLE) {
-                            nowPlayingCard.requestFocus();
-                            return true;
-                        }
-                        View target = (btnInputs != null && btnInputs.getVisibility() == View.VISIBLE) ? btnInputs
-                                : (btnWifi != null && btnWifi.getVisibility() == View.VISIBLE) ? btnWifi
+                        View target = (btnWifi != null && btnWifi.getVisibility() == View.VISIBLE) ? btnWifi
+                                : (btnInputs != null && btnInputs.getVisibility() == View.VISIBLE) ? btnInputs
                                 : findViewById(R.id.btnSettings);
                         if (target != null) {
                             target.requestFocus();
                             return true;
                         }
                     } else {
-                        View target = (btnCandyBox != null && btnCandyBox.getVisibility() == View.VISIBLE) ? btnCandyBox
+                        View target = (btnWifi != null && btnWifi.getVisibility() == View.VISIBLE) ? btnWifi
+                                : (btnCandyBox != null && btnCandyBox.getVisibility() == View.VISIBLE) ? btnCandyBox
                                 : (topSettings != null && topSettings.getVisibility() == View.VISIBLE) ? topSettings
-                                : (btnWifi != null && btnWifi.getVisibility() == View.VISIBLE) ? btnWifi
                                 : findViewById(R.id.btnSettings);
                         if (target != null) {
                             target.requestFocus();
@@ -1163,14 +1172,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
             if (keyCode == KeyEvent.KEYCODE_DPAD_UP) return true;
             if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                if (v.getId() == R.id.btnWifi || v.getId() == R.id.btnInputs) {
+                if (v.getId() == R.id.btnInputs) {
                     View leftCard = activeTopLeftCard();
                     if (leftCard != null) {
                         leftCard.requestFocus();
                         return true;
                     }
                 }
-                if (v.getId() == R.id.btnSettings || v.getId() == R.id.btnCandyBox || v.getId() == R.id.btnAssistant) {
+                if (v.getId() == R.id.btnWifi || v.getId() == R.id.btnSettings
+                        || v.getId() == R.id.btnCandyBox || v.getId() == R.id.btnAssistant) {
                     View rightCard = activeRightLargeCard();
                     if (rightCard != null) {
                         rightCard.requestFocus();
