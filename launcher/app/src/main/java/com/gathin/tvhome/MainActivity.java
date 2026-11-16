@@ -220,6 +220,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private TextView weaHourTime1, weaHourVal1, weaHourTime2, weaHourVal2, weaHourTime3, weaHourVal3;
     private TextView weaPillAqi, weaPillHum, weaPillWind, weaPillRain;
     private View footballCardView;
+    private View prayerCardView;
+    private View prayerTopCard;
+    private View prayerDiv1, prayerDiv2;
+    private PrayerIconView prayerMosqueIcon, prayerClockIcon;
+    private TextView prayerNextBadge, prayerNextName, prayerNextTime;
+    private TextView prayerRemainTop, prayerRemainValue, prayerRemainUnit;
+    private final View[] prayerSlots = new View[6];
+    private final PrayerIconView[] prayerSlotIcons = new PrayerIconView[6];
+    private final TextView[] prayerSlotNames = new TextView[6];
+    private final TextView[] prayerSlotTimes = new TextView[6];
+    private int lastPrayerNextIndex = -1;
     private View footballPillMinimalView;
     private View footballRowsContainer;
     private TextView footballLeagueTitle, footballStatusBadge;
@@ -560,8 +571,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     return true;
                 }
                 if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                    if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE && footballCardView.getAlpha() > 0.5f) {
-                        footballCardView.requestFocus();
+                    View rightCard = activeRightLargeCard();
+                    if (rightCard != null) {
+                        rightCard.requestFocus();
                         return true;
                     }
                 }
@@ -612,8 +624,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     return true;
                 }
                 if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                    if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE && footballCardView.getAlpha() > 0.5f) {
-                        footballCardView.requestFocus();
+                    View rightCard = activeRightLargeCard();
+                    if (rightCard != null) {
+                        rightCard.requestFocus();
                         return true;
                     }
                 }
@@ -855,6 +868,72 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             date.setTextSize(11f);
             date.setPadding(0, (int) (4 * density), 0, 0);
         }
+        prayerCardView = findViewById(R.id.prayerCardView);
+        if (prayerCardView != null) {
+            prayerTopCard = findViewById(R.id.prayerTopCard);
+            prayerDiv1 = findViewById(R.id.prayerDiv1);
+            prayerDiv2 = findViewById(R.id.prayerDiv2);
+            prayerMosqueIcon = findViewById(R.id.prayerMosqueIcon);
+            prayerClockIcon = findViewById(R.id.prayerClockIcon);
+            prayerNextBadge = findViewById(R.id.prayerNextBadge);
+            prayerNextName = findViewById(R.id.prayerNextName);
+            prayerNextTime = findViewById(R.id.prayerNextTime);
+            prayerRemainTop = findViewById(R.id.prayerRemainTop);
+            prayerRemainValue = findViewById(R.id.prayerRemainValue);
+            prayerRemainUnit = findViewById(R.id.prayerRemainUnit);
+
+            int[] slotIds = {R.id.prayerSlot0, R.id.prayerSlot1, R.id.prayerSlot2, R.id.prayerSlot3, R.id.prayerSlot4, R.id.prayerSlot5};
+            int[] slotIconIds = {R.id.prayerSlotIcon0, R.id.prayerSlotIcon1, R.id.prayerSlotIcon2, R.id.prayerSlotIcon3, R.id.prayerSlotIcon4, R.id.prayerSlotIcon5};
+            int[] slotNameIds = {R.id.prayerSlotName0, R.id.prayerSlotName1, R.id.prayerSlotName2, R.id.prayerSlotName3, R.id.prayerSlotName4, R.id.prayerSlotName5};
+            int[] slotTimeIds = {R.id.prayerSlotTime0, R.id.prayerSlotTime1, R.id.prayerSlotTime2, R.id.prayerSlotTime3, R.id.prayerSlotTime4, R.id.prayerSlotTime5};
+            for (int i = 0; i < 6; i++) {
+                prayerSlots[i] = findViewById(slotIds[i]);
+                prayerSlotIcons[i] = findViewById(slotIconIds[i]);
+                prayerSlotNames[i] = findViewById(slotNameIds[i]);
+                prayerSlotTimes[i] = findViewById(slotTimeIds[i]);
+            }
+
+            prayerCardView.setOnClickListener(v -> showPrayerPopup());
+            prayerCardView.setOnKeyListener((v, keyCode, event) -> {
+                if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    focusTile(lastFocused % COLUMNS);
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                    if (weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE && weatherAirQualityView.getAlpha() > 0.5f) {
+                        weatherAirQualityView.requestFocus();
+                        return true;
+                    } else if (weatherPillMinimalView != null && weatherPillMinimalView.getVisibility() == View.VISIBLE && weatherPillMinimalView.getAlpha() > 0.5f) {
+                        weatherPillMinimalView.requestFocus();
+                        return true;
+                    }
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                    View target = (btnCandyBox != null && btnCandyBox.getVisibility() == View.VISIBLE) ? btnCandyBox
+                            : (topSettings != null && topSettings.getVisibility() == View.VISIBLE) ? topSettings
+                            : (btnWifi != null && btnWifi.getVisibility() == View.VISIBLE) ? btnWifi
+                            : findViewById(R.id.btnSettings);
+                    if (target != null) {
+                        target.requestFocus();
+                        return true;
+                    }
+                }
+                return false;
+            });
+            prayerCardView.setOnFocusChangeListener((v, hasFocus) -> {
+                if (hasFocus) {
+                    SoundEffects.playNav();
+                    hideShelf();
+                    if (glider != null) glider.hide();
+                }
+                boolean isNeu = ThemeManager.isNeumorphism(MainActivity.this);
+                float scale = (hasFocus && !isNeu) ? 1.025f : 1.0f;
+                float targetAlpha = (lastFocused < COLUMNS) ? 1.0f : 0.0f;
+                v.animate().scaleX(scale).scaleY(scale).alpha(targetAlpha).setDuration(150).start();
+            });
+        }
+
         prayerTimesView = findViewById(R.id.prayerTimes);
         if (prayerTimesView != null) {
             prayerTimesView.setOnClickListener(v -> showPrayerPopup());
@@ -881,7 +960,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 return false;
             });
         }
-        updatePrayerTimes();
+        applyPrayerWidgetMode();
         PrayerTimes.syncIfDue(this, this::updatePrayerTimes);
         vpnApp = cfg.vpnApp;
         moduleCards = cfg.moduleCards;
@@ -1046,8 +1125,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     }
                 }
                 if (v.getId() == R.id.btnSettings || v.getId() == R.id.btnCandyBox || v.getId() == R.id.btnAssistant) {
-                    if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE && footballCardView.getAlpha() > 0.5f) {
-                        footballCardView.requestFocus();
+                    View rightCard = activeRightLargeCard();
+                    if (rightCard != null) {
+                        rightCard.requestFocus();
                         return true;
                     }
                 }
@@ -2197,6 +2277,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 footballCardView.setFocusable(true);
                 footballCardView.setClickable(true);
             }
+            if (prayerCardView != null && prayerCardView.getVisibility() == View.VISIBLE) {
+                prayerCardView.animate().alpha(1f).setDuration(dur).start();
+                prayerCardView.setFocusable(true);
+                prayerCardView.setClickable(true);
+            }
             if (footballPillMinimalView != null) {
                 footballPillMinimalView.animate().alpha(1f).setDuration(dur).start();
             }
@@ -2227,6 +2312,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 footballCardView.animate().alpha(0f).setDuration(dur).start();
                 footballCardView.setFocusable(false);
                 footballCardView.setClickable(false);
+            }
+            if (prayerCardView != null && prayerCardView.getVisibility() == View.VISIBLE) {
+                prayerCardView.animate().alpha(0f).setDuration(dur).start();
+                prayerCardView.setFocusable(false);
+                prayerCardView.setClickable(false);
             }
             if (weatherPillMinimalView != null) {
                 weatherPillMinimalView.animate().alpha(0f).setDuration(dur).start();
@@ -2786,6 +2876,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         if (currentLiveFile != null) resumeLiveWallpaper();
         updateFootballWidget();
+        stylePrayerCardTheme();
+        updatePrayerTimes();
 
         // Focused Row-1 App Title (above dock left)
         if (heroName != null) {
@@ -2898,6 +2990,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 footballCardView.setTranslationX(fShift);
             }
         }
+        if (prayerCardView != null && prayerCardView.getVisibility() == View.VISIBLE && prayerCardView.getWidth() > 0) {
+            alignButton.set(0, 0, prayerCardView.getWidth(), prayerCardView.getHeight());
+            root.offsetDescendantRectToMyCoords(prayerCardView, alignButton);
+            float pShift = alignCard.right - alignButton.right;
+            if (Math.abs(prayerCardView.getTranslationX() - pShift) >= 1f) {
+                prayerCardView.setTranslationX(pShift);
+            }
+        }
         if (footballPillMinimalView != null && footballPillMinimalView.getVisibility() == View.VISIBLE && footballPillMinimalView.getWidth() > 0) {
             alignButton.set(0, 0, footballPillMinimalView.getWidth(), footballPillMinimalView.getHeight());
             root.offsetDescendantRectToMyCoords(footballPillMinimalView, alignButton);
@@ -2958,6 +3058,24 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         }
                         if (Math.abs(footballCardView.getTranslationY() - fDy) >= 1f) {
                             footballCardView.setTranslationY(fDy);
+                        }
+                    }
+
+                    if (prayerCardView != null && prayerCardView.getVisibility() == View.VISIBLE) {
+                        int pTargetH = Math.round(153f * density);
+                        float desiredTop = targetCenterY - (pTargetH * 0.5f);
+                        if (footballPillMinimalView != null
+                                && footballPillMinimalView.getVisibility() == View.VISIBLE
+                                && footballPillMinimalView.getBottom() > 0) {
+                            float minTopBelowMarquee = footballPillMinimalView.getBottom() + 8f * density;
+                            float maxTopAboveShelf = shelfTopInMain - pTargetH;
+                            if (desiredTop < minTopBelowMarquee) {
+                                desiredTop = Math.min(minTopBelowMarquee, Math.max(desiredTop, maxTopAboveShelf));
+                            }
+                        }
+                        float pDy = Math.round(desiredTop - prayerCardView.getTop());
+                        if (Math.abs(prayerCardView.getTranslationY() - pDy) >= 1f) {
+                            prayerCardView.setTranslationY(pDy);
                         }
                     }
                 }
@@ -3540,6 +3658,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
             if (position < COLUMNS) {
+                View rightCard = activeRightLargeCard();
                 if (position <= 2) {
                     if (weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE && weatherAirQualityView.getAlpha() > 0.5f) {
                         weatherAirQualityView.requestFocus();
@@ -3547,13 +3666,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     } else if (weatherPillMinimalView != null && weatherPillMinimalView.getVisibility() == View.VISIBLE && weatherPillMinimalView.getAlpha() > 0.5f) {
                         weatherPillMinimalView.requestFocus();
                         return true;
-                    } else if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE && footballCardView.getAlpha() > 0.5f) {
-                        footballCardView.requestFocus();
+                    } else if (rightCard != null) {
+                        rightCard.requestFocus();
                         return true;
                     }
                 } else {
-                    if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE && footballCardView.getAlpha() > 0.5f) {
-                        footballCardView.requestFocus();
+                    if (rightCard != null) {
+                        rightCard.requestFocus();
                         return true;
                     }
                 }
@@ -3612,6 +3731,193 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void updatePrayerTimes() {
         applyPrayerVisibility();
+        if (prayerCardView == null || prayerCardView.getVisibility() != View.VISIBLE) return;
+
+        PrayerTimes.WidgetState ws = PrayerTimes.getWidgetState(this);
+        if (prayerNextName != null) prayerNextName.setText(ws.nextName);
+        if (prayerNextTime != null) prayerNextTime.setText(ws.nextTime);
+
+        if (prayerRemainTop != null) prayerRemainTop.setText("Tersisa");
+        if (prayerRemainValue != null && prayerRemainUnit != null) {
+            int rem = ws.remainingMinutes;
+            if (rem < 60) {
+                prayerRemainValue.setText("± " + rem);
+                prayerRemainValue.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18.5f);
+                prayerRemainUnit.setText("Menit");
+            } else {
+                int h = rem / 60;
+                int m = rem % 60;
+                if (m == 0) {
+                    prayerRemainValue.setText("± " + h);
+                    prayerRemainValue.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18.5f);
+                    prayerRemainUnit.setText("Jam");
+                } else {
+                    prayerRemainValue.setText("± " + h + " Jam");
+                    prayerRemainValue.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
+                    prayerRemainUnit.setText(m + " Menit");
+                }
+            }
+        }
+
+        for (int i = 0; i < 6 && i < ws.items.length; i++) {
+            PrayerTimes.PrayerItem item = ws.items[i];
+            if (prayerSlotNames[i] != null) prayerSlotNames[i].setText(item.name);
+            if (prayerSlotTimes[i] != null) prayerSlotTimes[i].setText(item.timeStr);
+        }
+
+        if (lastPrayerNextIndex != ws.nextIndex) {
+            lastPrayerNextIndex = ws.nextIndex;
+            stylePrayerSlotsTheme();
+        }
+    }
+
+    private void stylePrayerCardTheme() {
+        if (prayerCardView == null) return;
+        boolean isDark = ThemeManager.isDarkGlow(this);
+        boolean isNeu = ThemeManager.isNeumorphism(this);
+        boolean isNeuDark = ThemeManager.isNeumorphismDark(this);
+
+        float topRadius = 16f * density;
+        if (prayerTopCard != null) {
+            if (isDark) {
+                StateListDrawable sld = new StateListDrawable();
+                GradientDrawable focused = new GradientDrawable();
+                focused.setColor(0xFF0A0A10);
+                focused.setCornerRadius(topRadius);
+                focused.setStroke(Math.max(1, Math.round(1.25f * density)), 0xFF00F0FF);
+                GradientDrawable normal = new GradientDrawable();
+                normal.setColor(0xEE08080C);
+                normal.setCornerRadius(topRadius);
+                normal.setStroke(Math.max(1, Math.round(1.0f * density)), 0x28FFFFFF);
+                sld.addState(new int[]{android.R.attr.state_focused}, focused);
+                sld.addState(new int[]{}, normal);
+                prayerTopCard.setBackground(sld);
+            } else if (isNeu) {
+                StateListDrawable sld = new StateListDrawable();
+                sld.addState(new int[]{android.R.attr.state_focused},
+                        new NeumorphicDrawable(topRadius, density, NeumorphicDrawable.MODE_RECESSED, false));
+                sld.addState(new int[]{},
+                        new NeumorphicDrawable(topRadius, density, NeumorphicDrawable.MODE_EXTRUDED, true));
+                prayerTopCard.setBackground(sld);
+            } else {
+                StateListDrawable sld = new StateListDrawable();
+                GradientDrawable focused = new GradientDrawable(
+                        GradientDrawable.Orientation.TL_BR,
+                        new int[]{0x732A3140, 0x731C222E});
+                focused.setCornerRadius(topRadius);
+                focused.setStroke(Math.max(2, Math.round(1.5f * density)), 0xF2FFFFFF);
+                GradientDrawable normal = new GradientDrawable(
+                        GradientDrawable.Orientation.TL_BR,
+                        new int[]{0x59252B38, 0x52181C26});
+                normal.setCornerRadius(topRadius);
+                normal.setStroke(Math.max(1, Math.round(1.0f * density)), 0x55FFFFFF);
+                sld.addState(new int[]{android.R.attr.state_focused}, focused);
+                sld.addState(new int[]{}, normal);
+                prayerTopCard.setBackground(sld);
+            }
+        }
+
+        int divColor = isNeu ? ThemeManager.neu(0x1F000000) : (isDark ? 0x2E00F0FF : 0x38FFFFFF);
+        if (prayerDiv1 != null) prayerDiv1.setBackgroundColor(divColor);
+        if (prayerDiv2 != null) prayerDiv2.setBackgroundColor(divColor);
+
+        int mainTextColor = isNeu ? (isNeuDark ? 0xFFF8FAFC : 0xFF1A202C) : 0xFFFFFFFF;
+        int subTextColor = isNeu ? (isNeuDark ? 0xFFE2E8F0 : 0xFF334155) : 0xE6FFFFFF;
+        int goldColor = (isNeu && !isNeuDark) ? 0xFFD97706 : 0xFFFACC15;
+        int cutoutColor = isNeu ? (isNeuDark ? 0xFF1E2430 : 0xFFE2E8F0) : (isDark ? 0xFF0A0C12 : 0xFF343B48);
+
+        if (prayerNextBadge != null) {
+            GradientDrawable badgeBg = new GradientDrawable();
+            badgeBg.setColor(0xFFFACC15);
+            badgeBg.setCornerRadius(10f * density);
+            prayerNextBadge.setBackground(badgeBg);
+            prayerNextBadge.setTextColor(0xFF111827);
+        }
+        if (prayerMosqueIcon != null) {
+            prayerMosqueIcon.setThemeColors(mainTextColor, cutoutColor, goldColor);
+        }
+        if (prayerClockIcon != null) {
+            prayerClockIcon.setThemeColors(mainTextColor, cutoutColor, goldColor);
+        }
+
+        for (TextView tv : new TextView[]{prayerNextName, prayerNextTime, prayerRemainUnit}) {
+            if (tv != null) {
+                tv.setTextColor(mainTextColor);
+                if (isNeu) tv.setShadowLayer(0, 0, 0, 0);
+                else tv.setShadowLayer(3f, 0, 1f, 0x80000000);
+            }
+        }
+        if (prayerRemainTop != null) {
+            prayerRemainTop.setTextColor(subTextColor);
+            if (isNeu) prayerRemainTop.setShadowLayer(0, 0, 0, 0);
+            else prayerRemainTop.setShadowLayer(2f, 0, 1f, 0x80000000);
+        }
+        if (prayerRemainValue != null) {
+            prayerRemainValue.setTextColor(goldColor);
+            if (isNeu) prayerRemainValue.setShadowLayer(0, 0, 0, 0);
+            else prayerRemainValue.setShadowLayer(3f, 0, 1f, 0x80000000);
+        }
+
+        stylePrayerSlotsTheme();
+    }
+
+    private void stylePrayerSlotsTheme() {
+        boolean isDark = ThemeManager.isDarkGlow(this);
+        boolean isNeu = ThemeManager.isNeumorphism(this);
+        boolean isNeuDark = ThemeManager.isNeumorphismDark(this);
+        float slotRadius = 11f * density;
+        int nextIdx = lastPrayerNextIndex >= 0 ? lastPrayerNextIndex : PrayerTimes.getWidgetState(this).nextIndex;
+
+        int mainTextColor = isNeu ? (isNeuDark ? 0xFFF8FAFC : 0xFF1A202C) : 0xFFFFFFFF;
+        int subTextColor = isNeu ? (isNeuDark ? 0xFFE2E8F0 : 0xFF334155) : 0xE6FFFFFF;
+        int goldColor = (isNeu && !isNeuDark) ? 0xFFD97706 : 0xFFFACC15;
+        int cutoutColor = isNeu ? (isNeuDark ? 0xFF1E2430 : 0xFFE2E8F0) : (isDark ? 0xFF0A0C12 : 0xFF343B48);
+
+        for (int i = 0; i < 6; i++) {
+            boolean isNext = (i == nextIdx);
+            View slot = prayerSlots[i];
+            if (slot != null) {
+                if (isNext) {
+                    GradientDrawable activeBg = new GradientDrawable(
+                            GradientDrawable.Orientation.TL_BR,
+                            isNeu && !isNeuDark
+                                    ? new int[]{0x42FACC15, 0x2AF59E0B}
+                                    : new int[]{0x669A7B16, 0x5271590E});
+                    activeBg.setCornerRadius(slotRadius);
+                    activeBg.setStroke(Math.max(1, Math.round(1.4f * density)),
+                            isNeu && !isNeuDark ? 0xFFD97706 : 0xFFFACC15);
+                    slot.setBackground(activeBg);
+                } else if (isDark) {
+                    GradientDrawable sBg = new GradientDrawable();
+                    sBg.setColor(0xEE0A0C12);
+                    sBg.setCornerRadius(slotRadius);
+                    sBg.setStroke(Math.max(1, Math.round(1.0f * density)), 0x28FFFFFF);
+                    slot.setBackground(sBg);
+                } else if (isNeu) {
+                    slot.setBackground(new NeumorphicDrawable(slotRadius, density, NeumorphicDrawable.MODE_EXTRUDED, true));
+                } else {
+                    GradientDrawable sBg = new GradientDrawable(
+                            GradientDrawable.Orientation.TL_BR,
+                            new int[]{0x52252B38, 0x4A181C26});
+                    sBg.setCornerRadius(slotRadius);
+                    sBg.setStroke(Math.max(1, Math.round(1.0f * density)), 0x4DFFFFFF);
+                    slot.setBackground(sBg);
+                }
+            }
+            if (prayerSlotIcons[i] != null) {
+                prayerSlotIcons[i].setThemeColors(mainTextColor, cutoutColor, goldColor);
+            }
+            if (prayerSlotNames[i] != null) {
+                prayerSlotNames[i].setTextColor(isNext ? mainTextColor : subTextColor);
+                if (isNeu) prayerSlotNames[i].setShadowLayer(0, 0, 0, 0);
+                else prayerSlotNames[i].setShadowLayer(2f, 0, 1f, 0x80000000);
+            }
+            if (prayerSlotTimes[i] != null) {
+                prayerSlotTimes[i].setTextColor(mainTextColor);
+                if (isNeu) prayerSlotTimes[i].setShadowLayer(0, 0, 0, 0);
+                else prayerSlotTimes[i].setShadowLayer(2f, 0, 1f, 0x80000000);
+            }
+        }
     }
 
     /** Hides the Waktu Solat, Ayah/Doa and Islamic shelf completely. */
@@ -3889,9 +4195,63 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     private static final String PREF_WEATHER_WIDGET_MODE = "weather_widget_mode";
+    private static final String PREF_PRAYER_WIDGET_ENABLED = "prayer_widget_enabled";
     public static final String WIDGET_MODE_LARGE = "large";
     public static final String WIDGET_MODE_MINIMAL = "minimal";
     public static final String WIDGET_MODE_NONE = "none";
+
+    private boolean isPrayerWidgetEnabled() {
+        return getSharedPreferences("aura_prefs", MODE_PRIVATE)
+                .getBoolean(PREF_PRAYER_WIDGET_ENABLED, false);
+    }
+
+    private void setPrayerWidgetEnabled(boolean enabled) {
+        getSharedPreferences("aura_prefs", MODE_PRIVATE)
+                .edit()
+                .putBoolean(PREF_PRAYER_WIDGET_ENABLED, enabled)
+                .apply();
+    }
+
+    private View activeRightLargeCard() {
+        if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE && footballCardView.getAlpha() > 0.5f) {
+            return footballCardView;
+        }
+        if (prayerCardView != null && prayerCardView.getVisibility() == View.VISIBLE && prayerCardView.getAlpha() > 0.5f) {
+            return prayerCardView;
+        }
+        return null;
+    }
+
+    private void applyPrayerWidgetMode() {
+        boolean enabled = isPrayerWidgetEnabled();
+        if (enabled && FootballScheduleManager.MODE_LARGE.equals(FootballScheduleManager.getWidgetMode(this))) {
+            // Bola Besar & Jadwal Sholat berbagi posisi kartu kanan besar; jika Bola Besar aktif, Sholat otomatis off.
+            enabled = false;
+            setPrayerWidgetEnabled(false);
+        }
+        boolean isDockRow = (lastFocused < COLUMNS);
+        float alpha = isDockRow ? 1f : 0f;
+        if (prayerCardView != null) {
+            if (enabled) {
+                prayerCardView.setVisibility(View.VISIBLE);
+                prayerCardView.setAlpha(alpha);
+                prayerCardView.setFocusable(isDockRow);
+                prayerCardView.setClickable(isDockRow);
+                stylePrayerCardTheme();
+            } else {
+                prayerCardView.setVisibility(View.GONE);
+                prayerCardView.setFocusable(false);
+                prayerCardView.setClickable(false);
+            }
+        }
+        updatePrayerTimes();
+        if (enabled) {
+            PrayerTimes.syncIfDue(this, () -> handler.post(this::updatePrayerTimes));
+        }
+        if (root != null) {
+            root.post(this::alignTopRow);
+        }
+    }
 
     private String getWeatherWidgetMode() {
         return getSharedPreferences("aura_prefs", MODE_PRIVATE)
@@ -3956,6 +4316,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         } else {
             if (footballCardView != null) footballCardView.setVisibility(View.GONE);
             if (footballPillMinimalView != null) footballPillMinimalView.setVisibility(View.GONE);
+        }
+        if (FootballScheduleManager.MODE_LARGE.equals(mode) && isPrayerWidgetEnabled()) {
+            setPrayerWidgetEnabled(false);
+            applyPrayerWidgetMode();
+        } else if (root != null) {
+            root.post(this::alignTopRow);
         }
         updateFootballWidget();
         FootballScheduleManager.syncIfDue(this, () -> handler.post(this::updateFootballWidget));
@@ -4542,13 +4908,37 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 () -> {
                     SoundEffects.playSelect();
                     String next = isFootLrg ? FootballScheduleManager.MODE_NONE : FootballScheduleManager.MODE_LARGE;
+                    if (FootballScheduleManager.MODE_LARGE.equals(next)) {
+                        setPrayerWidgetEnabled(false);
+                        applyPrayerWidgetMode();
+                    }
                     FootballScheduleManager.setWidgetMode(this, next);
                     applyFootballWidgetMode();
                     showWidgetManagerDialog();
                 }
         ));
 
-        // 5. Pilihan Liga Bola
+        // 5. Jadwal Sholat (Kartu Besar, posisi terkait dengan Bola Besar; Bola Marquee tetap bisa ON)
+        boolean isPrayerOn = isPrayerWidgetEnabled();
+        items.add(new ThemedDialogItem(
+                "🕌 Jadwal Sholat",
+                null,
+                isPrayerOn,
+                isPrayerOn ? "ON" : "OFF",
+                () -> {
+                    SoundEffects.playSelect();
+                    boolean nextPrayer = !isPrayerOn;
+                    if (nextPrayer && FootballScheduleManager.MODE_LARGE.equals(FootballScheduleManager.getWidgetMode(this))) {
+                        FootballScheduleManager.setWidgetMode(this, FootballScheduleManager.MODE_NONE);
+                        applyFootballWidgetMode();
+                    }
+                    setPrayerWidgetEnabled(nextPrayer);
+                    applyPrayerWidgetMode();
+                    showWidgetManagerDialog();
+                }
+        ));
+
+        // 6. Pilihan Liga Bola
         String activeLeague = FootballScheduleManager.getLeagueDisplayName(FootballScheduleManager.getLeagueFilter(this));
         items.add(new ThemedDialogItem(
                 "🏆 Liga : " + activeLeague,
@@ -4852,6 +5242,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         final View[] rowFootMinHolder = new View[1];
         final View[] rowFootLrgHolder = new View[1];
+        final View[] rowPrayerHolder = new View[1];
 
         rowFootMinHolder[0] = addInputRow(rows, null, R.drawable.ic_football, "Bola Marquee : " + (FootballScheduleManager.MODE_MINIMAL.equals(FootballScheduleManager.getWidgetMode(this)) ? "ON" : "OFF"), -1, () -> {
             SoundEffects.playSelect();
@@ -4867,10 +5258,28 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             SoundEffects.playSelect();
             boolean curLrg = FootballScheduleManager.MODE_LARGE.equals(FootballScheduleManager.getWidgetMode(this));
             String next = curLrg ? FootballScheduleManager.MODE_NONE : FootballScheduleManager.MODE_LARGE;
+            if (FootballScheduleManager.MODE_LARGE.equals(next)) {
+                setPrayerWidgetEnabled(false);
+                applyPrayerWidgetMode();
+                updateRowStatus(rowPrayerHolder[0], "OFF");
+            }
             FootballScheduleManager.setWidgetMode(this, next);
             applyFootballWidgetMode();
             updateRowStatus(rowFootLrgHolder[0], !curLrg ? "ON" : "OFF");
             updateRowStatus(rowFootMinHolder[0], "OFF");
+        });
+
+        rowPrayerHolder[0] = addInputRow(rows, null, R.drawable.ic_mosque, "Jadwal Sholat : " + (isPrayerWidgetEnabled() ? "ON" : "OFF"), -1, () -> {
+            SoundEffects.playSelect();
+            boolean nextPrayer = !isPrayerWidgetEnabled();
+            if (nextPrayer && FootballScheduleManager.MODE_LARGE.equals(FootballScheduleManager.getWidgetMode(this))) {
+                FootballScheduleManager.setWidgetMode(this, FootballScheduleManager.MODE_NONE);
+                applyFootballWidgetMode();
+                updateRowStatus(rowFootLrgHolder[0], "OFF");
+            }
+            setPrayerWidgetEnabled(nextPrayer);
+            applyPrayerWidgetMode();
+            updateRowStatus(rowPrayerHolder[0], nextPrayer ? "ON" : "OFF");
         });
 
         String activeLeague = FootballScheduleManager.getLeagueDisplayName(FootballScheduleManager.getLeagueFilter(this));
@@ -8355,20 +8764,22 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         showAsiaCountryDialog();
     }
 
-    /** Shows an Apple TV-style frosted glass Putrajaya prayer timetable popup. */
+    /** Shows an Apple TV-style frosted glass prayer timetable popup anchored to the prayer widget. */
     private void showPrayerPopup() {
         if (openMenu != null) return;
         SoundEffects.playSelect();
-        View anchor = prayerTimesView != null ? prayerTimesView : findViewById(R.id.leftBlock);
+        View anchor = (prayerCardView != null && prayerCardView.getVisibility() == View.VISIBLE)
+                ? prayerCardView
+                : (prayerTimesView != null && prayerTimesView.getVisibility() == View.VISIBLE ? prayerTimesView : findViewById(R.id.leftBlock));
         FrameLayout panel = (FrameLayout) getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
         LinearLayout rows = panel.findViewById(R.id.rows);
         Runnable close = () -> closeMenu(false);
 
-        // Header: Active Prayer Zone
-        addInputRow(rows, close, R.drawable.ic_settings, "Waktu Solat " + PrayerTimes.getShortZoneName(this) + " (Tukar Zon ▶)", TvInputManager.INPUT_STATE_CONNECTED, () -> {
+        // Header: Location synced with Weather
+        addInputRow(rows, close, R.drawable.ic_wea_pin, "Jadwal Sholat " + PrayerTimes.getShortZoneName(this) + " (Ganti Kota ▶)", TvInputManager.INPUT_STATE_CONNECTED, () -> {
             SoundEffects.playSelect();
             closeMenu(false);
-            startActivity(new Intent(MainActivity.this, LocationActivity.class));
+            CitySearchDialog.show(MainActivity.this, this::refreshLocationDependentData);
         });
 
         // Date row: Islamic Hijri
@@ -8402,7 +8813,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         View row = getLayoutInflater().inflate(R.layout.item_input, rows, false);
         ((ImageView) row.findViewById(R.id.icon)).setImageResource(R.drawable.ic_input);
         TextView title = row.findViewById(R.id.title);
-        title.setText(name + (isNext ? " (Seterusnya)" : ""));
+        title.setText(name + (isNext ? " (Berikutnya)" : ""));
         title.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
         title.setFontVariationSettings(isNext ? "'wght' 700" : "'wght' 650");
         title.setShadowLayer(3 * density, 0, 1 * density, 0xCC000000);

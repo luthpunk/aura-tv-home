@@ -873,7 +873,8 @@ public class AppLocationManager {
 
         Log.i(TAG, "Location set to: " + locationName + " (" + country + ") [" + lat + ", " + lon + "]");
 
-        // Trigger immediate sync for Weather & Prayer Times
+        // Trigger immediate sync for Weather & Prayer Times (following active weather location)
+        PrayerTimes.clearManualZone(context);
         WeatherAirQuality.sync(context, null);
         PrayerTimes.sync(context, null);
     }

@@ -1340,6 +1340,445 @@
                 </ScrollView>
             </LinearLayout>
 
+            <!-- Prayer Times Card Widget (Same footprint as Football Large: 332dp x 153dp) -->
+            <LinearLayout
+                android:id="@+id/prayerCardView"
+                android:layout_width="332dp"
+                android:layout_height="153dp"
+                android:layout_below="@id/leftBlock"
+                android:layout_alignParentEnd="true"
+                android:layout_marginTop="24dp"
+                android:orientation="vertical"
+                android:focusable="true"
+                android:clickable="true"
+                android:descendantFocusability="blocksDescendants"
+                android:clipChildren="false"
+                android:clipToPadding="false"
+                android:visibility="gone">
+
+                <!-- Top Card: Mosque Glow | Sholat Berikutnya | Countdown -->
+                <LinearLayout
+                    android:id="@+id/prayerTopCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="79dp"
+                    android:duplicateParentState="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:paddingTop="6dp"
+                    android:paddingBottom="6dp">
+
+                    <com.gathin.tvhome.PrayerIconView
+                        android:id="@+id/prayerMosqueIcon"
+                        android:layout_width="64dp"
+                        android:layout_height="60dp"
+                        android:tag="mosque" />
+
+                    <View
+                        android:id="@+id/prayerDiv1"
+                        android:layout_width="1dp"
+                        android:layout_height="46dp"
+                        android:layout_marginStart="6dp"
+                        android:layout_marginEnd="6dp"
+                        android:background="#33FFFFFF" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/prayerNextBadge"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Sholat Berikutnya"
+                            android:textColor="#FF111827"
+                            android:textSize="9.5sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 700"
+                            android:includeFontPadding="false"
+                            android:paddingStart="8dp"
+                            android:paddingEnd="8dp"
+                            android:paddingTop="2dp"
+                            android:paddingBottom="2dp"
+                            android:singleLine="true" />
+
+                        <TextView
+                            android:id="@+id/prayerNextName"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Isya"
+                            android:textColor="#FFFFFFFF"
+                            android:textSize="19sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 700"
+                            android:includeFontPadding="false"
+                            android:singleLine="true"
+                            android:ellipsize="end" />
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="1dp"
+                            android:gravity="center"
+                            android:orientation="horizontal">
+
+                            <com.gathin.tvhome.PrayerIconView
+                                android:id="@+id/prayerClockIcon"
+                                android:layout_width="11dp"
+                                android:layout_height="11dp"
+                                android:tag="clock" />
+
+                            <TextView
+                                android:id="@+id/prayerNextTime"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="4dp"
+                                android:text="19:34"
+                                android:textColor="#FFFFFFFF"
+                                android:textSize="12sp"
+                                android:fontFamily="@font/outfit"
+                                android:fontVariationSettings="'wght' 700"
+                                android:includeFontPadding="false"
+                                android:singleLine="true" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <View
+                        android:id="@+id/prayerDiv2"
+                        android:layout_width="1dp"
+                        android:layout_height="46dp"
+                        android:layout_marginStart="6dp"
+                        android:layout_marginEnd="6dp"
+                        android:background="#33FFFFFF" />
+
+                    <LinearLayout
+                        android:layout_width="78dp"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/prayerRemainTop"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Tersisa"
+                            android:textColor="#E6FFFFFF"
+                            android:textSize="10sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 600"
+                            android:includeFontPadding="false"
+                            android:singleLine="true" />
+
+                        <TextView
+                            android:id="@+id/prayerRemainValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="1dp"
+                            android:text="± 10"
+                            android:textColor="#FFFACC15"
+                            android:textSize="18.5sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 800"
+                            android:includeFontPadding="false"
+                            android:singleLine="true" />
+
+                        <TextView
+                            android:id="@+id/prayerRemainUnit"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="1dp"
+                            android:text="Menit"
+                            android:textColor="#FFFFFFFF"
+                            android:textSize="10.5sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 700"
+                            android:includeFontPadding="false"
+                            android:singleLine="true" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="6dp" />
+
+                <!-- Bottom Row: 6 Equal Prayer Time Mini Cards -->
+                <LinearLayout
+                    android:id="@+id/prayerMiniRow"
+                    android:layout_width="match_parent"
+                    android:layout_height="68dp"
+                    android:orientation="horizontal"
+                    android:baselineAligned="false">
+
+                    <!-- Slot 0: Subuh -->
+                    <LinearLayout
+                        android:id="@+id/prayerSlot0"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="4dp"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:paddingStart="2dp"
+                        android:paddingEnd="2dp"
+                        android:paddingTop="5dp"
+                        android:paddingBottom="5dp">
+                        <com.gathin.tvhome.PrayerIconView
+                            android:id="@+id/prayerSlotIcon0"
+                            android:layout_width="22dp"
+                            android:layout_height="16dp"
+                            android:tag="0" />
+                        <TextView
+                            android:id="@+id/prayerSlotName0"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:text="Subuh"
+                            android:textColor="#E6FFFFFF"
+                            android:textSize="9sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 600"
+                            android:includeFontPadding="false"
+                            android:singleLine="true" />
+                        <TextView
+                            android:id="@+id/prayerSlotTime0"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="04:17"
+                            android:textColor="#FFFFFFFF"
+                            android:textSize="11.5sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 700"
+                            android:includeFontPadding="false"
+                            android:singleLine="true" />
+                    </LinearLayout>
+
+                    <!-- Slot 1: Syuruq -->
+                    <LinearLayout
+                        android:id="@+id/prayerSlot1"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="4dp"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:paddingStart="2dp"
+                        android:paddingEnd="2dp"
+                        android:paddingTop="5dp"
+                        android:paddingBottom="5dp">
+                        <com.gathin.tvhome.PrayerIconView
+                            android:id="@+id/prayerSlotIcon1"
+                            android:layout_width="22dp"
+                            android:layout_height="16dp"
+                            android:tag="1" />
+                        <TextView
+                            android:id="@+id/prayerSlotName1"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:text="Syuruq"
+                            android:textColor="#E6FFFFFF"
+                            android:textSize="9sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 600"
+                            android:includeFontPadding="false"
+                            android:singleLine="true" />
+                        <TextView
+                            android:id="@+id/prayerSlotTime1"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="05:30"
+                            android:textColor="#FFFFFFFF"
+                            android:textSize="11.5sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 700"
+                            android:includeFontPadding="false"
+                            android:singleLine="true" />
+                    </LinearLayout>
+
+                    <!-- Slot 2: Dzuhur -->
+                    <LinearLayout
+                        android:id="@+id/prayerSlot2"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="4dp"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:paddingStart="2dp"
+                        android:paddingEnd="2dp"
+                        android:paddingTop="5dp"
+                        android:paddingBottom="5dp">
+                        <com.gathin.tvhome.PrayerIconView
+                            android:id="@+id/prayerSlotIcon2"
+                            android:layout_width="22dp"
+                            android:layout_height="16dp"
+                            android:tag="2" />
+                        <TextView
+                            android:id="@+id/prayerSlotName2"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:text="Dzuhur"
+                            android:textColor="#E6FFFFFF"
+                            android:textSize="9sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 600"
+                            android:includeFontPadding="false"
+                            android:singleLine="true" />
+                        <TextView
+                            android:id="@+id/prayerSlotTime2"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="11:36"
+                            android:textColor="#FFFFFFFF"
+                            android:textSize="11.5sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 700"
+                            android:includeFontPadding="false"
+                            android:singleLine="true" />
+                    </LinearLayout>
+
+                    <!-- Slot 3: Ashar -->
+                    <LinearLayout
+                        android:id="@+id/prayerSlot3"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="4dp"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:paddingStart="2dp"
+                        android:paddingEnd="2dp"
+                        android:paddingTop="5dp"
+                        android:paddingBottom="5dp">
+                        <com.gathin.tvhome.PrayerIconView
+                            android:id="@+id/prayerSlotIcon3"
+                            android:layout_width="22dp"
+                            android:layout_height="16dp"
+                            android:tag="3" />
+                        <TextView
+                            android:id="@+id/prayerSlotName3"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:text="Ashar"
+                            android:textColor="#E6FFFFFF"
+                            android:textSize="9sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 600"
+                            android:includeFontPadding="false"
+                            android:singleLine="true" />
+                        <TextView
+                            android:id="@+id/prayerSlotTime3"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="14:53"
+                            android:textColor="#FFFFFFFF"
+                            android:textSize="11.5sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 700"
+                            android:includeFontPadding="false"
+                            android:singleLine="true" />
+                    </LinearLayout>
+
+                    <!-- Slot 4: Maghrib -->
+                    <LinearLayout
+                        android:id="@+id/prayerSlot4"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="4dp"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:paddingStart="2dp"
+                        android:paddingEnd="2dp"
+                        android:paddingTop="5dp"
+                        android:paddingBottom="5dp">
+                        <com.gathin.tvhome.PrayerIconView
+                            android:id="@+id/prayerSlotIcon4"
+                            android:layout_width="22dp"
+                            android:layout_height="16dp"
+                            android:tag="4" />
+                        <TextView
+                            android:id="@+id/prayerSlotName4"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:text="Maghrib"
+                            android:textColor="#E6FFFFFF"
+                            android:textSize="9sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 600"
+                            android:includeFontPadding="false"
+                            android:singleLine="true" />
+                        <TextView
+                            android:id="@+id/prayerSlotTime4"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="17:33"
+                            android:textColor="#FFFFFFFF"
+                            android:textSize="11.5sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 700"
+                            android:includeFontPadding="false"
+                            android:singleLine="true" />
+                    </LinearLayout>
+
+                    <!-- Slot 5: Isya -->
+                    <LinearLayout
+                        android:id="@+id/prayerSlot5"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:paddingStart="2dp"
+                        android:paddingEnd="2dp"
+                        android:paddingTop="5dp"
+                        android:paddingBottom="5dp">
+                        <com.gathin.tvhome.PrayerIconView
+                            android:id="@+id/prayerSlotIcon5"
+                            android:layout_width="22dp"
+                            android:layout_height="16dp"
+                            android:tag="5" />
+                        <TextView
+                            android:id="@+id/prayerSlotName5"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:text="Isya"
+                            android:textColor="#E6FFFFFF"
+                            android:textSize="9sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 600"
+                            android:includeFontPadding="false"
+                            android:singleLine="true" />
+                        <TextView
+                            android:id="@+id/prayerSlotTime5"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="19:34"
+                            android:textColor="#FFFFFFFF"
+                            android:textSize="11.5sp"
+                            android:fontFamily="@font/outfit"
+                            android:fontVariationSettings="'wght' 700"
+                            android:includeFontPadding="false"
+                            android:singleLine="true" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
             <!-- Minimal Football Marquee Pill Widget (Mode Kecil, matching weatherPillMinimal) -->
             <LinearLayout
                 android:id="@+id/footballPillMinimal"
