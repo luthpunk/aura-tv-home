@@ -1360,14 +1360,16 @@
                 <LinearLayout
                     android:id="@+id/prayerTopCard"
                     android:layout_width="match_parent"
-                    android:layout_height="79dp"
+                    android:layout_height="77dp"
                     android:duplicateParentState="true"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
+                    android:clipChildren="false"
+                    android:clipToPadding="false"
                     android:paddingStart="10dp"
                     android:paddingEnd="10dp"
-                    android:paddingTop="6dp"
-                    android:paddingBottom="6dp">
+                    android:paddingTop="5dp"
+                    android:paddingBottom="5dp">
 
                     <com.gathin.tvhome.PrayerIconView
                         android:id="@+id/prayerMosqueIcon"
@@ -1504,13 +1506,15 @@
 
                 <View
                     android:layout_width="match_parent"
-                    android:layout_height="6dp" />
+                    android:layout_height="8dp" />
 
                 <!-- Bottom Row: 6 Equal Prayer Time Mini Cards -->
                 <LinearLayout
                     android:id="@+id/prayerMiniRow"
                     android:layout_width="match_parent"
                     android:layout_height="68dp"
+                    android:clipChildren="false"
+                    android:clipToPadding="false"
                     android:orientation="horizontal"
                     android:baselineAligned="false">
 

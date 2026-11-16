@@ -725,11 +725,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     return true;
                 }
                 if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-                    if (weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE && weatherAirQualityView.getAlpha() > 0.5f) {
-                        weatherAirQualityView.requestFocus();
-                        return true;
-                    } else if (weatherPillMinimalView != null && weatherPillMinimalView.getVisibility() == View.VISIBLE && weatherPillMinimalView.getAlpha() > 0.5f) {
-                        weatherPillMinimalView.requestFocus();
+                    View leftCard = activeLeftCard();
+                    if (leftCard != null) {
+                        leftCard.requestFocus();
                         return true;
                     }
                 }
@@ -801,11 +799,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             nowPlayingCard.setOnKeyListener((v, keyCode, event) -> {
                 if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
                 if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN || keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-                    if (weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE) {
-                        weatherAirQualityView.requestFocus();
-                        return true;
-                    } else if (weatherPillMinimalView != null && weatherPillMinimalView.getVisibility() == View.VISIBLE) {
-                        weatherPillMinimalView.requestFocus();
+                    View leftCard = activeLeftCard();
+                    if (leftCard != null) {
+                        leftCard.requestFocus();
                         return true;
                     }
                     focusTile(lastFocused % COLUMNS);
@@ -896,27 +892,64 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             prayerCardView.setOnClickListener(v -> showPrayerPopup());
             prayerCardView.setOnKeyListener((v, keyCode, event) -> {
                 if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+                boolean isLeft = PRAYER_MODE_LEFT.equals(getPrayerWidgetMode());
                 if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
                     focusTile(lastFocused % COLUMNS);
                     return true;
                 }
                 if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-                    if (weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE && weatherAirQualityView.getAlpha() > 0.5f) {
-                        weatherAirQualityView.requestFocus();
-                        return true;
-                    } else if (weatherPillMinimalView != null && weatherPillMinimalView.getVisibility() == View.VISIBLE && weatherPillMinimalView.getAlpha() > 0.5f) {
-                        weatherPillMinimalView.requestFocus();
-                        return true;
+                    if (!isLeft) {
+                        View leftCard = activeLeftCard();
+                        if (leftCard != null) {
+                            leftCard.requestFocus();
+                            return true;
+                        }
                     }
+                    return isLeft;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    if (isLeft) {
+                        View rightCard = activeRightLargeCard();
+                        if (rightCard != null) {
+                            rightCard.requestFocus();
+                            return true;
+                        }
+                        if (nowPlayingCard != null && nowPlayingCard.getVisibility() == View.VISIBLE) {
+                            nowPlayingCard.requestFocus();
+                            return true;
+                        }
+                        View target = (btnInputs != null && btnInputs.getVisibility() == View.VISIBLE) ? btnInputs
+                                : (btnWifi != null && btnWifi.getVisibility() == View.VISIBLE) ? btnWifi
+                                : findViewById(R.id.btnSettings);
+                        if (target != null) {
+                            target.requestFocus();
+                            return true;
+                        }
+                    }
+                    return !isLeft;
                 }
                 if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-                    View target = (btnCandyBox != null && btnCandyBox.getVisibility() == View.VISIBLE) ? btnCandyBox
-                            : (topSettings != null && topSettings.getVisibility() == View.VISIBLE) ? topSettings
-                            : (btnWifi != null && btnWifi.getVisibility() == View.VISIBLE) ? btnWifi
-                            : findViewById(R.id.btnSettings);
-                    if (target != null) {
-                        target.requestFocus();
-                        return true;
+                    if (isLeft) {
+                        if (nowPlayingCard != null && nowPlayingCard.getVisibility() == View.VISIBLE) {
+                            nowPlayingCard.requestFocus();
+                            return true;
+                        }
+                        View target = (btnInputs != null && btnInputs.getVisibility() == View.VISIBLE) ? btnInputs
+                                : (btnWifi != null && btnWifi.getVisibility() == View.VISIBLE) ? btnWifi
+                                : findViewById(R.id.btnSettings);
+                        if (target != null) {
+                            target.requestFocus();
+                            return true;
+                        }
+                    } else {
+                        View target = (btnCandyBox != null && btnCandyBox.getVisibility() == View.VISIBLE) ? btnCandyBox
+                                : (topSettings != null && topSettings.getVisibility() == View.VISIBLE) ? topSettings
+                                : (btnWifi != null && btnWifi.getVisibility() == View.VISIBLE) ? btnWifi
+                                : findViewById(R.id.btnSettings);
+                        if (target != null) {
+                            target.requestFocus();
+                            return true;
+                        }
                     }
                 }
                 return false;
@@ -930,7 +963,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 boolean isNeu = ThemeManager.isNeumorphism(MainActivity.this);
                 float scale = (hasFocus && !isNeu) ? 1.025f : 1.0f;
                 float targetAlpha = (lastFocused < COLUMNS) ? 1.0f : 0.0f;
-                v.animate().scaleX(scale).scaleY(scale).alpha(targetAlpha).setDuration(150).start();
+                if (Math.abs(v.getScaleX() - scale) > 0.001f || Math.abs(v.getAlpha() - targetAlpha) > 0.001f) {
+                    v.animate().scaleX(scale).scaleY(scale).alpha(targetAlpha).setDuration(150).start();
+                }
             });
         }
 
@@ -1116,11 +1151,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (keyCode == KeyEvent.KEYCODE_DPAD_UP) return true;
             if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
                 if (v.getId() == R.id.btnWifi || v.getId() == R.id.btnInputs) {
-                    if (weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE && weatherAirQualityView.getAlpha() > 0.5f) {
-                        weatherAirQualityView.requestFocus();
-                        return true;
-                    } else if (weatherPillMinimalView != null && weatherPillMinimalView.getVisibility() == View.VISIBLE && weatherPillMinimalView.getAlpha() > 0.5f) {
-                        weatherPillMinimalView.requestFocus();
+                    View leftCard = activeLeftCard();
+                    if (leftCard != null) {
+                        leftCard.requestFocus();
                         return true;
                     }
                 }
@@ -1185,11 +1218,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         nowPlayingCard.requestFocus();
                         return true;
                     }
-                    if (weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE) {
-                        weatherAirQualityView.requestFocus();
-                        return true;
-                    } else if (weatherPillMinimalView != null && weatherPillMinimalView.getVisibility() == View.VISIBLE) {
-                        weatherPillMinimalView.requestFocus();
+                    View leftCard = activeLeftCard();
+                    if (leftCard != null) {
+                        leftCard.requestFocus();
                         return true;
                     }
                 }
@@ -2985,23 +3016,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE && footballCardView.getWidth() > 0) {
             alignButton.set(0, 0, footballCardView.getWidth(), footballCardView.getHeight());
             root.offsetDescendantRectToMyCoords(footballCardView, alignButton);
-            float fShift = alignCard.right - alignButton.right;
+            float fShift = footballCardView.getTranslationX() + (alignCard.right - alignButton.right);
             if (Math.abs(footballCardView.getTranslationX() - fShift) >= 1f) {
                 footballCardView.setTranslationX(fShift);
-            }
-        }
-        if (prayerCardView != null && prayerCardView.getVisibility() == View.VISIBLE && prayerCardView.getWidth() > 0) {
-            alignButton.set(0, 0, prayerCardView.getWidth(), prayerCardView.getHeight());
-            root.offsetDescendantRectToMyCoords(prayerCardView, alignButton);
-            float pShift = alignCard.right - alignButton.right;
-            if (Math.abs(prayerCardView.getTranslationX() - pShift) >= 1f) {
-                prayerCardView.setTranslationX(pShift);
             }
         }
         if (footballPillMinimalView != null && footballPillMinimalView.getVisibility() == View.VISIBLE && footballPillMinimalView.getWidth() > 0) {
             alignButton.set(0, 0, footballPillMinimalView.getWidth(), footballPillMinimalView.getHeight());
             root.offsetDescendantRectToMyCoords(footballPillMinimalView, alignButton);
-            float fShift = alignCard.right - alignButton.right;
+            float fShift = footballPillMinimalView.getTranslationX() + (alignCard.right - alignButton.right);
             if (Math.abs(footballPillMinimalView.getTranslationX() - fShift) >= 1f) {
                 footballPillMinimalView.setTranslationX(fShift);
             }
@@ -3016,6 +3039,21 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 if (Math.abs(heroShelf.getX() - alignCard.left) >= 1f) {
                     heroShelf.setX(alignCard.left);
                 }
+                if (prayerCardView != null && prayerCardView.getVisibility() == View.VISIBLE && prayerCardView.getWidth() > 0) {
+                    alignButton.set(0, 0, prayerCardView.getWidth(), prayerCardView.getHeight());
+                    root.offsetDescendantRectToMyCoords(prayerCardView, alignButton);
+                    float pShift;
+                    if (PRAYER_MODE_LEFT.equals(getPrayerWidgetMode())) {
+                        pShift = prayerCardView.getTranslationX() + (alignCard.left - alignButton.left);
+                    } else {
+                        Rect rightCardRect = new Rect(0, 0, card.getWidth(), card.getHeight());
+                        root.offsetDescendantRectToMyCoords(card, rightCardRect);
+                        pShift = prayerCardView.getTranslationX() + (rightCardRect.right - alignButton.right);
+                    }
+                    if (Math.abs(prayerCardView.getTranslationX() - pShift) >= 1f) {
+                        prayerCardView.setTranslationX(pShift);
+                    }
+                }
                 View lb = findViewById(R.id.leftBlock);
                 View activeWea = (weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE)
                         ? weatherAirQualityView
@@ -3029,9 +3067,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                             ? heroName.getHeight() : (24f * density);
                     float shelfTopInMain = parkedDockTopInMain - (HERO_GAP_DP * density) - shelfH;
                     float targetCenterY = (clockBottomInMain + shelfTopInMain) * 0.5f;
+                    // Fixed safe top clears the 28dp minimal/marquee slot (+6dp top + 8dp gap)
+                    // regardless of whether minimal/marquee is ON or OFF, so fixed cards never jump.
+                    float minSafeTop = clockBottomInMain + (42f * density);
 
                     if (activeWea != null && activeWea.getHeight() > 0) {
+                        float maxTop = shelfTopInMain - activeWea.getHeight() - (4f * density);
                         float desiredTopInMain = targetCenterY - (activeWea.getHeight() * 0.5f);
+                        if (desiredTopInMain < minSafeTop && maxTop >= desiredTopInMain) {
+                            desiredTopInMain = Math.min(minSafeTop, maxTop);
+                        }
                         float baseTopInMain = activeWea.getTop();
                         float dy = Math.round(desiredTopInMain - baseTopInMain);
                         if (Math.abs(activeWea.getTranslationY() - dy) >= 1f) {
@@ -3050,7 +3095,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                             fDy = Math.round(eb[0] - footballCardView.getTop());
                         } else {
                             targetH = Math.round(153f * density);
-                            fDy = Math.round(targetCenterY - (targetH * 0.5f) - footballCardView.getTop());
+                            float maxTop = shelfTopInMain - targetH - (4f * density);
+                            float desiredTop = targetCenterY - (targetH * 0.5f);
+                            if (desiredTop < minSafeTop && maxTop >= desiredTop) {
+                                desiredTop = Math.min(minSafeTop, maxTop);
+                            }
+                            fDy = Math.round(desiredTop - footballCardView.getTop());
                         }
                         if (targetH > 0 && footballCardView.getLayoutParams().height != targetH) {
                             footballCardView.getLayoutParams().height = targetH;
@@ -3063,15 +3113,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
                     if (prayerCardView != null && prayerCardView.getVisibility() == View.VISIBLE) {
                         int pTargetH = Math.round(153f * density);
+                        float maxTop = shelfTopInMain - pTargetH - (4f * density);
                         float desiredTop = targetCenterY - (pTargetH * 0.5f);
-                        if (footballPillMinimalView != null
-                                && footballPillMinimalView.getVisibility() == View.VISIBLE
-                                && footballPillMinimalView.getBottom() > 0) {
-                            float minTopBelowMarquee = footballPillMinimalView.getBottom() + 8f * density;
-                            float maxTopAboveShelf = shelfTopInMain - pTargetH;
-                            if (desiredTop < minTopBelowMarquee) {
-                                desiredTop = Math.min(minTopBelowMarquee, Math.max(desiredTop, maxTopAboveShelf));
-                            }
+                        if (desiredTop < minSafeTop && maxTop >= desiredTop) {
+                            desiredTop = Math.min(minSafeTop, maxTop);
                         }
                         float pDy = Math.round(desiredTop - prayerCardView.getTop());
                         if (Math.abs(prayerCardView.getTranslationY() - pDy) >= 1f) {
@@ -3658,13 +3703,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
             if (position < COLUMNS) {
+                View leftCard = activeLeftCard();
                 View rightCard = activeRightLargeCard();
                 if (position <= 2) {
-                    if (weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE && weatherAirQualityView.getAlpha() > 0.5f) {
-                        weatherAirQualityView.requestFocus();
-                        return true;
-                    } else if (weatherPillMinimalView != null && weatherPillMinimalView.getVisibility() == View.VISIBLE && weatherPillMinimalView.getAlpha() > 0.5f) {
-                        weatherPillMinimalView.requestFocus();
+                    if (leftCard != null) {
+                        leftCard.requestFocus();
                         return true;
                     } else if (rightCard != null) {
                         rightCard.requestFocus();
@@ -3773,12 +3816,25 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void stylePrayerCardTheme() {
         if (prayerCardView == null) return;
+        if (prayerCardView instanceof ViewGroup) {
+            ((ViewGroup) prayerCardView).setClipChildren(false);
+            ((ViewGroup) prayerCardView).setClipToPadding(false);
+        }
+        View miniRow = findViewById(R.id.prayerMiniRow);
+        if (miniRow instanceof ViewGroup) {
+            ((ViewGroup) miniRow).setClipChildren(false);
+            ((ViewGroup) miniRow).setClipToPadding(false);
+        }
         boolean isDark = ThemeManager.isDarkGlow(this);
         boolean isNeu = ThemeManager.isNeumorphism(this);
         boolean isNeuDark = ThemeManager.isNeumorphismDark(this);
 
         float topRadius = 16f * density;
         if (prayerTopCard != null) {
+            if (prayerTopCard instanceof ViewGroup) {
+                ((ViewGroup) prayerTopCard).setClipChildren(false);
+                ((ViewGroup) prayerTopCard).setClipToPadding(false);
+            }
             if (isDark) {
                 StateListDrawable sld = new StateListDrawable();
                 GradientDrawable focused = new GradientDrawable();
@@ -3878,15 +3934,27 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             View slot = prayerSlots[i];
             if (slot != null) {
                 if (isNext) {
-                    GradientDrawable activeBg = new GradientDrawable(
-                            GradientDrawable.Orientation.TL_BR,
-                            isNeu && !isNeuDark
-                                    ? new int[]{0x42FACC15, 0x2AF59E0B}
-                                    : new int[]{0x669A7B16, 0x5271590E});
-                    activeBg.setCornerRadius(slotRadius);
-                    activeBg.setStroke(Math.max(1, Math.round(1.4f * density)),
-                            isNeu && !isNeuDark ? 0xFFD97706 : 0xFFFACC15);
-                    slot.setBackground(activeBg);
+                    if (isNeu) {
+                        GradientDrawable tintOverlay = new GradientDrawable(
+                                GradientDrawable.Orientation.TL_BR,
+                                isNeuDark
+                                        ? new int[]{0x4DFACC15, 0x33B45309}
+                                        : new int[]{0x42FACC15, 0x26F59E0B});
+                        tintOverlay.setCornerRadius(slotRadius);
+                        tintOverlay.setStroke(Math.max(1, Math.round(1.4f * density)),
+                                isNeuDark ? 0xFFFACC15 : 0xFFD97706);
+                        slot.setBackground(new android.graphics.drawable.LayerDrawable(new Drawable[]{
+                                new NeumorphicDrawable(slotRadius, density, NeumorphicDrawable.MODE_EXTRUDED, true),
+                                tintOverlay
+                        }));
+                    } else {
+                        GradientDrawable activeBg = new GradientDrawable(
+                                GradientDrawable.Orientation.TL_BR,
+                                new int[]{0x669A7B16, 0x5271590E});
+                        activeBg.setCornerRadius(slotRadius);
+                        activeBg.setStroke(Math.max(1, Math.round(1.4f * density)), 0xFFFACC15);
+                        slot.setBackground(activeBg);
+                    }
                 } else if (isDark) {
                     GradientDrawable sBg = new GradientDrawable();
                     sBg.setColor(0xEE0A0C12);
@@ -4195,44 +4263,94 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     private static final String PREF_WEATHER_WIDGET_MODE = "weather_widget_mode";
-    private static final String PREF_PRAYER_WIDGET_ENABLED = "prayer_widget_enabled";
+    private static final String PREF_PRAYER_WIDGET_MODE = "prayer_widget_mode";
     public static final String WIDGET_MODE_LARGE = "large";
     public static final String WIDGET_MODE_MINIMAL = "minimal";
     public static final String WIDGET_MODE_NONE = "none";
+    public static final String PRAYER_MODE_NONE = "none";
+    public static final String PRAYER_MODE_RIGHT = "right";
+    public static final String PRAYER_MODE_LEFT = "left";
 
-    private boolean isPrayerWidgetEnabled() {
+    private String getPrayerWidgetMode() {
         return getSharedPreferences("aura_prefs", MODE_PRIVATE)
-                .getBoolean(PREF_PRAYER_WIDGET_ENABLED, false);
+                .getString(PREF_PRAYER_WIDGET_MODE, PRAYER_MODE_NONE);
     }
 
-    private void setPrayerWidgetEnabled(boolean enabled) {
+    private void setPrayerWidgetMode(String mode) {
         getSharedPreferences("aura_prefs", MODE_PRIVATE)
                 .edit()
-                .putBoolean(PREF_PRAYER_WIDGET_ENABLED, enabled)
+                .putString(PREF_PRAYER_WIDGET_MODE, mode)
                 .apply();
+    }
+
+    private String weatherModeLabel(String mode) {
+        if (WIDGET_MODE_MINIMAL.equals(mode)) return "Kecil";
+        if (WIDGET_MODE_LARGE.equals(mode)) return "Besar";
+        return "OFF";
+    }
+
+    private String prayerModeLabel(String mode) {
+        if (PRAYER_MODE_RIGHT.equals(mode)) return "Kanan";
+        if (PRAYER_MODE_LEFT.equals(mode)) return "Kiri";
+        return "OFF";
+    }
+
+    private String footballModeLabel(String mode) {
+        if (FootballScheduleManager.MODE_MINIMAL.equals(mode)) return "Marquee";
+        if (FootballScheduleManager.MODE_LARGE.equals(mode)) return "Besar";
+        return "OFF";
+    }
+
+    private View activeLeftCard() {
+        if (weatherAirQualityView != null && weatherAirQualityView.getVisibility() == View.VISIBLE && weatherAirQualityView.getAlpha() > 0.5f) {
+            return weatherAirQualityView;
+        }
+        if (prayerCardView != null && PRAYER_MODE_LEFT.equals(getPrayerWidgetMode())
+                && prayerCardView.getVisibility() == View.VISIBLE && prayerCardView.getAlpha() > 0.5f) {
+            return prayerCardView;
+        }
+        if (weatherPillMinimalView != null && weatherPillMinimalView.getVisibility() == View.VISIBLE && weatherPillMinimalView.getAlpha() > 0.5f) {
+            return weatherPillMinimalView;
+        }
+        return null;
     }
 
     private View activeRightLargeCard() {
         if (footballCardView != null && footballCardView.getVisibility() == View.VISIBLE && footballCardView.getAlpha() > 0.5f) {
             return footballCardView;
         }
-        if (prayerCardView != null && prayerCardView.getVisibility() == View.VISIBLE && prayerCardView.getAlpha() > 0.5f) {
+        if (prayerCardView != null && PRAYER_MODE_RIGHT.equals(getPrayerWidgetMode())
+                && prayerCardView.getVisibility() == View.VISIBLE && prayerCardView.getAlpha() > 0.5f) {
             return prayerCardView;
         }
         return null;
     }
 
     private void applyPrayerWidgetMode() {
-        boolean enabled = isPrayerWidgetEnabled();
-        if (enabled && FootballScheduleManager.MODE_LARGE.equals(FootballScheduleManager.getWidgetMode(this))) {
-            // Bola Besar & Jadwal Sholat berbagi posisi kartu kanan besar; jika Bola Besar aktif, Sholat otomatis off.
-            enabled = false;
-            setPrayerWidgetEnabled(false);
+        String mode = getPrayerWidgetMode();
+        if (PRAYER_MODE_RIGHT.equals(mode) && FootballScheduleManager.MODE_LARGE.equals(FootballScheduleManager.getWidgetMode(this))) {
+            mode = PRAYER_MODE_NONE;
+            setPrayerWidgetMode(mode);
+        } else if (PRAYER_MODE_LEFT.equals(mode) && WIDGET_MODE_LARGE.equals(getWeatherWidgetMode())) {
+            mode = PRAYER_MODE_NONE;
+            setPrayerWidgetMode(mode);
         }
+
+        boolean enabled = PRAYER_MODE_RIGHT.equals(mode) || PRAYER_MODE_LEFT.equals(mode);
         boolean isDockRow = (lastFocused < COLUMNS);
         float alpha = isDockRow ? 1f : 0f;
         if (prayerCardView != null) {
             if (enabled) {
+                RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) prayerCardView.getLayoutParams();
+                if (PRAYER_MODE_LEFT.equals(mode)) {
+                    lp.removeRule(RelativeLayout.ALIGN_PARENT_END);
+                    lp.addRule(RelativeLayout.ALIGN_PARENT_START, RelativeLayout.TRUE);
+                } else {
+                    lp.removeRule(RelativeLayout.ALIGN_PARENT_START);
+                    lp.addRule(RelativeLayout.ALIGN_PARENT_END, RelativeLayout.TRUE);
+                }
+                prayerCardView.setLayoutParams(lp);
+                prayerCardView.setTranslationX(0f);
                 prayerCardView.setVisibility(View.VISIBLE);
                 prayerCardView.setAlpha(alpha);
                 prayerCardView.setFocusable(isDockRow);
@@ -4255,7 +4373,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private String getWeatherWidgetMode() {
         return getSharedPreferences("aura_prefs", MODE_PRIVATE)
-                .getString(PREF_WEATHER_WIDGET_MODE, WIDGET_MODE_LARGE);
+                .getString(PREF_WEATHER_WIDGET_MODE, WIDGET_MODE_NONE);
     }
 
     private void setWeatherWidgetMode(String mode) {
@@ -4289,6 +4407,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (weatherAirQualityView != null) weatherAirQualityView.setVisibility(View.GONE);
             if (weatherPillMinimalView != null) weatherPillMinimalView.setVisibility(View.GONE);
         }
+        if (WIDGET_MODE_LARGE.equals(mode) && PRAYER_MODE_LEFT.equals(getPrayerWidgetMode())) {
+            setPrayerWidgetMode(PRAYER_MODE_NONE);
+            applyPrayerWidgetMode();
+        } else if (root != null) {
+            root.post(this::alignTopButtons);
+        }
         updateWeatherAqi();
     }
 
@@ -4317,8 +4441,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (footballCardView != null) footballCardView.setVisibility(View.GONE);
             if (footballPillMinimalView != null) footballPillMinimalView.setVisibility(View.GONE);
         }
-        if (FootballScheduleManager.MODE_LARGE.equals(mode) && isPrayerWidgetEnabled()) {
-            setPrayerWidgetEnabled(false);
+        if (FootballScheduleManager.MODE_LARGE.equals(mode) && PRAYER_MODE_RIGHT.equals(getPrayerWidgetMode())) {
+            setPrayerWidgetMode(PRAYER_MODE_NONE);
             applyPrayerWidgetMode();
         } else if (root != null) {
             root.post(this::alignTopButtons);
@@ -4846,70 +4970,68 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     private void showWidgetManagerDialog() {
-        String currentMode = getWeatherWidgetMode();
-        boolean isMinimal = WIDGET_MODE_MINIMAL.equals(currentMode);
-        boolean isLarge = WIDGET_MODE_LARGE.equals(currentMode);
+        String weatherMode = getWeatherWidgetMode();
+        String prayerMode = getPrayerWidgetMode();
+        String footballMode = FootballScheduleManager.getWidgetMode(this);
 
         List<ThemedDialogItem> items = new ArrayList<>();
 
-        // 1. Cuaca Minimalis (Kapsul)
+        // 1. Prediksi Cuaca: OFF -> Kecil -> Besar -> OFF
         items.add(new ThemedDialogItem(
-                "🌤️ Cuaca Minimalis",
+                "🌦️ Prediksi Cuaca",
                 null,
-                isMinimal,
-                isMinimal ? "ON" : "OFF",
+                !WIDGET_MODE_NONE.equals(weatherMode),
+                weatherModeLabel(weatherMode),
                 () -> {
                     SoundEffects.playSelect();
-                    String next = isMinimal ? WIDGET_MODE_NONE : WIDGET_MODE_MINIMAL;
+                    String next = WIDGET_MODE_NONE.equals(weatherMode) ? WIDGET_MODE_MINIMAL
+                            : (WIDGET_MODE_MINIMAL.equals(weatherMode) ? WIDGET_MODE_LARGE : WIDGET_MODE_NONE);
+                    if (WIDGET_MODE_LARGE.equals(next) && PRAYER_MODE_LEFT.equals(getPrayerWidgetMode())) {
+                        setPrayerWidgetMode(PRAYER_MODE_NONE);
+                        applyPrayerWidgetMode();
+                    }
                     setWeatherWidgetMode(next);
                     applyWeatherWidgetMode();
                     showWidgetManagerDialog();
                 }
         ));
 
-        // 2. Cuaca Besar (Lengkap)
+        // 2. Jadwal Sholat: OFF -> Kanan -> Kiri -> OFF
         items.add(new ThemedDialogItem(
-                "🌦️ Cuaca Besar",
+                "🕌 Jadwal Sholat",
                 null,
-                isLarge,
-                isLarge ? "ON" : "OFF",
+                !PRAYER_MODE_NONE.equals(prayerMode),
+                prayerModeLabel(prayerMode),
                 () -> {
                     SoundEffects.playSelect();
-                    String next = isLarge ? WIDGET_MODE_NONE : WIDGET_MODE_LARGE;
-                    setWeatherWidgetMode(next);
-                    applyWeatherWidgetMode();
+                    String next = PRAYER_MODE_NONE.equals(prayerMode) ? PRAYER_MODE_RIGHT
+                            : (PRAYER_MODE_RIGHT.equals(prayerMode) ? PRAYER_MODE_LEFT : PRAYER_MODE_NONE);
+                    if (PRAYER_MODE_RIGHT.equals(next)
+                            && FootballScheduleManager.MODE_LARGE.equals(FootballScheduleManager.getWidgetMode(this))) {
+                        FootballScheduleManager.setWidgetMode(this, FootballScheduleManager.MODE_NONE);
+                        applyFootballWidgetMode();
+                    } else if (PRAYER_MODE_LEFT.equals(next) && WIDGET_MODE_LARGE.equals(getWeatherWidgetMode())) {
+                        setWeatherWidgetMode(WIDGET_MODE_NONE);
+                        applyWeatherWidgetMode();
+                    }
+                    setPrayerWidgetMode(next);
+                    applyPrayerWidgetMode();
                     showWidgetManagerDialog();
                 }
         ));
 
-        // 3. Bola Minimalis (Marquee)
-        boolean isFootMin = FootballScheduleManager.MODE_MINIMAL.equals(FootballScheduleManager.getWidgetMode(this));
+        // 3. Jadwal Bola: OFF -> Marquee -> Besar -> OFF
         items.add(new ThemedDialogItem(
-                "⚽ Bola Minimalis (Marquee)",
+                "⚽ Jadwal Bola",
                 null,
-                isFootMin,
-                isFootMin ? "ON" : "OFF",
+                !FootballScheduleManager.MODE_NONE.equals(footballMode),
+                footballModeLabel(footballMode),
                 () -> {
                     SoundEffects.playSelect();
-                    String next = isFootMin ? FootballScheduleManager.MODE_NONE : FootballScheduleManager.MODE_MINIMAL;
-                    FootballScheduleManager.setWidgetMode(this, next);
-                    applyFootballWidgetMode();
-                    showWidgetManagerDialog();
-                }
-        ));
-
-        // 4. Bola Besar (Kartu Lengkap)
-        boolean isFootLrg = FootballScheduleManager.MODE_LARGE.equals(FootballScheduleManager.getWidgetMode(this));
-        items.add(new ThemedDialogItem(
-                "⚽ Bola Besar (Kartu)",
-                null,
-                isFootLrg,
-                isFootLrg ? "ON" : "OFF",
-                () -> {
-                    SoundEffects.playSelect();
-                    String next = isFootLrg ? FootballScheduleManager.MODE_NONE : FootballScheduleManager.MODE_LARGE;
-                    if (FootballScheduleManager.MODE_LARGE.equals(next)) {
-                        setPrayerWidgetEnabled(false);
+                    String next = FootballScheduleManager.MODE_NONE.equals(footballMode) ? FootballScheduleManager.MODE_MINIMAL
+                            : (FootballScheduleManager.MODE_MINIMAL.equals(footballMode) ? FootballScheduleManager.MODE_LARGE : FootballScheduleManager.MODE_NONE);
+                    if (FootballScheduleManager.MODE_LARGE.equals(next) && PRAYER_MODE_RIGHT.equals(getPrayerWidgetMode())) {
+                        setPrayerWidgetMode(PRAYER_MODE_NONE);
                         applyPrayerWidgetMode();
                     }
                     FootballScheduleManager.setWidgetMode(this, next);
@@ -4918,27 +5040,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 }
         ));
 
-        // 5. Jadwal Sholat (Kartu Besar, posisi terkait dengan Bola Besar; Bola Marquee tetap bisa ON)
-        boolean isPrayerOn = isPrayerWidgetEnabled();
-        items.add(new ThemedDialogItem(
-                "🕌 Jadwal Sholat",
-                null,
-                isPrayerOn,
-                isPrayerOn ? "ON" : "OFF",
-                () -> {
-                    SoundEffects.playSelect();
-                    boolean nextPrayer = !isPrayerOn;
-                    if (nextPrayer && FootballScheduleManager.MODE_LARGE.equals(FootballScheduleManager.getWidgetMode(this))) {
-                        FootballScheduleManager.setWidgetMode(this, FootballScheduleManager.MODE_NONE);
-                        applyFootballWidgetMode();
-                    }
-                    setPrayerWidgetEnabled(nextPrayer);
-                    applyPrayerWidgetMode();
-                    showWidgetManagerDialog();
-                }
-        ));
-
-        // 6. Pilihan Liga Bola
+        // 4. Pilihan Liga Bola
         String activeLeague = FootballScheduleManager.getLeagueDisplayName(FootballScheduleManager.getLeagueFilter(this));
         items.add(new ThemedDialogItem(
                 "🏆 Liga : " + activeLeague,
@@ -5217,69 +5319,61 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void buildWidgetManagerSubMenu(FrameLayout panel, LinearLayout rows) {
         addInputRow(rows, null, R.drawable.ic_back, "Kembali", -1, () -> popMenuSubPage(panel, rows));
 
-        final View[] rowMinimalHolder = new View[1];
-        final View[] rowLargeHolder = new View[1];
-
-        rowMinimalHolder[0] = addInputRow(rows, null, R.drawable.ic_weather_sun, "Cuaca Kecil : " + (WIDGET_MODE_MINIMAL.equals(getWeatherWidgetMode()) ? "ON" : "OFF"), -1, () -> {
-            SoundEffects.playSelect();
-            boolean curMin = WIDGET_MODE_MINIMAL.equals(getWeatherWidgetMode());
-            String next = curMin ? WIDGET_MODE_NONE : WIDGET_MODE_MINIMAL;
-            setWeatherWidgetMode(next);
-            applyWeatherWidgetMode();
-            updateRowStatus(rowMinimalHolder[0], !curMin ? "ON" : "OFF");
-            updateRowStatus(rowLargeHolder[0], "OFF");
-        });
-
-        rowLargeHolder[0] = addInputRow(rows, null, R.drawable.ic_weather_cloud, "Cuaca Besar : " + (WIDGET_MODE_LARGE.equals(getWeatherWidgetMode()) ? "ON" : "OFF"), -1, () -> {
-            SoundEffects.playSelect();
-            boolean curLarge = WIDGET_MODE_LARGE.equals(getWeatherWidgetMode());
-            String next = curLarge ? WIDGET_MODE_NONE : WIDGET_MODE_LARGE;
-            setWeatherWidgetMode(next);
-            applyWeatherWidgetMode();
-            updateRowStatus(rowLargeHolder[0], !curLarge ? "ON" : "OFF");
-            updateRowStatus(rowMinimalHolder[0], "OFF");
-        });
-
-        final View[] rowFootMinHolder = new View[1];
-        final View[] rowFootLrgHolder = new View[1];
+        final View[] rowWeatherHolder = new View[1];
         final View[] rowPrayerHolder = new View[1];
+        final View[] rowFootballHolder = new View[1];
 
-        rowFootMinHolder[0] = addInputRow(rows, null, R.drawable.ic_football, "Bola Marquee : " + (FootballScheduleManager.MODE_MINIMAL.equals(FootballScheduleManager.getWidgetMode(this)) ? "ON" : "OFF"), -1, () -> {
+        rowWeatherHolder[0] = addInputRow(rows, null, R.drawable.ic_weather_sun,
+                "Prediksi Cuaca : " + weatherModeLabel(getWeatherWidgetMode()), -1, () -> {
             SoundEffects.playSelect();
-            boolean curMin = FootballScheduleManager.MODE_MINIMAL.equals(FootballScheduleManager.getWidgetMode(this));
-            String next = curMin ? FootballScheduleManager.MODE_NONE : FootballScheduleManager.MODE_MINIMAL;
-            FootballScheduleManager.setWidgetMode(this, next);
-            applyFootballWidgetMode();
-            updateRowStatus(rowFootMinHolder[0], !curMin ? "ON" : "OFF");
-            updateRowStatus(rowFootLrgHolder[0], "OFF");
+            String cur = getWeatherWidgetMode();
+            String next = WIDGET_MODE_NONE.equals(cur) ? WIDGET_MODE_MINIMAL
+                    : (WIDGET_MODE_MINIMAL.equals(cur) ? WIDGET_MODE_LARGE : WIDGET_MODE_NONE);
+            if (WIDGET_MODE_LARGE.equals(next) && PRAYER_MODE_LEFT.equals(getPrayerWidgetMode())) {
+                setPrayerWidgetMode(PRAYER_MODE_NONE);
+                applyPrayerWidgetMode();
+                updateRowStatus(rowPrayerHolder[0], "OFF");
+            }
+            setWeatherWidgetMode(next);
+            applyWeatherWidgetMode();
+            updateRowStatus(rowWeatherHolder[0], weatherModeLabel(next));
         });
 
-        rowFootLrgHolder[0] = addInputRow(rows, null, R.drawable.ic_football, "Bola Besar : " + (FootballScheduleManager.MODE_LARGE.equals(FootballScheduleManager.getWidgetMode(this)) ? "ON" : "OFF"), -1, () -> {
+        rowPrayerHolder[0] = addInputRow(rows, null, R.drawable.ic_mosque,
+                "Jadwal Sholat : " + prayerModeLabel(getPrayerWidgetMode()), -1, () -> {
             SoundEffects.playSelect();
-            boolean curLrg = FootballScheduleManager.MODE_LARGE.equals(FootballScheduleManager.getWidgetMode(this));
-            String next = curLrg ? FootballScheduleManager.MODE_NONE : FootballScheduleManager.MODE_LARGE;
-            if (FootballScheduleManager.MODE_LARGE.equals(next)) {
-                setPrayerWidgetEnabled(false);
+            String cur = getPrayerWidgetMode();
+            String next = PRAYER_MODE_NONE.equals(cur) ? PRAYER_MODE_RIGHT
+                    : (PRAYER_MODE_RIGHT.equals(cur) ? PRAYER_MODE_LEFT : PRAYER_MODE_NONE);
+            if (PRAYER_MODE_RIGHT.equals(next)
+                    && FootballScheduleManager.MODE_LARGE.equals(FootballScheduleManager.getWidgetMode(this))) {
+                FootballScheduleManager.setWidgetMode(this, FootballScheduleManager.MODE_NONE);
+                applyFootballWidgetMode();
+                updateRowStatus(rowFootballHolder[0], "OFF");
+            } else if (PRAYER_MODE_LEFT.equals(next) && WIDGET_MODE_LARGE.equals(getWeatherWidgetMode())) {
+                setWeatherWidgetMode(WIDGET_MODE_NONE);
+                applyWeatherWidgetMode();
+                updateRowStatus(rowWeatherHolder[0], "OFF");
+            }
+            setPrayerWidgetMode(next);
+            applyPrayerWidgetMode();
+            updateRowStatus(rowPrayerHolder[0], prayerModeLabel(next));
+        });
+
+        rowFootballHolder[0] = addInputRow(rows, null, R.drawable.ic_football,
+                "Jadwal Bola : " + footballModeLabel(FootballScheduleManager.getWidgetMode(this)), -1, () -> {
+            SoundEffects.playSelect();
+            String cur = FootballScheduleManager.getWidgetMode(this);
+            String next = FootballScheduleManager.MODE_NONE.equals(cur) ? FootballScheduleManager.MODE_MINIMAL
+                    : (FootballScheduleManager.MODE_MINIMAL.equals(cur) ? FootballScheduleManager.MODE_LARGE : FootballScheduleManager.MODE_NONE);
+            if (FootballScheduleManager.MODE_LARGE.equals(next) && PRAYER_MODE_RIGHT.equals(getPrayerWidgetMode())) {
+                setPrayerWidgetMode(PRAYER_MODE_NONE);
                 applyPrayerWidgetMode();
                 updateRowStatus(rowPrayerHolder[0], "OFF");
             }
             FootballScheduleManager.setWidgetMode(this, next);
             applyFootballWidgetMode();
-            updateRowStatus(rowFootLrgHolder[0], !curLrg ? "ON" : "OFF");
-            updateRowStatus(rowFootMinHolder[0], "OFF");
-        });
-
-        rowPrayerHolder[0] = addInputRow(rows, null, R.drawable.ic_mosque, "Jadwal Sholat : " + (isPrayerWidgetEnabled() ? "ON" : "OFF"), -1, () -> {
-            SoundEffects.playSelect();
-            boolean nextPrayer = !isPrayerWidgetEnabled();
-            if (nextPrayer && FootballScheduleManager.MODE_LARGE.equals(FootballScheduleManager.getWidgetMode(this))) {
-                FootballScheduleManager.setWidgetMode(this, FootballScheduleManager.MODE_NONE);
-                applyFootballWidgetMode();
-                updateRowStatus(rowFootLrgHolder[0], "OFF");
-            }
-            setPrayerWidgetEnabled(nextPrayer);
-            applyPrayerWidgetMode();
-            updateRowStatus(rowPrayerHolder[0], nextPrayer ? "ON" : "OFF");
+            updateRowStatus(rowFootballHolder[0], footballModeLabel(next));
         });
 
         String activeLeague = FootballScheduleManager.getLeagueDisplayName(FootballScheduleManager.getLeagueFilter(this));
