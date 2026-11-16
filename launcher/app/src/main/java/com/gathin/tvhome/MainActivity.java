@@ -230,7 +230,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private final PrayerIconView[] prayerSlotIcons = new PrayerIconView[6];
     private final TextView[] prayerSlotNames = new TextView[6];
     private final TextView[] prayerSlotTimes = new TextView[6];
-    private int lastPrayerNextIndex = -1;
+    private int lastPrayerActiveIndex = -1;
     private View footballPillMinimalView;
     private View footballRowsContainer;
     private TextView footballLeagueTitle, footballStatusBadge;
@@ -1994,9 +1994,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         updateIslamicShelf();
         updateInputsButton();
         applyHomeScreenTheme();
-        Location.Zone chosenPlace = Location.chosen(this);
-        String zoneCode = (chosenPlace != null) ? chosenPlace.code : "WLY01";
-        Azan.setMasterEnabled(this, false);
+        String azanLoc = AppLocationManager.getLocationName(this);
+        if (Azan.isMasterEnabled(this)) {
+            Azan.schedule(this, azanLoc);
+            Azan.fetch(this);
+        }
         NowPlayingManager.updateCurrentMedia(this);
         startWallpaperRotation();
         handler.postDelayed(minuteTick, MINUTE_MS);
@@ -2156,7 +2158,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         updateWeatherAqi();
         updatePrayerTimes();
         WeatherAirQuality.sync(this, this::updateWeatherAqi);
-        PrayerTimes.sync(this, this::updatePrayerTimes);
+        PrayerTimes.sync(this, () -> {
+            updatePrayerTimes();
+            if (Azan.isMasterEnabled(this)) {
+                Azan.schedule(this, AppLocationManager.getLocationName(this));
+            }
+        });
     }
 
     @Override
@@ -3790,8 +3797,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (prayerSlotTimes[i] != null) prayerSlotTimes[i].setText(item.timeStr);
         }
 
-        if (lastPrayerNextIndex != ws.nextIndex) {
-            lastPrayerNextIndex = ws.nextIndex;
+        if (lastPrayerActiveIndex != ws.activeIndex) {
+            lastPrayerActiveIndex = ws.activeIndex;
             stylePrayerSlotsTheme();
         }
     }
@@ -3861,12 +3868,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         int mainTextColor = isNeu ? (isNeuDark ? 0xFFF8FAFC : 0xFF1A202C) : 0xFFFFFFFF;
         int subTextColor = isNeu ? (isNeuDark ? 0xFFE2E8F0 : 0xFF334155) : 0xE6FFFFFF;
-        int goldColor = (isNeu && !isNeuDark) ? 0xFFD97706 : 0xFFFACC15;
+        int goldColor = widgetYellowColor();
         int cutoutColor = isNeu ? (isNeuDark ? 0xFF1E2430 : 0xFFE2E8F0) : (isDark ? 0xFF0A0C12 : 0xFF343B48);
 
         if (prayerNextBadge != null) {
             GradientDrawable badgeBg = new GradientDrawable();
-            badgeBg.setColor(0xFFFACC15);
+            badgeBg.setColor(0xFFFFA726);
             badgeBg.setCornerRadius(10f * density);
             prayerNextBadge.setBackground(badgeBg);
             prayerNextBadge.setTextColor(0xFF111827);
@@ -3899,34 +3906,40 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         stylePrayerSlotsTheme();
     }
 
+    private int widgetYellowColor() {
+        boolean isNeu = ThemeManager.isNeumorphism(this);
+        boolean isNeuDark = ThemeManager.isNeumorphismDark(this);
+        return (isNeu && !isNeuDark) ? 0xFFD97706 : 0xFFFFA726;
+    }
+
     private void stylePrayerSlotsTheme() {
         boolean isDark = ThemeManager.isDarkGlow(this);
         boolean isNeu = ThemeManager.isNeumorphism(this);
         boolean isNeuDark = ThemeManager.isNeumorphismDark(this);
         float slotRadius = 11f * density;
-        int nextIdx = lastPrayerNextIndex >= 0 ? lastPrayerNextIndex : PrayerTimes.getWidgetState(this).nextIndex;
+        int activeIdx = lastPrayerActiveIndex >= 0 ? lastPrayerActiveIndex : PrayerTimes.getWidgetState(this).activeIndex;
 
         int mainTextColor = isNeu ? (isNeuDark ? 0xFFF8FAFC : 0xFF1A202C) : 0xFFFFFFFF;
         int subTextColor = isNeu ? (isNeuDark ? 0xFFE2E8F0 : 0xFF334155) : 0xE6FFFFFF;
-        int goldColor = (isNeu && !isNeuDark) ? 0xFFD97706 : 0xFFFACC15;
+        int goldColor = widgetYellowColor();
         int cutoutColor = isNeu ? (isNeuDark ? 0xFF1E2430 : 0xFFE2E8F0) : (isDark ? 0xFF0A0C12 : 0xFF343B48);
 
         int padH = Math.round(2f * density);
         int padV = Math.round(5f * density);
         for (int i = 0; i < 6; i++) {
-            boolean isNext = (i == nextIdx);
+            boolean isActive = (i == activeIdx);
             View slot = prayerSlots[i];
             if (slot != null) {
-                if (isNext) {
+                if (isActive) {
                     if (isNeu) {
                         slot.setBackground(new NeumorphicDrawable(slotRadius, density,
                                 NeumorphicDrawable.MODE_EXTRUDED, true).setGoldAccent(isNeuDark));
                     } else {
                         GradientDrawable activeBg = new GradientDrawable(
                                 GradientDrawable.Orientation.TL_BR,
-                                new int[]{0x669A7B16, 0x5271590E});
+                                new int[]{0x59FFA726, 0x3DB45309});
                         activeBg.setCornerRadius(slotRadius);
-                        activeBg.setStroke(Math.max(1, Math.round(1.4f * density)), 0xFFFACC15);
+                        activeBg.setStroke(Math.max(1, Math.round(1.4f * density)), 0xFFFFA726);
                         slot.setBackground(activeBg);
                     }
                 } else if (isDark) {
@@ -3952,7 +3965,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 prayerSlotIcons[i].setThemeColors(mainTextColor, cutoutColor, goldColor);
             }
             if (prayerSlotNames[i] != null) {
-                prayerSlotNames[i].setTextColor(isNext ? mainTextColor : subTextColor);
+                prayerSlotNames[i].setTextColor(isActive ? mainTextColor : subTextColor);
                 if (isNeu) prayerSlotNames[i].setShadowLayer(0, 0, 0, 0);
                 else prayerSlotNames[i].setShadowLayer(2f, 0, 1f, 0x80000000);
             }
@@ -4435,7 +4448,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             boolean isNeu = ThemeManager.isNeumorphism(this);
             boolean isNeuDark = ThemeManager.isNeumorphismDark(this);
             boolean isDark = ThemeManager.isDarkGlow(this);
-            int timeColor = isNeu ? (isNeuDark ? 0xFF60A5FA : 0xFF0D47A1) : (isDark ? 0xFF00F0FF : 0xFF7DD3FC);
+            int timeColor = widgetYellowColor();
             int liveColor = (isNeu && !isNeuDark) ? 0xFFD32F2F : 0xFFFF453A;
 
             if (footballLeagueTitle != null) {
@@ -4461,7 +4474,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     footballStatusBadge.setTextColor(liveColor);
                 } else {
                     footballStatusBadge.setText("SELENGKAPNYA ▸");
-                    footballStatusBadge.setTextColor(isNeu ? (isNeuDark ? 0xFFFBBF24 : 0xFFB45309) : (isDark ? 0xFF00F0FF : 0xFFFFB74D));
+                    footballStatusBadge.setTextColor(widgetYellowColor());
                 }
             }
 
@@ -4703,7 +4716,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         boolean isNeu = ThemeManager.isNeumorphism(this);
         boolean isNeuDark = ThemeManager.isNeumorphismDark(this);
         boolean isDark = ThemeManager.isDarkGlow(this);
-        int timeColor = isNeu ? (isNeuDark ? 0xFF60A5FA : 0xFF0D47A1) : (isDark ? 0xFF00F0FF : 0xFF7DD3FC);
+        int timeColor = widgetYellowColor();
         int liveColor = (isNeu && !isNeuDark) ? 0xFFD32F2F : 0xFFFF453A;
         int teamColor = isNeu ? (isNeuDark ? 0xFFF8FAFC : 0xFF1A202C) : 0xFFFFFFFF;
         Typeface outfit = getResources().getFont(R.font.outfit);
@@ -6347,8 +6360,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void showAzanSettingsDialog() {
         SoundEffects.playSelect();
-        Location.Zone chosenPlace = Location.chosen(this);
-        String zoneCode = (chosenPlace != null) ? chosenPlace.code : "WLY01";
+        String zoneCode = AppLocationManager.getLocationName(this);
         java.util.Calendar cal = java.util.Calendar.getInstance();
         PrayerTimes.Day todayTimes = PrayerTimes.day(this, zoneCode, cal);
         boolean isNeu = ThemeManager.isNeumorphism(this);
@@ -6370,7 +6382,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         titleCol.setOrientation(LinearLayout.VERTICAL);
 
         TextView titleView = new TextView(this);
-        titleView.setText("🕌 Tetapan & Pilihan Azan");
+        titleView.setText("🕌 Pengaturan & Pilihan Adzan");
         titleView.setTextSize(19);
         titleView.setTextColor(isNeu ? ThemeManager.neu(0xFF2B3036) : 0xFFFFFFFF);
         titleView.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
@@ -6380,7 +6392,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         titleCol.addView(titleView);
 
         TextView subView = new TextView(this);
-        subView.setText("Notifikasi popup kad kaca terapung di atas semua aplikasi & tetapan audio azan");
+        subView.setText("Notifikasi popup kartu kaca melayang di atas semua aplikasi & pengaturan audio adzan");
         subView.setTextSize(12.5f);
         subView.setTextColor(isNeu ? ThemeManager.neu(0xFF5A626E) : 0xD9FFFFFF);
         subView.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
@@ -6409,37 +6421,38 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         LinearLayout twoCols = new LinearLayout(this);
         twoCols.setOrientation(LinearLayout.HORIZONTAL);
 
-        // --- LEFT COLUMN: A (Suis Utama) & B (Pilihan Waktu Solat) ---
+        // --- LEFT COLUMN: A (Sakelar Utama) & B (Pilihan Waktu Sholat) ---
         LinearLayout leftCol = new LinearLayout(this);
         leftCol.setOrientation(LinearLayout.VERTICAL);
         LinearLayout.LayoutParams leftLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.15f);
         leftLp.rightMargin = (int) (12 * density);
         leftCol.setLayoutParams(leftLp);
 
-        // Bahagian A: Suis Utama
-        leftCol.addView(createDialogSectionHeader("A. STATUS UTAMA POPUP AZAN"));
+        // Bagian A: Sakelar Utama
+        leftCol.addView(createDialogSectionHeader("A. STATUS UTAMA POPUP ADZAN"));
         final TextView masterStatusTag = new TextView(this);
         LinearLayout masterRow = createDialogRow(
-                "🔔 Notifikasi Popup Azan TV",
-                "Papar kad waktu solat terapung di atas Netflix, YouTube & semua app",
+                "🔔 Notifikasi Popup Adzan TV",
+                "Tampilkan kartu waktu sholat melayang di atas Netflix, YouTube & semua aplikasi",
                 masterStatusTag,
                 null,
                 () -> {
                     boolean nowOn = !Azan.isMasterEnabled(MainActivity.this);
                     Azan.setMasterEnabled(MainActivity.this, nowOn);
                     Azan.schedule(MainActivity.this, zoneCode);
+                    if (nowOn) Azan.fetch(MainActivity.this);
                     SoundEffects.playSelect();
                     updateMasterTag(masterStatusTag, nowOn);
-                    showToast(nowOn ? "✅ Popup Azan TV Diaktifkan" : "⭕ Popup Azan TV Dimatikan");
+                    showToast(nowOn ? "✅ Popup Adzan TV Diaktifkan" : "⭕ Popup Adzan TV Dimatikan");
                 }
         );
         updateMasterTag(masterStatusTag, Azan.isMasterEnabled(this));
         leftCol.addView(masterRow);
 
-        // Bahagian B: Pilihan Waktu Solat
-        leftCol.addView(createDialogSectionHeader("B. PILIHAN WAKTU SOLAT (ON / OFF)"));
+        // Bagian B: Pilihan Waktu Sholat
+        leftCol.addView(createDialogSectionHeader("B. PILIHAN WAKTU SHOLAT (ON / OFF)"));
         int[] prayers = {0, 2, 3, 4, 5};
-        String[] prayerLabels = {"🌅 Subuh", "☀️ Zohor", "🌤️ Asar", "🌇 Maghrib", "🌙 Isyak"};
+        String[] prayerLabels = {"🌅 Subuh", "☀️ Dzuhur", "🌤️ Ashar", "🌇 Maghrib", "🌙 Isya"};
 
         for (int i = 0; i < prayers.length; i++) {
             final int pIdx = prayers[i];
@@ -6477,18 +6490,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         colDivLp.rightMargin = (int) (12 * density);
         twoCols.addView(colDivider, colDivLp);
 
-        // --- RIGHT COLUMN: C (Audio), D (Uji Popup), Panduan & Tutup ---
+        // --- RIGHT COLUMN: C (Audio), D (Uji Popup), Info & Tutup ---
         LinearLayout rightCol = new LinearLayout(this);
         rightCol.setOrientation(LinearLayout.VERTICAL);
         LinearLayout.LayoutParams rightLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f);
         rightCol.setLayoutParams(rightLp);
 
-        // Bahagian C: Audio
-        rightCol.addView(createDialogSectionHeader("C. PILIHAN BUNYI AZAN"));
+        // Bagian C: Audio
+        rightCol.addView(createDialogSectionHeader("C. PILIHAN SUARA ADZAN"));
         final TextView soundTag = new TextView(this);
         final TextView[] soundSubHolder = new TextView[1];
         LinearLayout soundRow = createDialogRow(
-                "🔊 Bunyi Azan Semasa",
+                "🔊 Suara Adzan Saat Ini",
                 Azan.soundLabel(Azan.getSoundChoice(this)),
                 soundTag,
                 soundSubHolder,
@@ -6501,7 +6514,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     });
                 }
         );
-        soundTag.setText("TUKAR ❯");
+        soundTag.setText("UBAH ❯");
         soundTag.setTextSize(12.5f);
         soundTag.setTypeface(getResources().getFont(R.font.outfit), Typeface.BOLD);
         soundTag.setFontVariationSettings("'wght' 700");
@@ -6510,12 +6523,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         : (isDark ? new int[]{0xFF00F0FF, 0xFF00F0FF} : new int[]{0xFF000000, 0xFF38BDF8})));
         rightCol.addView(soundRow);
 
-        // Bahagian D: Ujian Azan
-        rightCol.addView(createDialogSectionHeader("D. UJI POPUP AZAN"));
+        // Bagian D: Uji Adzan
+        rightCol.addView(createDialogSectionHeader("D. UJI POPUP ADZAN"));
         final TextView testTag = new TextView(this);
         LinearLayout testRow = createDialogRow(
-                "▶️ Uji Popup Azan Sekarang",
-                "Mencetuskan kad terapung & main audio pilihan",
+                "▶️ Uji Popup Adzan Sekarang",
+                "Menampilkan kartu melayang & memutar audio pilihan",
                 testTag,
                 null,
                 () -> {
@@ -6551,7 +6564,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
 
         TextView infoText = new TextView(this);
-        infoText.setText("💡 Waktu solat diselaraskan secara automatik mengikut zon JAKIM. Kad azan tetap muncul di atas Netflix, YouTube & Perfect TV.");
+        infoText.setText("💡 Jadwal sholat disinkronkan otomatis sesuai lokasi kota (" + zoneCode + "). Kartu adzan tetap muncul di atas semua aplikasi TV.");
         infoText.setTextSize(11f);
         infoText.setTextColor(isNeu ? ThemeManager.neu(0xFF4A5568) : 0xB3FFFFFF);
         infoText.setTypeface(getResources().getFont(R.font.outfit), Typeface.NORMAL);
@@ -6565,10 +6578,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         infoCard.setLayoutParams(infoLp);
         rightCol.addView(infoCard);
 
-        // Butang Tutup / Selesai
+        // Tombol Tutup
         final TextView closeTag = new TextView(this);
         LinearLayout closeRow = createDialogRow(
-                "✕ Tutup Tetapan",
+                "✕ Tutup Pengaturan",
                 null,
                 closeTag,
                 null,
@@ -6624,11 +6637,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         };
 
         final String[] soundOptions = new String[]{
-                "🕋 Azan Masjidil Haram Makkah (Penuh)",
-                "🕌 Azan Masjid Nabawi Madinah (Penuh)",
-                "🇲🇾 Azan Masjid As-Syakirin KLCC",
-                "🔔 Nada Chime Lembut (Ringkas ~5 saat)",
-                "🔕 Mod Senyap (Visual Sahaja Tanpa Audio)"
+                "🕋 Adzan Masjidil Haram Makkah (Penuh)",
+                "🕌 Adzan Masjid Nabawi Madinah (Penuh)",
+                "🕌 Adzan Masjid As-Syakirin KLCC",
+                "🔔 Nada Lonceng Lembut (Singkat ~5 detik)",
+                "🔕 Mode Senyap (Visual Saja Tanpa Audio)"
         };
 
         String currentSound = Azan.getSoundChoice(this);
@@ -6651,8 +6664,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
 
         showThemedListDialog(
-                "🔊 Pilih Audio Azan",
-                "Pilih lantunan azan atau nada peringatan waktu solat",
+                "🔊 Pilih Audio Adzan",
+                "Pilih lantunan adzan atau nada pengingat waktu sholat",
                 items,
                 null,
                 null
@@ -8840,7 +8853,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         showAsiaCountryDialog();
     }
 
-    /** Shows an Apple TV-style frosted glass prayer timetable popup anchored to the prayer widget. */
+    /** Shows an Apple TV-style popup with Hijri date and Adzan settings shortcut. */
     private void showPrayerPopup() {
         if (openMenu != null) return;
         SoundEffects.playSelect();
@@ -8851,28 +8864,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         LinearLayout rows = panel.findViewById(R.id.rows);
         Runnable close = () -> closeMenu(false);
 
-        // Header: Location synced with Weather
-        addInputRow(rows, close, R.drawable.ic_wea_pin, "Jadwal Sholat " + PrayerTimes.getShortZoneName(this) + " (Ganti Kota ▶)", TvInputManager.INPUT_STATE_CONNECTED, () -> {
-            SoundEffects.playSelect();
-            closeMenu(false);
-            CitySearchDialog.show(MainActivity.this, this::refreshLocationDependentData);
-        });
-
-        // Date row: Islamic Hijri
-        addInputRow(rows, close, R.drawable.ic_input, PrayerTimes.getHijriDate(), -1, () -> {});
+        // Date row: Islamic Hijri (read-only info row)
+        addInputRow(rows, close, R.drawable.ic_info, "Hijriah : " + PrayerTimes.getHijriDate(), -1, null);
 
         addSeparator(rows);
 
-        // Prayer times list
-        java.util.List<PrayerTimes.ScheduleItem> schedule = PrayerTimes.getFullSchedule(this);
-        for (PrayerTimes.ScheduleItem item : schedule) {
-            addPrayerRow(rows, close, item.name, item.timeFormatted, item.isNext);
-        }
-
-        addSeparator(rows);
-
-        // Tetapan Azan shortcut
-        addInputRow(rows, close, R.drawable.ic_azan, "Tetapan & Pilihan Azan ▶", -1, () -> {
+        // Pengaturan Adzan shortcut
+        addInputRow(rows, close, R.drawable.ic_azan, "Pengaturan & Pilihan Adzan ▶", -1, () -> {
             SoundEffects.playSelect();
             closeMenu(false);
             showAzanSettingsDialog();

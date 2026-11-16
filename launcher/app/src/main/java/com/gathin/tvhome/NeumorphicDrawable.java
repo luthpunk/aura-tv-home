@@ -210,8 +210,8 @@ public final class NeumorphicDrawable extends Drawable {
                     instanceFillGrad, instanceRimGrad, instanceGradMatrix);
         }
         if (goldAccentMode != 0 && a > 0f) {
-            int tintColor = (goldAccentMode == 2) ? 0x3DFACC15 : 0x33FACC15;
-            int strokeColor = (goldAccentMode == 2) ? 0xFFFACC15 : 0xFFD97706;
+            int tintColor = (goldAccentMode == 2) ? 0x3DFFA726 : 0x33FFA726;
+            int strokeColor = (goldAccentMode == 2) ? 0xFFFFA726 : 0xFFD97706;
             FILL_PAINT.setShader(null);
             FILL_PAINT.setColor(tintColor);
             FILL_PAINT.setAlpha(Math.round(((tintColor >>> 24) & 0xFF) * a));

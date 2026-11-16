@@ -60,15 +60,17 @@ final class PrayerTimes {
     static final class WidgetState {
         final PrayerItem[] items;
         final int nextIndex;
+        final int activeIndex;
         final String nextName;
         final String nextTime;
         final int remainingMinutes;
         final String locationName;
 
-        WidgetState(PrayerItem[] items, int nextIndex, String nextName, String nextTime,
+        WidgetState(PrayerItem[] items, int nextIndex, int activeIndex, String nextName, String nextTime,
                     int remainingMinutes, String locationName) {
             this.items = items;
             this.nextIndex = nextIndex;
+            this.activeIndex = activeIndex;
             this.nextName = nextName;
             this.nextTime = nextTime;
             this.remainingMinutes = remainingMinutes;
@@ -487,17 +489,19 @@ final class PrayerTimes {
         final String name;
         final String timeStr;
         final boolean isNext;
+        final boolean isActive;
         final boolean isPast;
 
-        PrayerItem(String name, String timeStr, boolean isNext, boolean isPast) {
+        PrayerItem(String name, String timeStr, boolean isNext, boolean isActive, boolean isPast) {
             this.name = name;
             this.timeStr = timeStr;
             this.isNext = isNext;
+            this.isActive = isActive;
             this.isPast = isPast;
         }
     }
 
-    /** Returns full widget state including all 6 daily slots and countdown to the next prayer. */
+    /** Returns full widget state including all 6 daily slots, currently active slot, and next countdown. */
     static WidgetState getWidgetState(Context context) {
         Calendar now = Calendar.getInstance();
         long[] times = getTimesForDate(context, now);
@@ -508,6 +512,16 @@ final class PrayerTimes {
             if (i == 1) continue; // Syuruq is sunrise marker, not a fardhu prayer
             if (times[i] > nowMs) {
                 nextIdx = i;
+                break;
+            }
+        }
+
+        // Determine currently active prayer slot (the latest time slot that has already entered today;
+        // if before Subuh [00:00..Subuh], Isya [5] from the night is still active).
+        int activeIdx = 5;
+        for (int i = times.length - 1; i >= 0; i--) {
+            if (times[i] <= nowMs) {
+                activeIdx = i;
                 break;
             }
         }
@@ -530,6 +544,7 @@ final class PrayerTimes {
                     PRAYER_NAMES[i],
                     timeFmt.format(new Date(times[i])),
                     i == nextIdx,
+                    i == activeIdx,
                     times[i] < nowMs
             );
         }
@@ -539,6 +554,7 @@ final class PrayerTimes {
         return new WidgetState(
                 items,
                 nextIdx,
+                activeIdx,
                 PRAYER_NAMES[nextIdx],
                 timeFmt.format(new Date(nextTimeMs)),
                 remMins,
@@ -569,7 +585,7 @@ final class PrayerTimes {
             PrayerItem item = ws.items[i];
             int start = sb.length();
             sb.append(item.name.toUpperCase(Locale.ROOT)).append(" ").append(item.timeStr);
-            sb.setSpan(new ForegroundColorSpan(item.isNext ? 0xFFFACC15 : 0xE6FFFFFF),
+            sb.setSpan(new ForegroundColorSpan(item.isActive ? 0xFFFFA726 : 0xE6FFFFFF),
                     start, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             sb.setSpan(new StyleSpan(Typeface.BOLD), start, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             if (i < ws.items.length - 1) {
@@ -756,9 +772,9 @@ final class PrayerTimes {
             int month = h.get(java.time.temporal.ChronoField.MONTH_OF_YEAR);
             int year = h.get(java.time.temporal.ChronoField.YEAR);
             String[] months = {
-                "Muharram", "Safar", "Rabiulawal", "Rabiulakhir",
-                "Jamadilawal", "Jamadilakhir", "Rejab", "Syaaban",
-                "Ramadan", "Syawal", "Zulkaedah", "Zulhijjah"
+                "Muharram", "Safar", "Rabiul Awal", "Rabiul Akhir",
+                "Jumadil Awal", "Jumadil Akhir", "Rajab", "Sya'ban",
+                "Ramadhan", "Syawal", "Dzulqa'dah", "Dzulhijjah"
             };
             String monthName = (month >= 1 && month <= 12) ? months[month - 1] : "Hijrah";
             return day + " " + monthName + " " + year + "H";

@@ -92,8 +92,11 @@ public class AzanActivity extends Activity {
 
         LinearLayout words = new LinearLayout(this);
         words.setOrientation(LinearLayout.VERTICAL);
-        String town = Location.prefs(this).getString("now_town", "");
-        TextView label = text(town.isEmpty() ? "AZAN" : "AZAN  ·  " + town.toUpperCase(java.util.Locale.ROOT), outfit, 12, 0xB3FFFFFF, 600);
+        String town = AppLocationManager.getLocationName(this);
+        if (town == null || town.isEmpty()) {
+            town = Location.prefs(this).getString("now_town", "");
+        }
+        TextView label = text(town.isEmpty() ? "ADZAN" : "ADZAN  ·  " + town.toUpperCase(java.util.Locale.ROOT), outfit, 12, 0xB3FFFFFF, 600);
         label.setLetterSpacing(0.22f);
         label.setGravity(Gravity.START);
         words.addView(label);
@@ -121,15 +124,15 @@ public class AzanActivity extends Activity {
 
         String soundChoice = Azan.getSoundChoice(this);
         if (Azan.SOUND_SILENT.equals(soundChoice)) {
-            hint.setText("Mod Senyap • Tekan Back untuk tutup");
+            hint.setText("Mode Senyap • Tekan Back untuk tutup");
             handler.postDelayed(this::finish, 15_000);
         } else if (Azan.SOUND_CHIME.equals(soundChoice)) {
-            hint.setText("Nada Peringatan Ringkas • Tekan Back untuk tutup");
+            hint.setText("Nada Pengingat Singkat • Tekan Back untuk tutup");
             playChime();
         } else {
             File file = Azan.recording(this, soundChoice);
             if (file == null) {
-                hint.setText("Memuat turun audio " + Azan.soundLabel(soundChoice) + "...");
+                hint.setText("Mengunduh audio " + Azan.soundLabel(soundChoice) + "...");
                 Azan.fetch(this, soundChoice);
                 playChime();
                 handler.postDelayed(this::finish, 8000);

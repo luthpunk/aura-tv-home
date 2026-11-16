@@ -85,7 +85,7 @@ public final class CitySearchDialog {
 
         // Header Row: Title + Current City Subtitle
         TextView titleView = new TextView(activity);
-        titleView.setText("📍 Ubah Kota Cuaca");
+        titleView.setText("📍 Lokasi Cuaca dan Sholat");
         titleView.setTextSize(17.5f);
         titleView.setTextColor(isNeu ? ThemeManager.neu(0xFF2B3036) : 0xFFFFFFFF);
         titleView.setTypeface(outfit, Typeface.BOLD);

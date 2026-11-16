@@ -697,16 +697,17 @@ final class WeatherAirQuality {
 
     public static int getAqiColor(int aqi, boolean isNeu) {
         if (isNeu) {
+            boolean neuDark = ThemeManager.isNeuDarkCached();
             if (aqi <= 50) return ThemeManager.neu(0xFF15803D);  // Deep Emerald Green (Baik)
             if (aqi <= 100) return ThemeManager.neu(0xFF0284C7); // Deep Sky Blue (Sedang)
-            if (aqi <= 200) return ThemeManager.neu(0xFFD97706); // Warm Amber-Orange (Tidak Sehat)
+            if (aqi <= 200) return neuDark ? 0xFFFFA726 : 0xFFD97706; // Warm Amber-Yellow (Tidak Sehat)
             if (aqi <= 300) return ThemeManager.neu(0xFFDC2626); // Crimson Red (Sangat Tidak Sehat)
             return ThemeManager.neu(0xFF7F1D1D);                 // Dark Maroon (Berbahaya)
         }
         if (aqi <= 50) return 0xFF4ADE80;  // Green (Baik)
-        if (aqi <= 100) return 0xFF38BDF8; // Sky Blue (Sederhana)
-        if (aqi <= 200) return 0xFFFB923C; // Orange (Tidak Sihat)
-        if (aqi <= 300) return 0xFFEF4444; // Red (Sangat Tidak Sihat)
+        if (aqi <= 100) return 0xFF38BDF8; // Sky Blue (Sedang)
+        if (aqi <= 200) return 0xFFFFA726; // Warm Amber-Yellow (Tidak Sehat)
+        if (aqi <= 300) return 0xFFEF4444; // Red (Sangat Tidak Sehat)
         return 0xFF991B1B;                 // Maroon (Berbahaya)
     }
 

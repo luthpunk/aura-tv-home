@@ -29,7 +29,7 @@ public class PrayerIconView extends View {
     private int iconType = ICON_SUBUH;
     private int foregroundColor = 0xFFFFFFFF;
     private int cutoutColor = 0xFF3A3F4B;
-    private int goldColor = 0xFFFACC15;
+    private int goldColor = 0xFFFFA726;
     private int goldWarmColor = 0xFFF59E0B;
 
     private final Paint fillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -158,7 +158,7 @@ public class PrayerIconView extends View {
         // Soft golden ambient glow behind the mosque dome
         glowPaint.setShader(new RadialGradient(
                 cx, cy, haloR,
-                new int[]{0x99FACC15, 0x55F59E0B, 0x00F59E0B},
+                new int[]{0x99FFA726, 0x55F59E0B, 0x00F59E0B},
                 new float[]{0.15f, 0.72f, 1.0f},
                 Shader.TileMode.CLAMP
         ));

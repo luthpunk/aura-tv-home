@@ -48,11 +48,15 @@ final class Azan {
     }
 
     static boolean isMasterEnabled(Context ctx) {
-        return prefs(ctx).getBoolean("master_enabled", true);
+        SharedPreferences p = prefs(ctx);
+        if (!p.getBoolean("master_re_enabled_v2", false)) {
+            p.edit().putBoolean("master_re_enabled_v2", true).putBoolean("master_enabled", true).apply();
+        }
+        return p.getBoolean("master_enabled", true);
     }
 
     static void setMasterEnabled(Context ctx, boolean enabled) {
-        prefs(ctx).edit().putBoolean("master_enabled", enabled).apply();
+        prefs(ctx).edit().putBoolean("master_re_enabled_v2", true).putBoolean("master_enabled", enabled).apply();
     }
 
     static boolean on(Context ctx, int prayer) {
@@ -72,11 +76,11 @@ final class Azan {
     }
 
     static String soundLabel(String choice) {
-        if (SOUND_MADINAH.equals(choice)) return "🕌 Azan Masjid Nabawi Madinah";
-        if (SOUND_KLCC.equals(choice)) return "🇲🇾 Azan Masjid As-Syakirin KLCC";
-        if (SOUND_CHIME.equals(choice)) return "🔔 Nada Chime Lembut (Ringkas)";
-        if (SOUND_SILENT.equals(choice)) return "🔕 Mod Senyap (Visual Sahaja)";
-        return "🕋 Azan Masjidil Haram Makkah";
+        if (SOUND_MADINAH.equals(choice)) return "🕌 Adzan Masjid Nabawi Madinah";
+        if (SOUND_KLCC.equals(choice)) return "🕌 Adzan Masjid As-Syakirin KLCC";
+        if (SOUND_CHIME.equals(choice)) return "🔔 Nada Lonceng Lembut (Singkat)";
+        if (SOUND_SILENT.equals(choice)) return "🔕 Mode Senyap (Visual Saja)";
+        return "🕋 Adzan Masjidil Haram Makkah";
     }
 
     /** Sets the alarm for the next prayer that is on, today or tomorrow; clears it when none is. */
@@ -124,7 +128,12 @@ final class Azan {
                     note(ctx, "next azan: " + PrayerTimes.NAMES[p] + " at " + String.format(java.util.Locale.ROOT, "%02d:%02d",
                             times.minutes[p] / 60, times.minutes[p] % 60) + (d == 1 ? " tomorrow" : ""));
                 } catch (SecurityException e) {
-                    note(ctx, "exact alarms not allowed: " + e.getMessage());
+                    try {
+                        am.set(AlarmManager.RTC, when, pending(ctx, p, when, PendingIntent.FLAG_UPDATE_CURRENT));
+                        note(ctx, "exact alarm denied, using set(): " + PrayerTimes.NAMES[p]);
+                    } catch (Exception ignored) {
+                        note(ctx, "alarms not allowed: " + e.getMessage());
+                    }
                 }
                 return;
             }
@@ -223,10 +232,10 @@ final class Azan {
             String channelId = "azan_alarm_channel";
             android.app.NotificationChannel channel = new android.app.NotificationChannel(
                     channelId,
-                    "Waktu Solat & Azan TV",
+                    "Waktu Sholat & Adzan TV",
                     android.app.NotificationManager.IMPORTANCE_HIGH
             );
-            channel.setDescription("Notifikasi dan popup waktu solat / azan terapung");
+            channel.setDescription("Notifikasi dan popup waktu sholat / adzan melayang");
             channel.setLockscreenVisibility(android.app.Notification.VISIBILITY_PUBLIC);
             channel.setBypassDnd(true);
             nm.createNotificationChannel(channel);
@@ -237,11 +246,11 @@ final class Azan {
                     azanIntent,
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
             );
-            String prayerName = (prayer >= 0 && prayer < PrayerTimes.NAMES.length) ? PrayerTimes.NAMES[prayer] : "Solat";
+            String prayerName = (prayer >= 0 && prayer < PrayerTimes.NAMES.length) ? PrayerTimes.NAMES[prayer] : "Sholat";
             android.app.Notification.Builder builder = new android.app.Notification.Builder(ctx, channelId)
                     .setSmallIcon(R.drawable.ic_azan)
                     .setContentTitle("🕌 Masuk Waktu " + prayerName)
-                    .setContentText("Peringatan Waktu Solat")
+                    .setContentText("Pengingat Waktu Sholat")
                     .setCategory(android.app.Notification.CATEGORY_ALARM)
                     .setVisibility(android.app.Notification.VISIBILITY_PUBLIC)
                     .setFullScreenIntent(pi, true)
