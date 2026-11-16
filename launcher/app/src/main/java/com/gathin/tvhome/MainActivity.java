@@ -1380,19 +1380,29 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         setWallpaper(bmp, fade, null);
     }
 
-    /** Theme-dependent wallpaper filter. Neumorphism Light/Dark use solid canvas and skip full-screen overdraw. */
+    /** Theme-dependent wallpaper filter. Neumorphism keeps a faint tinted static/live wallpaper. */
     private void applyWallpaperColorFilter() {
         updateLiveDimOverlay();
         if (!wallpaperFullscreen && ThemeManager.isNeumorphism(this)) {
-            int solidCanvas = ThemeManager.isNeumorphismDark(this) ? 0xFF171A22 : 0xFFEDEAE4;
+            boolean isNeuDark = ThemeManager.isNeumorphismDark(this);
+            int solidCanvas = isNeuDark ? 0xFF171A22 : 0xFFEDEAE4;
             if (root != null) root.setBackgroundColor(solidCanvas);
-            if (wallView != null && wallView.getVisibility() != View.GONE) {
-                wallView.setVisibility(View.GONE);
+            if (wallView != null) {
+                wallView.clearColorFilter();
+                wallView.setAlpha(isNeuDark ? 0.22f : 0.20f);
+                if (currentLiveFile == null) {
+                    if (wallView.getVisibility() != View.VISIBLE) {
+                        wallView.setVisibility(View.VISIBLE);
+                    }
+                } else if (liveFrames > 0 && wallView.getVisibility() != View.GONE) {
+                    wallView.setVisibility(View.GONE);
+                }
             }
             return;
         }
         if (wallView == null) return;
-        if (wallView.getVisibility() != View.VISIBLE) {
+        wallView.setAlpha(1.0f);
+        if (currentLiveFile == null && wallView.getVisibility() != View.VISIBLE) {
             wallView.setVisibility(View.VISIBLE);
         }
         if (wallpaperFullscreen) {
@@ -1402,7 +1412,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (ThemeManager.isDarkGlow(this)) {
             wallView.setColorFilter(0xFF222222, android.graphics.PorterDuff.Mode.MULTIPLY);
         } else {
-            wallView.setColorFilter(0xFF6E6E6E, android.graphics.PorterDuff.Mode.MULTIPLY);
+            wallView.setColorFilter(0xFF999999, android.graphics.PorterDuff.Mode.MULTIPLY);
         }
         if (wallBitmap != null && !wallBitmap.hasAlpha() && root != null) {
             root.setBackground(null);
@@ -1413,11 +1423,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (ThemeManager.isDarkGlow(this)) {
             return 0xFF222222; // Ultra-dark OLED dimming (~13% brightness, moody cyber dark contrast)
         } else if (ThemeManager.isNeumorphismDark(this)) {
-            return 0xFF171A22; // Charcoal-navy Soft UI canvas matching 1794194557112.jpg
+            return 0xFF171A22; // Charcoal-navy Soft UI canvas
         } else if (ThemeManager.isNeumorphism(this)) {
-            return 0xFFEDEAE4; // Warm porcelain light wash matching 1793633365104.jpg
+            return 0xFFEDEAE4; // Warm porcelain light wash
         } else {
-            return 0xFF6E6E6E; // Standard glass dimming
+            return 0xFF999999; // Frosted glass 60% brightness (40% dim)
         }
     }
 
@@ -1829,6 +1839,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (liveDimOverlay != null) {
             liveDimOverlay.setVisibility(View.GONE);
         }
+        applyWallpaperColorFilter();
     }
 
     private void updateLiveDimOverlay() {
@@ -1839,17 +1850,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         liveDimOverlay.setVisibility(View.VISIBLE);
         if (ThemeManager.isDarkGlow(this)) {
-            // Dark Glow: deep OLED black-blue tint to preserve neon atmosphere
-            liveDimOverlay.setBackgroundColor(0xCC06080C);
+            // Dark Glow: ~87% deep OLED black (~13% video brightness, matching static MULTIPLY 0xFF222222)
+            liveDimOverlay.setBackgroundColor(0xDE030508);
         } else if (ThemeManager.isNeumorphismDark(this)) {
-            // Neumorphism Dark: 70% charcoal-navy tint
-            liveDimOverlay.setBackgroundColor(0xB312151D);
+            // Neumorphism Dark: ~78% charcoal wash (~22% video visible, matching static alpha 0.22f)
+            liveDimOverlay.setBackgroundColor(0xC7171A22);
         } else if (ThemeManager.isNeumorphism(this)) {
-            // Neumorphism Light: soft translucent porcelain wash
-            liveDimOverlay.setBackgroundColor(0x55EDEAE4);
+            // Neumorphism Light: ~81% porcelain wash (~19% video visible, matching static alpha 0.20f)
+            liveDimOverlay.setBackgroundColor(0xD0EDEAE4);
         } else {
-            // Frosted Glass: comfortable 35% dark tint
-            liveDimOverlay.setBackgroundColor(0x4D000000);
+            // Frosted Glass: 40% dark dim (60% video brightness, matching static MULTIPLY 0xFF999999)
+            liveDimOverlay.setBackgroundColor(0x66000000);
         }
     }
 

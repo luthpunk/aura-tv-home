@@ -274,53 +274,73 @@ public class PrayerIconView extends View {
         canvas.drawLine(cx, cy, cx + r * 0.45f, cy + r * 0.22f, strokePaint);
     }
 
-    private void drawSunrise(Canvas canvas, int w, int h, boolean highRays) {
+    private void drawSunrise(Canvas canvas, int w, int h, boolean isSyuruq) {
         float s = Math.min(w, h);
         float cx = w * 0.5f;
-        float horizonY = h * 0.78f;
-        float r = s * (highRays ? 0.26f : 0.25f);
-        float sunCy = horizonY - (highRays ? s * 0.04f : 0f);
+        float horizonY = h * (isSyuruq ? 0.76f : 0.79f);
+        float r = s * (isSyuruq ? 0.29f : 0.24f);
+        float sunCy = isSyuruq ? (horizonY - s * 0.06f) : (horizonY + s * 0.02f);
 
-        // Sun semicircle
+        // Warm soft atmospheric dawn/sunrise glow behind the rising sun
+        fillPaint.setColor(goldWarmColor);
+        fillPaint.setAlpha(isSyuruq ? 68 : 52);
+        tmpRect.set(cx - r * 1.9f, sunCy - r * 1.9f, cx + r * 1.9f, sunCy + r * 1.9f);
+        canvas.drawArc(tmpRect, 180f, 180f, true, fillPaint);
+
+        // Rising sun disk
         fillPaint.setColor(goldColor);
+        fillPaint.setAlpha(255);
         tmpRect.set(cx - r, sunCy - r, cx + r, sunCy + r);
         canvas.drawArc(tmpRect, 180f, 180f, true, fillPaint);
 
-        // Rays
+        // Sunbeams: Syuruq has crisp tall rays; Subuh has gentler dawn glow rays
         strokePaint.setColor(goldColor);
-        strokePaint.setStrokeWidth(Math.max(1.3f, s * 0.075f));
-        int count = highRays ? 9 : 7;
-        float innerR = r * 1.32f;
-        float outerR = r * (highRays ? 2.05f : 1.78f);
+        strokePaint.setAlpha(isSyuruq ? 255 : 210);
+        strokePaint.setStrokeWidth(Math.max(1.3f, s * 0.08f));
+        int count = isSyuruq ? 9 : 5;
+        float innerR = r * 1.28f;
+        float outerR = r * (isSyuruq ? 2.15f : 1.78f);
         for (int i = 0; i < count; i++) {
-            double angle = Math.toRadians(190.0 + (160.0 * i) / (count - 1));
-            float x1 = cx + (float) Math.cos(angle) * innerR;
-            float y1 = sunCy + (float) Math.sin(angle) * innerR;
-            float x2 = cx + (float) Math.cos(angle) * outerR;
-            float y2 = sunCy + (float) Math.sin(angle) * outerR;
-            canvas.drawLine(x1, y1, x2, y2, strokePaint);
+            double angle = Math.toRadians(195.0 + (150.0 * i) / (count - 1));
+            float curOuter = (isSyuruq && i % 2 == 1) ? outerR * 0.84f : outerR;
+            canvas.drawLine(
+                    cx + (float) Math.cos(angle) * innerR,
+                    sunCy + (float) Math.sin(angle) * innerR,
+                    cx + (float) Math.cos(angle) * curOuter,
+                    sunCy + (float) Math.sin(angle) * curOuter,
+                    strokePaint);
         }
 
-        // Horizon bar
+        // Horizon line (white foreground on Subuh for calm twilight contrast, gold on Syuruq)
+        strokePaint.setColor(isSyuruq ? goldColor : foregroundColor);
+        strokePaint.setAlpha(235);
         strokePaint.setStrokeWidth(Math.max(1.4f, s * 0.085f));
-        canvas.drawLine(cx - s * 0.52f, horizonY, cx + s * 0.52f, horizonY, strokePaint);
+        canvas.drawLine(cx - s * 0.56f, horizonY, cx + s * 0.56f, horizonY, strokePaint);
+        strokePaint.setAlpha(255);
+        fillPaint.setAlpha(255);
     }
 
     private void drawSun(Canvas canvas, int w, int h) {
         float s = Math.min(w, h);
         float cx = w * 0.5f;
         float cy = h * 0.5f;
-        float r = s * 0.23f;
+        float r = s * 0.25f;
 
+        // Soft solar halo + vivid midday sun core
         fillPaint.setColor(goldColor);
+        fillPaint.setAlpha(56);
+        canvas.drawCircle(cx, cy, r * 1.65f, fillPaint);
+        fillPaint.setAlpha(255);
         canvas.drawCircle(cx, cy, r, fillPaint);
 
+        // 8 crisp alternating long/short rays
         strokePaint.setColor(goldColor);
-        strokePaint.setStrokeWidth(Math.max(1.3f, s * 0.075f));
-        float innerR = r * 1.38f;
-        float outerR = r * 1.98f;
-        for (int i = 0; i < 12; i++) {
-            double angle = Math.toRadians(i * 30.0);
+        strokePaint.setAlpha(255);
+        strokePaint.setStrokeWidth(Math.max(1.35f, s * 0.085f));
+        float innerR = r * 1.32f;
+        for (int i = 0; i < 8; i++) {
+            double angle = Math.toRadians(i * 45.0);
+            float outerR = r * (i % 2 == 0 ? 2.02f : 1.72f);
             canvas.drawLine(
                     cx + (float) Math.cos(angle) * innerR,
                     cy + (float) Math.sin(angle) * innerR,
@@ -333,19 +353,23 @@ public class PrayerIconView extends View {
 
     private void drawSunCloud(Canvas canvas, int w, int h) {
         float s = Math.min(w, h);
-        float sunCx = w * 0.42f;
-        float sunCy = h * 0.46f;
-        float r = s * 0.22f;
+        float sunCx = w * 0.40f;
+        float sunCy = h * 0.43f;
+        float r = s * 0.24f;
 
         fillPaint.setColor(goldColor);
+        fillPaint.setAlpha(54);
+        canvas.drawCircle(sunCx, sunCy, r * 1.55f, fillPaint);
+        fillPaint.setAlpha(255);
         canvas.drawCircle(sunCx, sunCy, r, fillPaint);
 
         strokePaint.setColor(goldColor);
-        strokePaint.setStrokeWidth(Math.max(1.2f, s * 0.07f));
-        float innerR = r * 1.35f;
-        float outerR = r * 1.85f;
-        for (int i = 0; i < 9; i++) {
-            double angle = Math.toRadians(150.0 + i * 25.0);
+        strokePaint.setAlpha(255);
+        strokePaint.setStrokeWidth(Math.max(1.25f, s * 0.078f));
+        float innerR = r * 1.30f;
+        float outerR = r * 1.88f;
+        for (int i = 0; i < 7; i++) {
+            double angle = Math.toRadians(140.0 + i * 32.0);
             canvas.drawLine(
                     sunCx + (float) Math.cos(angle) * innerR,
                     sunCy + (float) Math.sin(angle) * innerR,
@@ -355,31 +379,41 @@ public class PrayerIconView extends View {
             );
         }
 
-        // Crisp foreground cloud
+        // Fluffy multi-puff afternoon cloud in foreground
         fillPaint.setColor(foregroundColor);
-        float cBaseY = h * 0.78f;
-        tmpRect.set(w * 0.38f, h * 0.56f, w * 0.88f, cBaseY);
-        canvas.drawRoundRect(tmpRect, s * 0.14f, s * 0.14f, fillPaint);
-        canvas.drawCircle(w * 0.56f, h * 0.56f, s * 0.16f, fillPaint);
-        canvas.drawCircle(w * 0.74f, h * 0.62f, s * 0.12f, fillPaint);
+        fillPaint.setAlpha(255);
+        float cBaseY = h * 0.84f;
+        tmpRect.set(w * 0.34f, h * 0.61f, w * 0.90f, cBaseY);
+        canvas.drawRoundRect(tmpRect, s * 0.13f, s * 0.13f, fillPaint);
+        canvas.drawCircle(w * 0.45f, h * 0.66f, s * 0.14f, fillPaint);
+        canvas.drawCircle(w * 0.59f, h * 0.56f, s * 0.19f, fillPaint);
+        canvas.drawCircle(w * 0.76f, h * 0.64f, s * 0.14f, fillPaint);
     }
 
     private void drawSunset(Canvas canvas, int w, int h) {
         float s = Math.min(w, h);
         float cx = w * 0.5f;
         float horizonY = h * 0.62f;
-        float r = s * 0.25f;
+        float r = s * 0.27f;
+
+        // Warm sunset sky glow
+        fillPaint.setColor(goldWarmColor);
+        fillPaint.setAlpha(72);
+        tmpRect.set(cx - r * 1.75f, horizonY - r * 1.75f, cx + r * 1.75f, horizonY + r * 1.75f);
+        canvas.drawArc(tmpRect, 180f, 180f, true, fillPaint);
 
         fillPaint.setColor(goldColor);
+        fillPaint.setAlpha(255);
         tmpRect.set(cx - r, horizonY - r, cx + r, horizonY + r);
         canvas.drawArc(tmpRect, 180f, 180f, true, fillPaint);
 
         strokePaint.setColor(goldColor);
-        strokePaint.setStrokeWidth(Math.max(1.2f, s * 0.07f));
-        float innerR = r * 1.32f;
-        float outerR = r * 1.75f;
+        strokePaint.setAlpha(255);
+        strokePaint.setStrokeWidth(Math.max(1.25f, s * 0.075f));
+        float innerR = r * 1.28f;
+        float outerR = r * 1.78f;
         for (int i = 0; i < 7; i++) {
-            double angle = Math.toRadians(190.0 + (160.0 * i) / 6.0);
+            double angle = Math.toRadians(195.0 + (150.0 * i) / 6.0);
             canvas.drawLine(
                     cx + (float) Math.cos(angle) * innerR,
                     horizonY + (float) Math.sin(angle) * innerR,
@@ -389,30 +423,39 @@ public class PrayerIconView extends View {
             );
         }
 
-        // Water reflection horizon bars
-        strokePaint.setStrokeWidth(Math.max(1.4f, s * 0.08f));
-        canvas.drawLine(cx - s * 0.52f, horizonY + s * 0.03f, cx + s * 0.52f, horizonY + s * 0.03f, strokePaint);
+        // Dusk horizon + 2 shimmering water reflection bars
+        strokePaint.setStrokeWidth(Math.max(1.4f, s * 0.085f));
+        canvas.drawLine(cx - s * 0.56f, horizonY + s * 0.03f, cx + s * 0.56f, horizonY + s * 0.03f, strokePaint);
         strokePaint.setColor(goldWarmColor);
-        canvas.drawLine(cx - s * 0.34f, horizonY + s * 0.19f, cx + s * 0.34f, horizonY + s * 0.19f, strokePaint);
+        canvas.drawLine(cx - s * 0.36f, horizonY + s * 0.17f, cx + s * 0.36f, horizonY + s * 0.17f, strokePaint);
+        strokePaint.setAlpha(180);
+        canvas.drawLine(cx - s * 0.20f, horizonY + s * 0.29f, cx + s * 0.20f, horizonY + s * 0.29f, strokePaint);
+        strokePaint.setAlpha(255);
     }
 
     private void drawMoonStars(Canvas canvas, int w, int h) {
         float s = Math.min(w, h);
-        float cx = w * 0.45f;
+        float cx = w * 0.44f;
         float cy = h * 0.52f;
-        float r = s * 0.34f;
+        float r = s * 0.35f;
 
-        // Crescent built by two circles via Path EVEN_ODD or two intersecting arcs
+        // Soft night glow behind crescent
+        fillPaint.setColor(foregroundColor);
+        fillPaint.setAlpha(38);
+        canvas.drawCircle(cx, cy, r * 1.35f, fillPaint);
+
+        // Crescent built by two circles via Path EVEN_ODD
         tmpPath.reset();
         tmpPath.setFillType(Path.FillType.EVEN_ODD);
         tmpPath.addCircle(cx, cy, r, Path.Direction.CW);
-        tmpPath.addCircle(cx + r * 0.42f, cy - r * 0.28f, r * 0.80f, Path.Direction.CW);
-        fillPaint.setColor(foregroundColor);
+        tmpPath.addCircle(cx + r * 0.42f, cy - r * 0.28f, r * 0.79f, Path.Direction.CW);
+        fillPaint.setAlpha(255);
         canvas.drawPath(tmpPath, fillPaint);
 
-        // Two small 4-point stars
-        drawSparkleStar(canvas, w * 0.66f, h * 0.30f, s * 0.11f);
-        drawSparkleStar(canvas, w * 0.77f, h * 0.46f, s * 0.07f);
+        // Two golden twinkling 4-point stars
+        fillPaint.setColor(goldColor);
+        drawSparkleStar(canvas, w * 0.68f, h * 0.28f, s * 0.12f);
+        drawSparkleStar(canvas, w * 0.79f, h * 0.48f, s * 0.08f);
     }
 
     private void drawSparkleStar(Canvas canvas, float cx, float cy, float r) {

@@ -24,33 +24,43 @@ import java.util.Random;
 
 /**
  * Animated sky background:
- * blend = 0f -> Thunderstorm (dark clouds, rain, lightning)
- * blend = 1f -> Mostly Sunny (white clouds, sun glow)
+ * STORM -> dark storm clouds, slanted rain, lightning
+ * SUNNY -> rich deep blue sky, soft clouds, warm sun glow (high contrast for white text)
+ * NIGHT -> deep midnight sky, twinkling stars, soft moon glow, dark indigo clouds
  */
 public class WeatherSkyView extends View {
 
-    public enum Condition {STORM, SUNNY}
+    public enum Condition {STORM, SUNNY, NIGHT}
 
     private Condition currentCondition = Condition.STORM;
 
-    private float blend = 0f;
+    private float blend = 0f;       // 0 = storm, 1 = clear
+    private float nightBlend = 0f;  // 0 = day, 1 = night
     private float lastBlendShader = -1f;
+    private float lastNightShader = -1f;
     private int lastShaderH = -1;
-    private int lastColorFilterBlend = -1;
+    private int lastColorFilterBlend = 0;
+    private boolean hasColorFilter = false;
     private ValueAnimator blendAnimator;
     private float time = 0f;
     private long lastFrameNs = 0L;
     private float flash = 0f;
 
     private static final int STORM_TOP = 0xFF141A24;
-    private static final int STORM_BOTTOM = 0xFF3C4552;
-    private static final int SUNNY_TOP = 0xFF5F7FB8;
-    private static final int SUNNY_BOTTOM = 0xFFBFD0E8;
-    private static final int STORM_CLOUD = 0xFF2B3039;
-    private static final int SUNNY_CLOUD = 0xFFFFFFFF;
+    private static final int STORM_BOTTOM = 0xFF333C4A;
+    private static final int SUNNY_TOP = 0xFF1F427A;
+    private static final int SUNNY_BOTTOM = 0xFF4774B2;
+    private static final int NIGHT_TOP = 0xFF090F20;
+    private static final int NIGHT_BOTTOM = 0xFF1A2947;
+
+    private static final int STORM_CLOUD = 0xFF282D36;
+    private static final int SUNNY_CLOUD = 0xFFDDE9FA;
+    private static final int NIGHT_CLOUD = 0xFF212D44;
 
     private final Paint skyPaint = new Paint();
     private final Paint sunPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint moonPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint starPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint cloudPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private final Paint rainPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint flashPaint = new Paint();
@@ -98,6 +108,7 @@ public class WeatherSkyView extends View {
 
     private final List<Cloud> clouds = new ArrayList<>();
     private final List<Drop> drops = new ArrayList<>(160);
+    private final float[][] stars = new float[28][3]; // x, y, phase
     private final RectF rect = new RectF();
 
     public WeatherSkyView(Context context) {
@@ -111,6 +122,13 @@ public class WeatherSkyView extends View {
         rainPaint.setStrokeWidth(2f);
         rainPaint.setStrokeCap(Paint.Cap.ROUND);
         flashPaint.setColor(Color.WHITE);
+        starPaint.setColor(0xFFEAF3FF);
+
+        for (int i = 0; i < stars.length; i++) {
+            stars[i][0] = random.nextFloat();
+            stars[i][1] = random.nextFloat() * 0.58f;
+            stars[i][2] = random.nextFloat() * 6.28f;
+        }
 
         puff = Bitmap.createBitmap(256, 256, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(puff);
@@ -158,17 +176,25 @@ public class WeatherSkyView extends View {
 
     public void setCondition(Condition condition, boolean animate, long durationMs) {
         currentCondition = condition;
-        float target = (condition == Condition.SUNNY) ? 1f : 0f;
+        final float startBlend = blend;
+        final float startNight = nightBlend;
+        final float targetBlend = (condition == Condition.STORM) ? 0f : 1f;
+        final float targetNight = (condition == Condition.NIGHT) ? 1f : 0f;
         if (blendAnimator != null) blendAnimator.cancel();
         if (!animate) {
-            blend = target;
+            blend = targetBlend;
+            nightBlend = targetNight;
             invalidate();
             return;
         }
-        blendAnimator = ValueAnimator.ofFloat(blend, target);
+        blendAnimator = ValueAnimator.ofFloat(0f, 1f);
         blendAnimator.setDuration(durationMs);
         blendAnimator.setInterpolator(new AccelerateDecelerateInterpolator());
-        blendAnimator.addUpdateListener(a -> blend = (float) a.getAnimatedValue());
+        blendAnimator.addUpdateListener(a -> {
+            float t = (float) a.getAnimatedValue();
+            blend = startBlend + (targetBlend - startBlend) * t;
+            nightBlend = startNight + (targetNight - startNight) * t;
+        });
         blendAnimator.start();
     }
 
@@ -177,14 +203,20 @@ public class WeatherSkyView extends View {
         super.onSizeChanged(w, h, oldw, oldh);
         if (w <= 0 || h <= 0) return;
         sunPaint.setShader(new RadialGradient(
-                w * 0.62f, h * 0.30f, h * 0.55f,
-                new int[]{0xFFFFF4C8, 0x88FFE08A, 0x00FFE08A},
+                w * 0.68f, h * 0.24f, h * 0.48f,
+                new int[]{0xAAFFF0C0, 0x48FFE08A, 0x00FFE08A},
                 new float[]{0f, 0.35f, 1f},
                 Shader.TileMode.CLAMP));
+        moonPaint.setShader(new RadialGradient(
+                w * 0.72f, h * 0.22f, h * 0.34f,
+                new int[]{0x88E2EEFF, 0x33BBD6FF, 0x00BBD6FF},
+                new float[]{0f, 0.38f, 1f},
+                Shader.TileMode.CLAMP));
+        // Soft full-height readability scrim keeping hero text and glass cards crisp in every weather
         scrimPaint.setShader(new LinearGradient(
                 0f, 0f, 0f, h,
-                new int[]{0x66000000, 0x00000000, 0x00000000, 0x80000000},
-                new float[]{0f, 0.35f, 0.55f, 1f},
+                new int[]{0x80000000, 0x3E000000, 0x36000000, 0x92000000},
+                new float[]{0f, 0.32f, 0.58f, 1f},
                 Shader.TileMode.CLAMP));
         lastShaderH = -1;
     }
@@ -201,31 +233,50 @@ public class WeatherSkyView extends View {
         lastFrameNs = now;
         time += dt;
 
-        // Rebuild sky gradient only when blend or view height changes
+        // Rebuild sky gradient only when blend, nightBlend, or view height changes
         int hInt = (int) h;
-        if (Math.abs(blend - lastBlendShader) > 0.002f || lastShaderH != hInt) {
+        if (Math.abs(blend - lastBlendShader) > 0.002f
+                || Math.abs(nightBlend - lastNightShader) > 0.002f
+                || lastShaderH != hInt) {
+            int clearTop = lerpColor(SUNNY_TOP, NIGHT_TOP, nightBlend);
+            int clearBottom = lerpColor(SUNNY_BOTTOM, NIGHT_BOTTOM, nightBlend);
             skyPaint.setShader(new LinearGradient(
                     0f, 0f, 0f, h,
-                    lerpColor(STORM_TOP, SUNNY_TOP, blend),
-                    lerpColor(STORM_BOTTOM, SUNNY_BOTTOM, blend),
+                    lerpColor(STORM_TOP, clearTop, blend),
+                    lerpColor(STORM_BOTTOM, clearBottom, blend),
                     Shader.TileMode.CLAMP));
             lastBlendShader = blend;
+            lastNightShader = nightBlend;
             lastShaderH = hInt;
         }
         canvas.drawRect(0f, 0f, w, h, skyPaint);
 
-        if (blend > 0.01f) {
-            int alpha = Math.max(0, Math.min(255, Math.round(255f * blend * (0.85f + 0.15f * (float) Math.sin(time * 1.2f)))));
+        float sunStrength = blend * (1f - nightBlend);
+        if (sunStrength > 0.01f) {
+            int alpha = Math.max(0, Math.min(255, Math.round(255f * sunStrength * (0.85f + 0.15f * (float) Math.sin(time * 1.2f)))));
             sunPaint.setAlpha(alpha);
             canvas.drawRect(0f, 0f, w, h, sunPaint);
         }
 
-        int cloudTint = lerpColor(STORM_CLOUD, SUNNY_CLOUD, blend);
-        if (cloudTint != lastColorFilterBlend) {
+        float nightStrength = blend * nightBlend;
+        if (nightStrength > 0.01f) {
+            for (int i = 0; i < stars.length; i++) {
+                float tw = 0.45f + 0.55f * (float) Math.sin(time * 1.6f + stars[i][2]);
+                starPaint.setAlpha(Math.max(0, Math.min(255, Math.round(190f * nightStrength * tw))));
+                canvas.drawCircle(stars[i][0] * w, stars[i][1] * h, 1.8f, starPaint);
+            }
+            moonPaint.setAlpha(Math.max(0, Math.min(255, Math.round(255f * nightStrength))));
+            canvas.drawRect(0f, 0f, w, h, moonPaint);
+        }
+
+        int clearCloud = lerpColor(SUNNY_CLOUD, NIGHT_CLOUD, nightBlend);
+        int cloudTint = lerpColor(STORM_CLOUD, clearCloud, blend);
+        if (!hasColorFilter || cloudTint != lastColorFilterBlend) {
             cloudPaint.setColorFilter(new PorterDuffColorFilter(cloudTint, PorterDuff.Mode.SRC_IN));
             lastColorFilterBlend = cloudTint;
+            hasColorFilter = true;
         }
-        float cloudDensity = 1f - 0.25f * blend;
+        float cloudDensity = 1f - 0.48f * blend;
         for (int ci = 0; ci < clouds.size(); ci++) {
             Cloud c = clouds.get(ci);
             c.x += c.speed * dt * (1.6f - blend);

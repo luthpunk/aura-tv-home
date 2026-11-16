@@ -652,16 +652,27 @@ final class WeatherAirQuality {
             private void drawCloud(android.graphics.Canvas c, float left, float top, float cw, float ch) {
                 cloudPath.reset();
                 float bottom = top + ch;
-                float rLeft = ch * 0.34f;
-                float rRight = ch * 0.30f;
-                float rTop = ch * 0.44f;
+                // Soft multi-puff layered cloud silhouette matching WeatherSkyView
+                float baseH = ch * 0.44f;
+                float rBase = baseH * 0.50f;
+                cloudPath.addRoundRect(
+                        new android.graphics.RectF(left + cw * 0.04f, bottom - baseH, left + cw * 0.96f, bottom),
+                        rBase, rBase, android.graphics.Path.Direction.CW);
+                cloudPath.addCircle(left + cw * 0.22f, bottom - ch * 0.34f, ch * 0.26f, android.graphics.Path.Direction.CW);
+                cloudPath.addCircle(left + cw * 0.43f, top + ch * 0.38f, ch * 0.36f, android.graphics.Path.Direction.CW);
+                cloudPath.addCircle(left + cw * 0.65f, top + ch * 0.46f, ch * 0.30f, android.graphics.Path.Direction.CW);
+                cloudPath.addCircle(left + cw * 0.80f, bottom - ch * 0.28f, ch * 0.22f, android.graphics.Path.Direction.CW);
 
-                android.graphics.Path base = new android.graphics.Path();
-                base.addRoundRect(new android.graphics.RectF(left, bottom - ch * 0.56f, left + cw, bottom),
-                        rLeft, rLeft, android.graphics.Path.Direction.CW);
-                base.addCircle(left + cw * 0.42f, top + rTop, rTop, android.graphics.Path.Direction.CW);
-                base.addCircle(left + cw * 0.70f, top + ch * 0.56f, rRight, android.graphics.Path.Direction.CW);
-                c.drawPath(base, fillPaint);
+                int prevAlpha = fillPaint.getAlpha();
+                // Subtle back puff shadow/halo for fluffy depth
+                fillPaint.setAlpha(Math.round(prevAlpha * 0.42f));
+                c.save();
+                c.translate(-cw * 0.02f, -ch * 0.04f);
+                c.drawPath(cloudPath, fillPaint);
+                c.restore();
+
+                fillPaint.setAlpha(prevAlpha);
+                c.drawPath(cloudPath, fillPaint);
             }
 
             @Override

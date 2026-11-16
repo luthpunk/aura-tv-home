@@ -66,7 +66,11 @@
                         android:fontFamily="@font/outfit"
                         android:text="📍 Tuban ▾"
                         android:textColor="#FFFFFF"
-                        android:textSize="18sp" />
+                        android:textSize="18sp"
+                        android:shadowColor="#99000000"
+                        android:shadowDx="0"
+                        android:shadowDy="1"
+                        android:shadowRadius="4" />
 
                     <TextView
                         android:id="@+id/tvTemp"
@@ -76,7 +80,11 @@
                         android:textColor="#FFFFFF"
                         android:textSize="76sp"
                         android:fontFamily="sans-serif-light"
-                        android:includeFontPadding="false" />
+                        android:includeFontPadding="false"
+                        android:shadowColor="#99000000"
+                        android:shadowDx="0"
+                        android:shadowDy="2"
+                        android:shadowRadius="6" />
 
                     <TextView
                         android:id="@+id/tvCondition"
@@ -85,7 +93,11 @@
                         android:fontFamily="@font/outfit"
                         android:text="Cerah Berawan"
                         android:textColor="#FFFFFF"
-                        android:textSize="24sp" />
+                        android:textSize="24sp"
+                        android:shadowColor="#99000000"
+                        android:shadowDx="0"
+                        android:shadowDy="1"
+                        android:shadowRadius="4" />
 
                     <TextView
                         android:id="@+id/tvMaxMin"
@@ -93,8 +105,12 @@
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/outfit"
                         android:text="Maks: 30°C  ·  Min: 25°C"
-                        android:textColor="#B3FFFFFF"
-                        android:textSize="14sp" />
+                        android:textColor="#E6FFFFFF"
+                        android:textSize="14sp"
+                        android:shadowColor="#99000000"
+                        android:shadowDx="0"
+                        android:shadowDy="1"
+                        android:shadowRadius="3" />
                 </LinearLayout>
             </LinearLayout>
 

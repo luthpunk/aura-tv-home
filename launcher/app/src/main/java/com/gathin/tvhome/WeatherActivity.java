@@ -144,7 +144,7 @@ public class WeatherActivity extends Activity {
         buildDayCards();
 
         current = new WeatherState(
-                WeatherSkyView.Condition.SUNNY, "Cerah Berawan", "⛅",
+                mapCondition(1, true), "Cerah Berawan", isNightNow() ? "🌙" : "⛅",
                 29, 32, 20, 1010, 32, 25, days.get(0).hourlyTemps);
         loadFromCacheIfPresent();
 
@@ -378,7 +378,7 @@ public class WeatherActivity extends Activity {
         try {
             WeatherAirQuality.FullWeather cached = WeatherAirQuality.getFullWeather(this);
             if (cached == null) return;
-            WeatherSkyView.Condition cond = mapCondition(cached.weatherCode);
+            WeatherSkyView.Condition cond = mapCondition(cached.weatherCode, true);
             int[] hArray = new int[8];
             if (cached.hourly != null && !cached.hourly.isEmpty()) {
                 int step = Math.max(1, cached.hourly.size() / 8);
@@ -394,7 +394,7 @@ public class WeatherActivity extends Activity {
             current = new WeatherState(
                     cond,
                     title,
-                    conditionEmoji(cached.weatherCode),
+                    conditionEmoji(cached.weatherCode, true),
                     cached.temp,
                     cached.apparentTemp,
                     cached.rainChanceToday,
@@ -472,9 +472,9 @@ public class WeatherActivity extends Activity {
                     int dCode = codeArr != null ? codeArr.optInt(d, 2) : 2;
                     int dRain = (int) Math.round(rainArr != null ? rainArr.optDouble(d, 30.0) : 30.0);
 
-                    WeatherSkyView.Condition dCond = mapCondition(dCode);
+                    WeatherSkyView.Condition dCond = mapCondition(dCode, d == 0);
                     String dTitle = conditionTitle(dCode);
-                    String dIcon = conditionEmoji(dCode);
+                    String dIcon = conditionEmoji(dCode, d == 0);
 
                     int[] hT = new int[8];
                     int[] hR = new int[8];
@@ -494,9 +494,9 @@ public class WeatherActivity extends Activity {
                 if (newDays.isEmpty()) return;
                 DayForecast td = newDays.get(0);
                 final WeatherState todayState = new WeatherState(
-                        mapCondition(code),
+                        mapCondition(code, true),
                         conditionTitle(code),
-                        conditionEmoji(code),
+                        conditionEmoji(code, true),
                         temp,
                         feels,
                         precipMm > 0.1 ? Math.max(85, td.rainChance) : td.rainChance,
@@ -521,9 +521,17 @@ public class WeatherActivity extends Activity {
         }, "weather-screen-fetch").start();
     }
 
-    private static WeatherSkyView.Condition mapCondition(int weatherCode) {
+    private static boolean isNightNow() {
+        int h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+        return h >= 18 || h < 6;
+    }
+
+    private static WeatherSkyView.Condition mapCondition(int weatherCode, boolean allowNight) {
         if (weatherCode >= 95 || (weatherCode >= 51 && weatherCode <= 67) || (weatherCode >= 80 && weatherCode <= 82)) {
             return WeatherSkyView.Condition.STORM;
+        }
+        if (allowNight && isNightNow()) {
+            return WeatherSkyView.Condition.NIGHT;
         }
         return WeatherSkyView.Condition.SUNNY;
     }
@@ -539,13 +547,14 @@ public class WeatherActivity extends Activity {
         return "Cerah";
     }
 
-    private static String conditionEmoji(int code) {
+    private static String conditionEmoji(int code, boolean allowNight) {
+        boolean night = allowNight && isNightNow();
         if (code >= 95) return "⛈️";
         if (code >= 61 || (code >= 80 && code <= 82)) return "🌧️";
         if (code >= 51) return "🌦️";
         if (code >= 3) return "☁️";
-        if (code >= 1) return "🌤️";
-        return "☀️";
+        if (code >= 1) return night ? "☁️" : "🌤️";
+        return night ? "🌙" : "☀️";
     }
 
     private static String capitalizeFirst(String s) {
@@ -556,12 +565,14 @@ public class WeatherActivity extends Activity {
     private static List<DayForecast> createDefaultDays() {
         List<DayForecast> list = new ArrayList<>();
         String[] names = {"Hari Ini", "Besok", "Lusa", "Hari +3", "Hari +4"};
+        boolean night = isNightNow();
         for (int i = 0; i < names.length; i++) {
+            boolean useNight = (i == 0 && night);
             list.add(new DayForecast(
                     names[i], 31, 24,
-                    i == 0 ? "⛅" : "🌤️",
+                    useNight ? "🌙" : (i == 0 ? "⛅" : "🌤️"),
                     "Cerah Berawan",
-                    WeatherSkyView.Condition.SUNNY,
+                    useNight ? WeatherSkyView.Condition.NIGHT : WeatherSkyView.Condition.SUNNY,
                     33, 25, 1010,
                     new int[]{25, 25, 26, 28, 31, 31, 29, 26},
                     new int[]{25, 20, 15, 10, 15, 20, 25, 25},
