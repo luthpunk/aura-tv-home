@@ -46,8 +46,11 @@ public class WeatherBackgroundView extends View {
     private final Paint starPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint ripplePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
-    // Gradients
+    // Gradients (pre-built when size/condition changes to avoid per-frame allocations)
     private LinearGradient bgGradient;
+    private RadialGradient sunRadialShader;
+    private float sunBaseRadius = 0f;
+    private RadialGradient nightMoonShader;
     private int cachedW = 0;
     private int cachedH = 0;
 
@@ -62,7 +65,7 @@ public class WeatherBackgroundView extends View {
     }
     private final List<RainDrop> rainDrops = new ArrayList<>();
 
-    // Splash ripples
+    // Splash ripples & object pool
     private static class SplashRipple {
         float x, y;
         float radius;
@@ -70,6 +73,7 @@ public class WeatherBackgroundView extends View {
         int alpha;
     }
     private final List<SplashRipple> ripples = new ArrayList<>();
+    private final List<SplashRipple> ripplePool = new ArrayList<>();
 
     // Stars
     private static class Star {
@@ -87,6 +91,7 @@ public class WeatherBackgroundView extends View {
         float rx, ry;
         float speed;
         int alpha;
+        RadialGradient shader;
     }
     private final List<CloudPuff> cloudPuffs = new ArrayList<>();
 
@@ -147,13 +152,33 @@ public class WeatherBackgroundView extends View {
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        startAnimation();
+        if (isShown()) startAnimation();
     }
 
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         stopAnimation();
+    }
+
+    @Override
+    protected void onVisibilityChanged(View changedView, int visibility) {
+        super.onVisibilityChanged(changedView, visibility);
+        if (isShown() && isAttachedToWindow()) {
+            startAnimation();
+        } else {
+            stopAnimation();
+        }
+    }
+
+    @Override
+    protected void onWindowVisibilityChanged(int visibility) {
+        super.onWindowVisibilityChanged(visibility);
+        if (visibility == VISIBLE && isShown() && isAttachedToWindow()) {
+            startAnimation();
+        } else {
+            stopAnimation();
+        }
     }
 
     @Override
@@ -267,6 +292,29 @@ public class WeatherBackgroundView extends View {
             }
         }
 
+        // 3b. Pre-build Sun / Moon shaders once per layout/condition
+        sunRadialShader = null;
+        nightMoonShader = null;
+        if (currentCondition == ConditionType.SUNNY) {
+            sunBaseRadius = cachedW * 0.35f;
+            sunRadialShader = new RadialGradient(
+                    0f, 0f, Math.max(1f, sunBaseRadius),
+                    new int[]{0xAAFFFFFF, 0x44FFE082, 0x15FFB300, 0x001E88E5},
+                    new float[]{0f, 0.25f, 0.55f, 1f},
+                    Shader.TileMode.CLAMP
+            );
+        } else if (currentCondition == ConditionType.NIGHT) {
+            float moonX = cachedW * 0.85f;
+            float moonY = cachedH * 0.14f;
+            float moonRadius = Math.max(1f, cachedW * 0.15f);
+            nightMoonShader = new RadialGradient(
+                    moonX, moonY, moonRadius,
+                    new int[]{0x35E0F2FE, 0x1590CAF9, 0x000D1728},
+                    new float[]{0f, 0.45f, 1f},
+                    Shader.TileMode.CLAMP
+            );
+        }
+
         // 4. Initialize Cloud Puffs if cloudy or partly cloudy
         cloudPuffs.clear();
         if (currentCondition == ConditionType.CLOUDY || currentCondition == ConditionType.RAIN) {
@@ -279,6 +327,12 @@ public class WeatherBackgroundView extends View {
                 p.ry = (cachedH * 0.16f) + (random.nextFloat() * (cachedH * 0.18f));
                 p.speed = 0.25f + (random.nextFloat() * 0.45f);
                 p.alpha = 15 + random.nextInt(25);
+                p.shader = new RadialGradient(
+                        0f, 0f, Math.max(1f, Math.max(p.rx, p.ry)),
+                        new int[]{Color.argb(p.alpha, 255, 255, 255), Color.argb(0, 255, 255, 255)},
+                        new float[]{0f, 1f},
+                        Shader.TileMode.CLAMP
+                );
                 cloudPuffs.add(p);
             }
         }
@@ -323,7 +377,7 @@ public class WeatherBackgroundView extends View {
                 break;
         }
 
-        if (isAnimating) {
+        if (isAnimating && isShown()) {
             postInvalidateOnAnimation();
         }
     }
@@ -333,17 +387,17 @@ public class WeatherBackgroundView extends View {
         float sunCenterX = cachedW * 0.35f;
         float sunCenterY = cachedH * 0.05f;
 
-        // Animated sun core glow
-        float pulse = (float) Math.sin(sunPulseTime * 1.2f) * 0.05f;
-        float coreRadius = cachedW * (0.35f + pulse);
-        RadialGradient sunRadial = new RadialGradient(
-                sunCenterX, sunCenterY, coreRadius,
-                new int[]{0xAAFFFFFF, 0x44FFE082, 0x15FFB300, 0x001E88E5},
-                new float[]{0f, 0.25f, 0.55f, 1f},
-                Shader.TileMode.CLAMP
-        );
-        sunGlowPaint.setShader(sunRadial);
-        canvas.drawCircle(sunCenterX, sunCenterY, coreRadius, sunGlowPaint);
+        // Animated sun core glow via matrix scale (zero per-frame shader allocation)
+        if (sunRadialShader != null && sunBaseRadius > 0f) {
+            float pulse = (float) Math.sin(sunPulseTime * 1.2f) * 0.05f;
+            float scale = (0.35f + pulse) / 0.35f;
+            sunGlowPaint.setShader(sunRadialShader);
+            canvas.save();
+            canvas.translate(sunCenterX, sunCenterY);
+            canvas.scale(scale, scale);
+            canvas.drawCircle(0f, 0f, sunBaseRadius, sunGlowPaint);
+            canvas.restore();
+        }
 
         // Optical Lens Flare Rings & Disks (Apple Weather style)
         // Flare 1: warm cyan-gold ring
@@ -367,17 +421,13 @@ public class WeatherBackgroundView extends View {
 
     private void drawNightSky(Canvas canvas, float dt) {
         // Moon radial glow at top right
-        float moonX = cachedW * 0.85f;
-        float moonY = cachedH * 0.14f;
-        float moonRadius = cachedW * 0.15f;
-        RadialGradient moonRadial = new RadialGradient(
-                moonX, moonY, moonRadius,
-                new int[]{0x35E0F2FE, 0x1590CAF9, 0x000D1728},
-                new float[]{0f, 0.45f, 1f},
-                Shader.TileMode.CLAMP
-        );
-        sunGlowPaint.setShader(moonRadial);
-        canvas.drawCircle(moonX, moonY, moonRadius, sunGlowPaint);
+        if (nightMoonShader != null) {
+            float moonX = cachedW * 0.85f;
+            float moonY = cachedH * 0.14f;
+            float moonRadius = cachedW * 0.15f;
+            sunGlowPaint.setShader(nightMoonShader);
+            canvas.drawCircle(moonX, moonY, moonRadius, sunGlowPaint);
+        }
 
         // Twinkling Stars
         for (Star s : stars) {
@@ -395,15 +445,13 @@ public class WeatherBackgroundView extends View {
             if (p.x - p.rx > cachedW) {
                 p.x = -p.rx;
             }
-
-            RadialGradient cloudGrad = new RadialGradient(
-                    p.x, p.y, Math.max(p.rx, p.ry),
-                    new int[]{Color.argb(p.alpha, 255, 255, 255), Color.argb(0, 255, 255, 255)},
-                    new float[]{0f, 1f},
-                    Shader.TileMode.CLAMP
-            );
-            cloudPaint.setShader(cloudGrad);
-            canvas.drawOval(p.x - p.rx, p.y - p.ry, p.x + p.rx, p.y + p.ry, cloudPaint);
+            if (p.shader != null) {
+                cloudPaint.setShader(p.shader);
+                canvas.save();
+                canvas.translate(p.x, p.y);
+                canvas.drawOval(-p.rx, -p.ry, p.rx, p.ry, cloudPaint);
+                canvas.restore();
+            }
         }
     }
 
@@ -428,9 +476,9 @@ public class WeatherBackgroundView extends View {
 
             // Check if drop hit bottom
             if (drop.y > cachedH) {
-                // Occasional splash ripple
+                // Occasional splash ripple (pooled)
                 if (ripples.size() < 16 && random.nextFloat() < 0.25f) {
-                    SplashRipple r = new SplashRipple();
+                    SplashRipple r = ripplePool.isEmpty() ? new SplashRipple() : ripplePool.remove(ripplePool.size() - 1);
                     r.x = drop.x;
                     r.y = cachedH - (random.nextFloat() * 30f);
                     r.radius = 1f;
@@ -452,6 +500,7 @@ public class WeatherBackgroundView extends View {
             float progress = r.radius / r.maxRadius;
             if (progress >= 1.0f) {
                 ripples.remove(i);
+                ripplePool.add(r);
             } else {
                 int currentAlpha = (int) (r.alpha * (1f - progress));
                 ripplePaint.setColor(Color.argb(currentAlpha, 220, 240, 255));

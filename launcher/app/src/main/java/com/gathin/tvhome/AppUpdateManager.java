@@ -98,9 +98,10 @@ public final class AppUpdateManager {
         }
 
         executor.execute(() -> {
+            HttpURLConnection conn = null;
             try {
                 URL url = new URL(VERSION_URL + "?t=" + System.currentTimeMillis());
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
                 conn.setConnectTimeout(6000);
                 conn.setReadTimeout(6000);
@@ -114,14 +115,13 @@ public final class AppUpdateManager {
                     return;
                 }
 
-                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
                 StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    sb.append(line);
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        sb.append(line);
+                    }
                 }
-                reader.close();
-                conn.disconnect();
 
                 JSONObject json = new JSONObject(sb.toString());
                 int remoteVersionCode = json.optInt("versionCode", 0);
@@ -155,6 +155,8 @@ public final class AppUpdateManager {
                 if (manualCheck) {
                     mainHandler.post(() -> TvToast.show(activity, "❌ Gagal memeriksa pembaruan. Pastikan Wi-Fi terhubung."));
                 }
+            } finally {
+                if (conn != null) conn.disconnect();
             }
         });
     }
@@ -238,6 +240,7 @@ public final class AppUpdateManager {
 
                 byte[] buffer = new byte[8192];
                 long total = 0;
+                int lastProgress = -1;
                 int count;
 
                 while ((count = is.read(buffer)) != -1) {
@@ -245,33 +248,39 @@ public final class AppUpdateManager {
                     fos.write(buffer, 0, count);
                     if (fileLength > 0) {
                         int progress = (int) (total * 100 / fileLength);
-                        mainHandler.post(() -> progressDialog.setProgress(progress));
+                        if (progress != lastProgress) {
+                            lastProgress = progress;
+                            mainHandler.post(() -> {
+                                if (!activity.isFinishing() && !activity.isDestroyed() && progressDialog.isShowing()) {
+                                    progressDialog.setProgress(progress);
+                                }
+                            });
+                        }
                     }
                 }
                 fos.flush();
 
                 mainHandler.post(() -> {
-                    if (progressDialog.isShowing()) {
-                        progressDialog.dismiss();
+                    if (!activity.isFinishing() && !activity.isDestroyed()) {
+                        if (progressDialog.isShowing()) {
+                            progressDialog.dismiss();
+                        }
+                        installApk(activity, apkFile);
                     }
-                    installApk(activity, apkFile);
                 });
 
             } catch (Exception e) {
                 Log.e(TAG, "Download error: " + e.getMessage());
                 mainHandler.post(() -> {
-                    if (progressDialog.isShowing()) {
+                    if (!activity.isFinishing() && !activity.isDestroyed() && progressDialog.isShowing()) {
                         progressDialog.dismiss();
                     }
                     TvToast.show(activity, "❌ Gagal mengunduh pembaruan: " + e.getMessage(), true);
                 });
             } finally {
-                try {
-                    if (fos != null) fos.close();
-                    if (is != null) is.close();
-                    if (conn != null) conn.disconnect();
-                } catch (Exception ignored) {
-                }
+                try { if (fos != null) fos.close(); } catch (Exception ignored) {}
+                try { if (is != null) is.close(); } catch (Exception ignored) {}
+                if (conn != null) conn.disconnect();
             }
         });
     }

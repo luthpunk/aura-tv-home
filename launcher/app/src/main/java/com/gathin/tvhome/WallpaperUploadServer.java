@@ -9,11 +9,14 @@ import android.util.Log;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -47,6 +50,7 @@ public class WallpaperUploadServer {
     private ServerSocket serverSocket;
     private volatile boolean running = false;
     private Thread serverThread;
+    private ExecutorService clientPool;
 
     public WallpaperUploadServer(Context context, int port, UploadListener listener) {
         this.context = context.getApplicationContext();
@@ -89,13 +93,19 @@ public class WallpaperUploadServer {
             serverSocket.setReuseAddress(true);
             serverSocket.bind(new InetSocketAddress(port));
             running = true;
+            clientPool = Executors.newFixedThreadPool(4);
 
             serverThread = new Thread(() -> {
                 Log.i(TAG, "Server started on port " + port);
                 while (running && !serverSocket.isClosed()) {
                     try {
                         Socket client = serverSocket.accept();
-                        new Thread(() -> handleClient(client), "upload-client").start();
+                        ExecutorService pool = clientPool;
+                        if (pool != null && !pool.isShutdown()) {
+                            pool.execute(() -> handleClient(client));
+                        } else {
+                            try { client.close(); } catch (Exception ignored) {}
+                        }
                     } catch (Exception e) {
                         if (!running) break;
                         Log.w(TAG, "Accept error: " + e.getMessage());
@@ -123,19 +133,28 @@ public class WallpaperUploadServer {
             serverThread.interrupt();
             serverThread = null;
         }
+        if (clientPool != null) {
+            clientPool.shutdownNow();
+            clientPool = null;
+        }
         Log.i(TAG, "Server stopped");
     }
 
     private void handleClient(Socket client) {
+        InputStream in = null;
+        OutputStream out = null;
         try {
             client.setSoTimeout(30000); // 30 seconds timeout
-            InputStream in = client.getInputStream();
-            OutputStream out = client.getOutputStream();
+            in = new BufferedInputStream(client.getInputStream(), 8192);
+            out = client.getOutputStream();
 
-            ByteArrayOutputStream headerBuf = new ByteArrayOutputStream();
+            ByteArrayOutputStream headerBuf = new ByteArrayOutputStream(1024);
             int prev3 = 0, prev2 = 0, prev1 = 0, b;
             while ((b = in.read()) != -1) {
                 headerBuf.write(b);
+                if (headerBuf.size() > 64 * 1024) {
+                    return;
+                }
                 if (prev3 == '\r' && prev2 == '\n' && prev1 == '\r' && b == '\n') {
                     break;
                 }
@@ -147,7 +166,6 @@ public class WallpaperUploadServer {
             String headerText = headerBuf.toString("UTF-8");
             String[] lines = headerText.split("\r\n");
             if (lines.length == 0 || lines[0].isEmpty()) {
-                client.close();
                 return;
             }
 
@@ -216,19 +234,27 @@ public class WallpaperUploadServer {
                     }
 
                     File targetFile = new File(customDir, "custom_" + System.currentTimeMillis() + ext);
-                    FileOutputStream fos = new FileOutputStream(targetFile);
-
-                    byte[] buffer = new byte[8192];
                     long remaining = contentLength;
-                    while (remaining > 0) {
-                        int toRead = (int) Math.min(buffer.length, remaining);
-                        int r = in.read(buffer, 0, toRead);
-                        if (r == -1) break;
-                        fos.write(buffer, 0, r);
-                        remaining -= r;
+                    boolean uploadComplete = false;
+                    try (FileOutputStream fos = new FileOutputStream(targetFile)) {
+                        byte[] buffer = new byte[8192];
+                        while (remaining > 0) {
+                            int toRead = (int) Math.min(buffer.length, remaining);
+                            int r = in.read(buffer, 0, toRead);
+                            if (r == -1) break;
+                            fos.write(buffer, 0, r);
+                            remaining -= r;
+                        }
+                        fos.flush();
+                        uploadComplete = (remaining == 0);
                     }
-                    fos.flush();
-                    fos.close();
+                    if (!uploadComplete) {
+                        targetFile.delete();
+                        String error = "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\nIncomplete upload";
+                        out.write(error.getBytes("UTF-8"));
+                        out.flush();
+                        return;
+                    }
 
                     String json = "{\"status\":\"ok\",\"file\":\"" + targetFile.getName() + "\"}";
                     byte[] jsonBytes = json.getBytes("UTF-8");
@@ -254,12 +280,11 @@ public class WallpaperUploadServer {
                 out.write(notFound.getBytes("UTF-8"));
                 out.flush();
             }
-
-            out.close();
-            in.close();
-            client.close();
         } catch (Exception e) {
             Log.w(TAG, "Client handle exception: " + e.getMessage());
+        } finally {
+            try { if (out != null) out.close(); } catch (Exception ignored) {}
+            try { if (in != null) in.close(); } catch (Exception ignored) {}
             try { client.close(); } catch (Exception ignored) {}
         }
     }

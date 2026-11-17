@@ -168,13 +168,26 @@ final class Backdrop {
 
     /** Asks {@code view} to redraw whenever a new blurred copy or glow is ready. */
     static void watch(View view) {
+        if (view == null) return;
+        boolean exists = false;
         // Popups come and go: drop the ones that have been collected before adding another.
-        for (int i = watchers.size() - 1; i >= 0; i--) if (watchers.get(i).get() == null) watchers.remove(i);
-        watchers.add(new WeakReference<>(view));
+        for (int i = watchers.size() - 1; i >= 0; i--) {
+            View w = watchers.get(i).get();
+            if (w == null) {
+                watchers.remove(i);
+            } else if (w == view) {
+                exists = true;
+            }
+        }
+        if (!exists) watchers.add(new WeakReference<>(view));
     }
 
     /** Memory is short: let go of what can be remade. The copy on the glass stays. */
     static void trim() {
+        if (blurFade != null) {
+            blurFade.cancel();
+            blurFade = null;
+        }
         tinted.clear();
         synchronized (SPARE_LOCK) {
             spare = null;

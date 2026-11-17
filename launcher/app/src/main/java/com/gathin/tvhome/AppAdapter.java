@@ -41,10 +41,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * App tiles. The first {@link MainActivity#COLUMNS} positions are the pinned dock (favourites, fixed order),
@@ -284,7 +284,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             boolean hasNative = nativeBanner != null;
             // Default home rule: only show apps that have a TV banner, unless manually added via '+'
             if (!hasNative && !addedApps.contains(pkg)) continue;
-            Drawable banner = getOrGenerateBanner(ctx, pm, ri);
+            Drawable banner = getOrGenerateBanner(ctx, pm, ri, nativeBanner);
             // The icon only shows on a tile without a banner.
             Drawable icon = banner == null ? ri.loadIcon(pm) : null;
             if (card != null) {
@@ -337,7 +337,14 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         return true;
     }
 
-    private static final Map<String, Drawable> sSyntheticBannerCache = new ConcurrentHashMap<>();
+    private static final int MAX_SYNTHETIC_CACHE = 64;
+    private static final Map<String, Drawable> sSyntheticBannerCache = Collections.synchronizedMap(
+            new LinkedHashMap<String, Drawable>(MAX_SYNTHETIC_CACHE, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, Drawable> eldest) {
+                    return size() > MAX_SYNTHETIC_CACHE;
+                }
+            });
 
     static Drawable loadNativeBanner(Context ctx, PackageManager pm, ResolveInfo ri) {
         if (ri == null || ri.activityInfo == null) return null;
@@ -374,7 +381,10 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     }
 
     public static Drawable getOrGenerateBanner(Context ctx, PackageManager pm, ResolveInfo ri) {
-        Drawable nativeBanner = loadNativeBanner(ctx, pm, ri);
+        return getOrGenerateBanner(ctx, pm, ri, loadNativeBanner(ctx, pm, ri));
+    }
+
+    private static Drawable getOrGenerateBanner(Context ctx, PackageManager pm, ResolveInfo ri, Drawable nativeBanner) {
         // If app has native TV banner (like YouTube, Netflix, Disney+, Spotify), KEEP IT!
         if (nativeBanner != null) return nativeBanner;
 
@@ -460,56 +470,52 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             copy.setBounds(0, 0, sampleSize, sampleSize);
             copy.draw(c);
 
-            Map<Integer, Integer> freq = new HashMap<>();
-            Map<Integer, long[]> rgbSum = new HashMap<>();
+            int totalPixels = sampleSize * sampleSize;
+            int[] px = new int[totalPixels];
+            sample.getPixels(px, 0, sampleSize, 0, 0, sampleSize, sampleSize);
+            sample.recycle();
+
+            int[] freq = new int[4096];
+            int[] rSum = new int[4096];
+            int[] gSum = new int[4096];
+            int[] bSum = new int[4096];
             int bestBucket = -1;
             int maxCount = 0;
 
             float[] hsv = new float[3];
-            for (int y = 0; y < sampleSize; y++) {
-                for (int x = 0; x < sampleSize; x++) {
-                    int pixel = sample.getPixel(x, y);
-                    int a = Color.alpha(pixel);
-                    if (a < 100) continue; // Skip transparent or translucent edges
+            for (int i = 0; i < totalPixels; i++) {
+                int pixel = px[i];
+                int a = (pixel >>> 24) & 0xFF;
+                if (a < 100) continue; // Skip transparent or translucent edges
 
-                    int r = Color.red(pixel);
-                    int g = Color.green(pixel);
-                    int b = Color.blue(pixel);
+                int r = (pixel >>> 16) & 0xFF;
+                int g = (pixel >>> 8) & 0xFF;
+                int b = pixel & 0xFF;
 
-                    // 4-bit per channel quantization to cluster subtle gradients into the same bucket
-                    int bucket = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
-                    int count = (freq.containsKey(bucket) ? freq.get(bucket) : 0) + 1;
-                    freq.put(bucket, count);
+                // 4-bit per channel quantization to cluster subtle gradients into the same bucket
+                int bucket = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
+                int count = ++freq[bucket];
+                rSum[bucket] += r;
+                gSum[bucket] += g;
+                bSum[bucket] += b;
 
-                    long[] sum = rgbSum.get(bucket);
-                    if (sum == null) {
-                        sum = new long[3];
-                        rgbSum.put(bucket, sum);
-                    }
-                    sum[0] += r;
-                    sum[1] += g;
-                    sum[2] += b;
-
-                    Color.colorToHSV(pixel, hsv);
-                    boolean isWhite = (hsv[1] < 0.12f && hsv[2] > 0.88f);
-                    if (!isWhite && count > maxCount) {
-                        maxCount = count;
-                        bestBucket = bucket;
-                    }
+                Color.colorToHSV(pixel, hsv);
+                boolean isWhite = (hsv[1] < 0.12f && hsv[2] > 0.88f);
+                if (!isWhite && count > maxCount) {
+                    maxCount = count;
+                    bestBucket = bucket;
                 }
             }
-            sample.recycle();
 
             // If icon is completely white/monochrome glyph on transparent, fallback to elegant dark slate
-            if (bestBucket == -1 || !rgbSum.containsKey(bestBucket)) {
+            if (bestBucket == -1 || freq[bestBucket] == 0) {
                 return 0xFF1E293B;
             }
 
-            long[] sum = rgbSum.get(bestBucket);
-            int total = freq.get(bestBucket);
-            int avgR = (int) (sum[0] / total);
-            int avgG = (int) (sum[1] / total);
-            int avgB = (int) (sum[2] / total);
+            int total = freq[bestBucket];
+            int avgR = rSum[bestBucket] / total;
+            int avgG = gSum[bestBucket] / total;
+            int avgB = bSum[bestBucket] / total;
 
             Color.colorToHSV(Color.rgb(avgR, avgG, avgB), hsv);
 
@@ -609,28 +615,30 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             h.name.setShadowLayer(4f, 0, 1f, 0x99000000);
         }
 
-        if (isDark) {
-            // Dark Glow: pitch black OLED card background
-            android.graphics.drawable.GradientDrawable darkBg = new android.graphics.drawable.GradientDrawable();
-            darkBg.setColor(0xFF000000);
-            darkBg.setCornerRadius(radius);
-            darkBg.setStroke(Math.max(1, Math.round(1.0f * density)), 0x26FFFFFF);
-            h.card.setBackground(darkBg);
-            h.card.setPadding(0, 0, 0, 0);
-        } else if (isNeu) {
-            // Neumorphism Light: Warm extruded porcelain clay card (full-bleed, no padding)
-            h.card.setBackground(new NeumorphicDrawable(radius, density, NeumorphicDrawable.MODE_EXTRUDED, false));
-            h.card.setPadding(0, 0, 0, 0);
-        } else if (e.kind == Entry.ADD_APP) {
-            android.graphics.drawable.GradientDrawable glassTileBg = new android.graphics.drawable.GradientDrawable(
-                    android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
-                    new int[]{0x26FFFFFF, 0x12FFFFFF});
-            glassTileBg.setCornerRadius(radius);
-            glassTileBg.setStroke(Math.max(1, Math.round(1.2f * density)), 0x40FFFFFF);
-            h.card.setBackground(glassTileBg);
-            h.card.setPadding(0, 0, 0, 0);
-        } else {
-            h.card.setBackgroundResource(R.drawable.tile_bg);
+        int bgStyle = isDark ? 1 : (isNeu ? (ThemeManager.isNeumorphismDark(ctx) ? 2 : 3) : (e.kind == Entry.ADD_APP ? 4 : 5));
+        if (h.boundBgStyle != bgStyle || Math.abs(h.boundRadius - radius) > 0.2f) {
+            h.boundBgStyle = bgStyle;
+            h.boundRadius = radius;
+            if (isDark) {
+                // Dark Glow: pitch black OLED card background
+                android.graphics.drawable.GradientDrawable darkBg = new android.graphics.drawable.GradientDrawable();
+                darkBg.setColor(0xFF000000);
+                darkBg.setCornerRadius(radius);
+                darkBg.setStroke(Math.max(1, Math.round(1.0f * density)), 0x26FFFFFF);
+                h.card.setBackground(darkBg);
+            } else if (isNeu) {
+                // Neumorphism: extruded porcelain/charcoal clay card (full-bleed, no padding)
+                h.card.setBackground(new NeumorphicDrawable(radius, density, NeumorphicDrawable.MODE_EXTRUDED, false));
+            } else if (e.kind == Entry.ADD_APP) {
+                android.graphics.drawable.GradientDrawable glassTileBg = new android.graphics.drawable.GradientDrawable(
+                        android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+                        new int[]{0x26FFFFFF, 0x12FFFFFF});
+                glassTileBg.setCornerRadius(radius);
+                glassTileBg.setStroke(Math.max(1, Math.round(1.2f * density)), 0x40FFFFFF);
+                h.card.setBackground(glassTileBg);
+            } else {
+                h.card.setBackgroundResource(R.drawable.tile_bg);
+            }
             h.card.setPadding(0, 0, 0, 0);
         }
         if (e.banner != null) {
@@ -660,6 +668,17 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             openAppInfo(e);
             return true;
         });
+    }
+
+    @Override
+    public void onViewRecycled(@NonNull Holder h) {
+        h.card.animate().cancel();
+        h.name.animate().cancel();
+        if (h.rimAnimator != null) {
+            h.rimAnimator.cancel();
+            h.rimAnimator = null;
+        }
+        super.onViewRecycled(h);
     }
 
     @Override
@@ -1104,25 +1123,24 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         d.setBounds(0, 0, n, n);
         d.draw(c);
         d.setBounds(saved);
+        int[] px = new int[n * n];
+        bmp.getPixels(px, 0, n, 0, 0, n, n);
+        bmp.recycle();
         float[] hsv = new float[3];
         int best = 0xFF444444;
         float bestScore = -1f;
         long r = 0, g = 0, b = 0;
-        for (int y = 0; y < n; y++) {
-            for (int x = 0; x < n; x++) {
-                int p = bmp.getPixel(x, y);
-                r += Color.red(p);
-                g += Color.green(p);
-                b += Color.blue(p);
-                Color.colorToHSV(p, hsv);
-                float score = hsv[1] * Math.min(1f, hsv[2] * 1.4f);   // saturated and not too dark
-                if (score > bestScore) {
-                    bestScore = score;
-                    best = p;
-                }
+        for (int p : px) {
+            r += Color.red(p);
+            g += Color.green(p);
+            b += Color.blue(p);
+            Color.colorToHSV(p, hsv);
+            float score = hsv[1] * Math.min(1f, hsv[2] * 1.4f);   // saturated and not too dark
+            if (score > bestScore) {
+                bestScore = score;
+                best = p;
             }
         }
-        bmp.recycle();
         if (bestScore < 0.25f) {   // nearly monochrome banner (e.g. white): use its average, lifted
             int avg = Color.rgb((int) (r / (n * n)), (int) (g / (n * n)), (int) (b / (n * n)));
             Color.colorToHSV(avg, hsv);
@@ -1150,6 +1168,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         final boolean reducedMotion;
         private float focusLevel = 0f;
         private android.animation.ValueAnimator rimAnimator;
+        int boundBgStyle = 0;
+        float boundRadius = -1f;
 
         void syncFocusRim(boolean focused, boolean immediate) {
             if (rimAnimator != null) {

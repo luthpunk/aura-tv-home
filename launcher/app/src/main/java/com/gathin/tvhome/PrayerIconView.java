@@ -37,6 +37,10 @@ public class PrayerIconView extends View {
     private final Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path tmpPath = new Path();
     private final RectF tmpRect = new RectF();
+    private final float[] archCenters = new float[5];
+    private RadialGradient mosqueHaloShader;
+    private int mosqueShaderW = -1;
+    private int mosqueShaderH = -1;
 
     public PrayerIconView(Context context) {
         this(context, null);
@@ -155,13 +159,18 @@ public class PrayerIconView extends View {
         float cy = oy + s * 0.46f;
         float haloR = s * 0.42f;
 
-        // Soft golden ambient glow behind the mosque dome
-        glowPaint.setShader(new RadialGradient(
-                cx, cy, haloR,
-                new int[]{0x99FFA726, 0x55F59E0B, 0x00F59E0B},
-                new float[]{0.15f, 0.72f, 1.0f},
-                Shader.TileMode.CLAMP
-        ));
+        // Soft golden ambient glow behind the mosque dome (cached by view bounds)
+        if (mosqueHaloShader == null || mosqueShaderW != w || mosqueShaderH != h) {
+            mosqueShaderW = w;
+            mosqueShaderH = h;
+            mosqueHaloShader = new RadialGradient(
+                    cx, cy, haloR,
+                    new int[]{0x99FFA726, 0x55F59E0B, 0x00F59E0B},
+                    new float[]{0.15f, 0.72f, 1.0f},
+                    Shader.TileMode.CLAMP
+            );
+        }
+        glowPaint.setShader(mosqueHaloShader);
         canvas.drawCircle(cx, cy, haloR, glowPaint);
         glowPaint.setShader(null);
 
@@ -230,7 +239,11 @@ public class PrayerIconView extends View {
         float archBottom = baseBottom - s * 0.045f;
         float archTop = roofY + s * 0.055f;
         float archW = s * 0.055f;
-        float[] archCenters = {ox + s * 0.19f, ox + s * 0.295f, ox + s * 0.41f, ox + s * 0.525f, ox + s * 0.63f};
+        archCenters[0] = ox + s * 0.19f;
+        archCenters[1] = ox + s * 0.295f;
+        archCenters[2] = ox + s * 0.41f;
+        archCenters[3] = ox + s * 0.525f;
+        archCenters[4] = ox + s * 0.63f;
         for (int i = 0; i < archCenters.length; i++) {
             float ax = archCenters[i];
             float aw = (i == 2) ? archW * 1.25f : archW;

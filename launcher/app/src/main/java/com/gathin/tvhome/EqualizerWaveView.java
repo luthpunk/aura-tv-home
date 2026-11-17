@@ -15,6 +15,8 @@ import android.view.animation.LinearInterpolator;
  */
 public class EqualizerWaveView extends View {
 
+    private static final float[] STATIC_RATIOS = new float[]{0.35f, 0.75f, 0.45f};
+
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rect = new RectF();
     private ValueAnimator animator;
@@ -75,15 +77,34 @@ public class EqualizerWaveView extends View {
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        if (isPlaying && !animator.isRunning()) {
-            animator.start();
-        }
+        syncAnimatorState();
     }
 
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         if (animator.isRunning()) {
+            animator.cancel();
+        }
+    }
+
+    @Override
+    protected void onVisibilityChanged(View changedView, int visibility) {
+        super.onVisibilityChanged(changedView, visibility);
+        syncAnimatorState();
+    }
+
+    @Override
+    protected void onWindowVisibilityChanged(int visibility) {
+        super.onWindowVisibilityChanged(visibility);
+        syncAnimatorState();
+    }
+
+    private void syncAnimatorState() {
+        if (animator == null) return;
+        if (isPlaying && isShown() && isAttachedToWindow()) {
+            if (!animator.isRunning()) animator.start();
+        } else if (animator.isRunning()) {
             animator.cancel();
         }
     }
@@ -102,8 +123,6 @@ public class EqualizerWaveView extends View {
         float startX = (w - totalBarsWidth) / 2f;
         float cornerRadius = barWidth / 2f;
 
-        float[] staticRatios = new float[]{0.35f, 0.75f, 0.45f};
-
         for (int i = 0; i < numBars; i++) {
             float ratio;
             if (isPlaying) {
@@ -112,7 +131,7 @@ public class EqualizerWaveView extends View {
                 float sinVal = (float) Math.sin(animPhase * 1.8f + phaseOffset);
                 ratio = 0.25f + 0.70f * (0.5f + 0.5f * sinVal);
             } else {
-                ratio = staticRatios[i % staticRatios.length];
+                ratio = STATIC_RATIOS[i % STATIC_RATIOS.length];
             }
 
             float barH = Math.max(barWidth, h * ratio);

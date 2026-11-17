@@ -19,9 +19,11 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -268,17 +270,26 @@ final class OnlineWallpapers {
         }
     }
 
+    private static Map<String, Integer> sCatalogOrder;
+
+    private static synchronized Map<String, Integer> catalogOrderMap() {
+        if (sCatalogOrder == null) {
+            Map<String, Integer> m = new HashMap<>(CURATED_CATALOG.length * 2);
+            for (int i = 0; i < CURATED_CATALOG.length; i++) {
+                m.put(hashFilename(CURATED_CATALOG[i].url), i);
+            }
+            sCatalogOrder = m;
+        }
+        return sCatalogOrder;
+    }
+
     private static int catalogOrderIndex(File f) {
         if (f == null) return Integer.MAX_VALUE;
         String name = f.getName();
         int dot = name.lastIndexOf('.');
         String base = dot > 0 ? name.substring(0, dot) : name;
-        for (int i = 0; i < CURATED_CATALOG.length; i++) {
-            if (base.equals(hashFilename(CURATED_CATALOG[i].url))) {
-                return i;
-            }
-        }
-        return Integer.MAX_VALUE;
+        Integer idx = catalogOrderMap().get(base);
+        return idx != null ? idx : Integer.MAX_VALUE;
     }
 
     static List<File> listByCategory(Context ctx, String category) {
@@ -565,13 +576,13 @@ final class OnlineWallpapers {
             conn.connect();
             if (conn.getResponseCode() != HttpURLConnection.HTTP_OK) return list;
 
-            BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) sb.append(line);
-            reader.close();
-
-            String raw = sb.toString().trim();
+            String raw;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) sb.append(line);
+                raw = sb.toString().trim();
+            }
             if (raw.startsWith("[")) {
                 JSONArray arr = new JSONArray(raw);
                 for (int i = 0; i < arr.length(); i++) {

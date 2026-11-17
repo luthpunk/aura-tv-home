@@ -65,6 +65,13 @@ public final class FootballScheduleManager {
     private static final long CACHE_TTL_MS = 15 * 60 * 1000L;
     private static volatile boolean isSyncing = false;
     private static volatile long lastFailedAttemptMs = 0L;
+    private static final Object MATCH_CACHE_LOCK = new Object();
+    private static String sCachedJsonStr = null;
+    private static List<MatchItem> sCachedMatches = Collections.emptyList();
+    private static String sCachedMarquee = null;
+    private static volatile String sDohHost = null;
+    private static volatile String sDohIp = null;
+    private static volatile long sDohExpiresMs = 0L;
 
     public static class MatchItem {
         public final String id;
@@ -599,12 +606,12 @@ public final class FootballScheduleManager {
             conn.setReadTimeout(4500);
             conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Android TV)");
             if (conn.getResponseCode() == 200) {
-                BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = br.readLine()) != null) sb.append(line);
-                br.close();
-                return sb.toString();
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = br.readLine()) != null) sb.append(line);
+                    return sb.toString();
+                }
             }
         } catch (Exception e) {
             if (useDohFallback) {
@@ -625,37 +632,45 @@ public final class FootballScheduleManager {
             String path = url.getFile();
             String ip = "34.54.215.216"; // Default LiveScore Anycast CDN IP
 
-            // Query Google DoH for fresh A record
-            HttpURLConnection dohConn = null;
-            try {
-                URL dohUrl = new URL("https://dns.google/resolve?name=" + host + "&type=A");
-                dohConn = (HttpURLConnection) dohUrl.openConnection();
-                dohConn.setConnectTimeout(2500);
-                dohConn.setReadTimeout(2500);
-                if (dohConn.getResponseCode() == 200) {
-                    BufferedReader br = new BufferedReader(new InputStreamReader(dohConn.getInputStream(), StandardCharsets.UTF_8));
-                    StringBuilder sb = new StringBuilder();
-                    String line;
-                    while ((line = br.readLine()) != null) sb.append(line);
-                    br.close();
-                    JSONObject dnsJson = new JSONObject(sb.toString());
-                    JSONArray answers = dnsJson.optJSONArray("Answer");
-                    if (answers != null) {
-                        for (int i = 0; i < answers.length(); i++) {
-                            JSONObject a = answers.optJSONObject(i);
-                            if (a != null && a.optInt("type") == 1) {
-                                String candidate = a.optString("data", "");
-                                if (!candidate.isEmpty()) {
-                                    ip = candidate;
-                                    break;
+            // Query Google DoH for fresh A record (10-min in-memory cache per host)
+            long now = System.currentTimeMillis();
+            if (host.equals(sDohHost) && sDohIp != null && now < sDohExpiresMs) {
+                ip = sDohIp;
+            } else {
+                HttpURLConnection dohConn = null;
+                try {
+                    URL dohUrl = new URL("https://dns.google/resolve?name=" + host + "&type=A");
+                    dohConn = (HttpURLConnection) dohUrl.openConnection();
+                    dohConn.setConnectTimeout(2500);
+                    dohConn.setReadTimeout(2500);
+                    if (dohConn.getResponseCode() == 200) {
+                        try (BufferedReader br = new BufferedReader(new InputStreamReader(dohConn.getInputStream(), StandardCharsets.UTF_8))) {
+                            StringBuilder sb = new StringBuilder();
+                            String line;
+                            while ((line = br.readLine()) != null) sb.append(line);
+                            JSONObject dnsJson = new JSONObject(sb.toString());
+                            JSONArray answers = dnsJson.optJSONArray("Answer");
+                            if (answers != null) {
+                                for (int i = 0; i < answers.length(); i++) {
+                                    JSONObject a = answers.optJSONObject(i);
+                                    if (a != null && a.optInt("type") == 1) {
+                                        String candidate = a.optString("data", "");
+                                        if (!candidate.isEmpty()) {
+                                            ip = candidate;
+                                            sDohHost = host;
+                                            sDohIp = candidate;
+                                            sDohExpiresMs = now + 10 * 60 * 1000L;
+                                            break;
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
+                } catch (Exception ignored) {
+                } finally {
+                    if (dohConn != null) dohConn.disconnect();
                 }
-            } catch (Exception ignored) {
-            } finally {
-                if (dohConn != null) dohConn.disconnect();
             }
 
             rawSocket = new Socket();
@@ -982,12 +997,18 @@ public final class FootballScheduleManager {
     }
 
     public static List<MatchItem> getCachedMatches(Context context) {
-        List<MatchItem> list = new ArrayList<>();
-        if (context == null) return list;
+        if (context == null) return new ArrayList<>();
         SharedPreferences sp = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String json = sp.getString(KEY_CACHE_JSON, null);
-        if (json == null || json.length() <= 5) return list;
+        if (json == null || json.length() <= 5) return new ArrayList<>();
 
+        synchronized (MATCH_CACHE_LOCK) {
+            if (json.equals(sCachedJsonStr)) {
+                return new ArrayList<>(sCachedMatches);
+            }
+        }
+
+        List<MatchItem> list = new ArrayList<>();
         try {
             JSONArray arr = new JSONArray(json);
             for (int i = 0; i < arr.length(); i++) {
@@ -1009,8 +1030,13 @@ public final class FootballScheduleManager {
                         o.optLong("timestamp")
                 ));
             }
+            synchronized (MATCH_CACHE_LOCK) {
+                sCachedJsonStr = json;
+                sCachedMatches = Collections.unmodifiableList(list);
+                sCachedMarquee = null;
+            }
         } catch (Exception ignored) {}
-        return list;
+        return new ArrayList<>(list);
     }
 
     public static String getMarqueeTicker(Context context) {
@@ -1020,11 +1046,18 @@ public final class FootballScheduleManager {
             return "⚽ " + league + ": Memuat jadwal pertandingan terbaru...";
         }
 
+        synchronized (MATCH_CACHE_LOCK) {
+            if (sCachedMarquee != null) return sCachedMarquee;
+        }
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < Math.min(matches.size(), 12); i++) {
             if (i > 0) sb.append("   •   ");
             sb.append(matches.get(i).getCompactSummary());
         }
-        return sb.toString();
+        String built = sb.toString();
+        synchronized (MATCH_CACHE_LOCK) {
+            sCachedMarquee = built;
+        }
+        return built;
     }
 }

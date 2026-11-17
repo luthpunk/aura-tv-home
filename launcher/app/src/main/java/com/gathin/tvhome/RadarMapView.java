@@ -1,6 +1,7 @@
 package com.gathin.tvhome;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Path;
@@ -34,6 +35,10 @@ public class RadarMapView extends View {
     private String provinceName = "Jawa Timur";
     private double latitude = AppLocationManager.DEFAULT_LATITUDE;
     private double longitude = AppLocationManager.DEFAULT_LONGITUDE;
+    private Bitmap cachedMapBitmap;
+    private int cachedW = -1;
+    private int cachedH = -1;
+    private boolean cacheDirty = true;
 
     public RadarMapView(Context context) {
         this(context, null);
@@ -75,16 +80,43 @@ public class RadarMapView extends View {
     }
 
     public void setDetails(int temp, String loc, double lat, double lon, String province) {
-        this.temp = temp;
-        if (loc != null && !loc.trim().isEmpty()) {
-            this.locationName = loc.trim();
+        String cleanLoc = (loc != null && !loc.trim().isEmpty()) ? loc.trim() : this.locationName;
+        String cleanProv = (province != null && !province.trim().isEmpty()) ? province.trim() : this.provinceName;
+        if (this.temp == temp && this.latitude == lat && this.longitude == lon
+                && cleanLoc.equals(this.locationName) && cleanProv.equals(this.provinceName)) {
+            return;
         }
+        this.temp = temp;
+        this.locationName = cleanLoc;
         this.latitude = lat;
         this.longitude = lon;
-        if (province != null && !province.trim().isEmpty()) {
-            this.provinceName = province.trim();
-        }
+        this.provinceName = cleanProv;
+        this.cacheDirty = true;
         invalidate();
+    }
+
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        if (w != cachedW || h != cachedH) {
+            releaseCache();
+        }
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        releaseCache();
+    }
+
+    private void releaseCache() {
+        if (cachedMapBitmap != null) {
+            cachedMapBitmap.recycle();
+            cachedMapBitmap = null;
+        }
+        cachedW = -1;
+        cachedH = -1;
+        cacheDirty = true;
     }
 
     @Override
@@ -94,6 +126,24 @@ public class RadarMapView extends View {
         int w = getWidth();
         int h = getHeight();
         if (w <= 0 || h <= 0) return;
+
+        if (cachedMapBitmap == null || cachedW != w || cachedH != h || cacheDirty) {
+            if (cachedMapBitmap == null || cachedW != w || cachedH != h) {
+                if (cachedMapBitmap != null) cachedMapBitmap.recycle();
+                cachedMapBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+                cachedW = w;
+                cachedH = h;
+            } else {
+                cachedMapBitmap.eraseColor(0);
+            }
+            Canvas offscreen = new Canvas(cachedMapBitmap);
+            renderRadarMap(offscreen, w, h);
+            cacheDirty = false;
+        }
+        canvas.drawBitmap(cachedMapBitmap, 0f, 0f, null);
+    }
+
+    private void renderRadarMap(Canvas canvas, int w, int h) {
 
         float density = getResources().getDisplayMetrics().density;
 

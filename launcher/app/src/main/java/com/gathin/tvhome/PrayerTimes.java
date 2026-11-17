@@ -46,6 +46,13 @@ final class PrayerTimes {
     static final String[] NAMES = {"Subuh", "Syuruq", "Dzuhur", "Ashar", "Maghrib", "Isya"};
     private static final String[] PRAYER_NAMES = NAMES;
     private static final String[] PRAYER_KEYS = {"fajr", "syuruk", "dhuhr", "asr", "maghrib", "isha"};
+    private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
+    private static volatile boolean isSyncing = false;
+    private static final Object PARSE_CACHE_LOCK = new Object();
+    private static String sCachedDaysRaw = null;
+    private static JSONObject sCachedDaysObj = null;
+    private static String sCachedTakimRaw = null;
+    private static JSONObject sCachedTakimObj = null;
 
     static final class Day {
         final int[] minutes;
@@ -125,6 +132,19 @@ final class PrayerTimes {
 
     private static void syncInternal(Context context, Runnable onUpdated, boolean force) {
         final Context appCtx = context.getApplicationContext();
+        SharedPreferences prePrefs = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        Calendar preNow = Calendar.getInstance();
+        int preYear = preNow.get(Calendar.YEAR);
+        int preMonth = preNow.get(Calendar.MONTH) + 1;
+        int preCurrentMonth = preYear * 100 + preMonth;
+        String preLocKey = buildLocationKey(appCtx);
+        if (!force && preLocKey.equals(prePrefs.getString(KEY_CACHED_LOC, ""))
+                && prePrefs.getInt(KEY_MONTH, 0) == preCurrentMonth
+                && (prePrefs.contains(KEY_DAYS_JSON) || prePrefs.contains(KEY_JSON))) {
+            return;
+        }
+        if (isSyncing && !force) return;
+        isSyncing = true;
         new Thread(() -> {
             try {
                 SharedPreferences prefs = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -152,7 +172,7 @@ final class PrayerTimes {
                                 .putString(KEY_CACHED_LOC, locKey)
                                 .putString("cached_zone", zone)
                                 .apply();
-                        if (onUpdated != null) new Handler(Looper.getMainLooper()).post(onUpdated);
+                        if (onUpdated != null) MAIN_HANDLER.post(onUpdated);
                         Log.i(TAG, "Synced JAKIM prayer times for zone " + zone);
                     }
                     return;
@@ -177,12 +197,14 @@ final class PrayerTimes {
                             .putString(KEY_CACHED_LOC, locKey)
                             .apply();
                     if (onUpdated != null) {
-                        new Handler(Looper.getMainLooper()).post(onUpdated);
+                        MAIN_HANDLER.post(onUpdated);
                     }
                     Log.i(TAG, "Synced prayer times via " + sourceUsed + " for " + locName);
                 }
             } catch (Exception e) {
                 Log.w(TAG, "Prayer sync offline/failed: " + e.getMessage());
+            } finally {
+                isSyncing = false;
             }
         }, "prayer-sync").start();
     }
@@ -345,12 +367,12 @@ final class PrayerTimes {
             conn.setRequestMethod("GET");
             conn.setRequestProperty("Accept", "application/json");
             if (conn.getResponseCode() == 200) {
-                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) sb.append(line);
-                reader.close();
-                return sb.toString();
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) sb.append(line);
+                    return sb.toString();
+                }
             }
         } catch (Exception ignored) {
         } finally {
@@ -618,7 +640,14 @@ final class PrayerTimes {
             int day = cal.get(Calendar.DAY_OF_MONTH);
             String daysJsonStr = prefs.getString(KEY_DAYS_JSON, null);
             if (daysJsonStr != null) {
-                JSONObject daysObj = new JSONObject(daysJsonStr);
+                JSONObject daysObj;
+                synchronized (PARSE_CACHE_LOCK) {
+                    if (!daysJsonStr.equals(sCachedDaysRaw) || sCachedDaysObj == null) {
+                        sCachedDaysObj = new JSONObject(daysJsonStr);
+                        sCachedDaysRaw = daysJsonStr;
+                    }
+                    daysObj = sCachedDaysObj;
+                }
                 JSONArray arr = daysObj.optJSONArray(String.valueOf(day));
                 if (arr != null && arr.length() >= 6) {
                     long[] res = new long[6];
@@ -631,7 +660,14 @@ final class PrayerTimes {
 
             String takimStr = prefs.getString(KEY_JSON, null);
             if (takimStr != null && locKey.startsWith("ZONE:")) {
-                JSONObject obj = new JSONObject(takimStr);
+                JSONObject obj;
+                synchronized (PARSE_CACHE_LOCK) {
+                    if (!takimStr.equals(sCachedTakimRaw) || sCachedTakimObj == null) {
+                        sCachedTakimObj = new JSONObject(takimStr);
+                        sCachedTakimRaw = takimStr;
+                    }
+                    obj = sCachedTakimObj;
+                }
                 JSONArray prayers = obj.getJSONArray("prayers");
                 for (int i = 0; i < prayers.length(); i++) {
                     JSONObject p = prayers.getJSONObject(i);

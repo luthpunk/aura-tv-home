@@ -689,11 +689,11 @@ public class AppLocationManager {
                 conn.setReadTimeout(4000);
                 conn.setRequestMethod("GET");
                 if (conn.getResponseCode() == 200) {
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
                     StringBuilder sb = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) sb.append(line);
-                    reader.close();
+                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
+                        String line;
+                        while ((line = reader.readLine()) != null) sb.append(line);
+                    }
 
                     JSONObject root = new JSONObject(sb.toString());
                     JSONArray results = root.optJSONArray("results");

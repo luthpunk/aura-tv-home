@@ -320,6 +320,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private PopupWindow openPopup;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private Typeface cachedOutfit;
+    private final ViewTreeObserver.OnGlobalLayoutListener alignButtonsListener = this::alignTopButtons;
+    private ViewTreeObserver.OnGlobalFocusChangeListener globalFocusListener;
+
+    private Typeface outfitFont() {
+        if (cachedOutfit == null) {
+            cachedOutfit = getResources().getFont(R.font.outfit);
+        }
+        return cachedOutfit;
+    }
     /** Rotating wallpaper (Config.wallpapers), the view that shows it and the bitmap on screen. */
     private List<File> wallpapers = Collections.emptyList();
     private long wallpaperIntervalMs;
@@ -330,6 +340,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private android.graphics.Bitmap wallBitmap;
     private TextureView liveWallView;
     private MediaPlayer livePlayer;
+    private boolean livePrepared;
     private View liveDimOverlay;
     private File currentLiveFile;
     /** Settings kept for the places refresh, which runs after onCreate. */
@@ -527,8 +538,21 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 }).start();
             }
         }
-        if (!wallpapers.isEmpty()) showNextWallpaper(false);
-        else if (cfg.wallpaper != null && !placesMode) setWallpaper(decodeWallpaper(cfg.wallpaper), false);
+        if (!wallpapers.isEmpty()) {
+            showNextWallpaper(false);
+        } else if (cfg.wallpaper != null && !placesMode) {
+            final File staticWall = cfg.wallpaper;
+            wallDecoder.execute(() -> {
+                Bitmap bmp = decodeWallpaper(staticWall);
+                if (bmp != null) {
+                    handler.post(() -> {
+                        if (!isDestroyed() && wallBitmap == null && currentLiveFile == null) {
+                            setWallpaper(bmp, false);
+                        }
+                    });
+                }
+            });
+        }
         // The shelf grows and shrinks with the name and the description, so it hangs from its
         // bottom edge: every time it is measured, its top is worked out again. Positioning it by
         // the height it happened to have beforehand is what let a tall block run into the dock.
@@ -681,7 +705,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
 
         applyWeatherWidgetMode();
-        updateWeatherAqi();
         WeatherAirQuality.syncIfDue(this, this::updateWeatherAqi);
 
         // Football Schedule Widget Views (Right side)
@@ -1039,7 +1062,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         dockTray = new DockDecoration(COLUMNS, density);
         grid.addItemDecoration(dockTray);
         // The top-right buttons line up with the dock, which is only known once the tiles are laid out.
-        grid.getViewTreeObserver().addOnGlobalLayoutListener(this::alignTopButtons);
+        grid.getViewTreeObserver().addOnGlobalLayoutListener(alignButtonsListener);
         // Glass shows the blurred wallpaper behind it: the dock tray (drawn by the grid) and the
         // top-bar pills redraw when a new blurred copy is ready.
         Backdrop.watch(grid);
@@ -1296,11 +1319,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (btnSettings != null) btnSettings.setOnKeyListener(pillKeys);
 
         // Hide the glass when focus leaves the tiles.
-        getWindow().getDecorView().getViewTreeObserver().addOnGlobalFocusChangeListener((oldF, newF) -> {
+        globalFocusListener = (oldF, newF) -> {
             boolean onTile = newF != null && newF.getId() == R.id.card;
             if (!onTile) hideGlass();
             if (!onTile && (newF == null || !(isTopPill(newF) || inMenu(newF)))) glider.hide();
-        });
+        };
+        getWindow().getDecorView().getViewTreeObserver().addOnGlobalFocusChangeListener(globalFocusListener);
 
         packageFilter.addAction(Intent.ACTION_PACKAGE_ADDED);
         packageFilter.addAction(Intent.ACTION_PACKAGE_REMOVED);
@@ -1364,7 +1388,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             opts.inJustDecodeBounds = true;
             android.graphics.BitmapFactory.decodeFile(file.getPath(), opts);
             int sample = 1;
-            while (opts.outWidth / (sample * 2) >= dm.widthPixels && opts.outHeight / (sample * 2) >= dm.heightPixels) sample *= 2;
+            while (opts.outWidth / (sample * 2) >= dm.widthPixels || opts.outHeight / (sample * 2) >= dm.heightPixels) sample *= 2;
             opts.inJustDecodeBounds = false;
             opts.inSampleSize = sample;
             opts.inPreferredConfig = android.graphics.Bitmap.Config.RGB_565;
@@ -1731,9 +1755,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         livePaused = false;
         updateLiveDimOverlay();
         if (livePlayer != null && liveWallView != null && liveWallView.isAvailable()) {
-            try {
-                if (!livePlayer.isPlaying()) livePlayer.start();
-            } catch (Exception ignored) {}
+            if (livePrepared) {
+                try {
+                    if (!livePlayer.isPlaying()) livePlayer.start();
+                } catch (Exception ignored) {}
+            }
             liveFramesSeen = liveFrames;
             handler.removeCallbacks(liveWatchdog);
             handler.postDelayed(liveWatchdog, LIVE_WATCHDOG_MS);
@@ -1774,6 +1800,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     else try { player.release(); } catch (Exception ignored) {}
                     return;
                 }
+                livePrepared = true;
                 adjustVideoAspect(tv, player.getVideoWidth(), player.getVideoHeight());
                 if (!livePaused) player.start();
             });
@@ -1800,6 +1827,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     private void releaseLivePlayer() {
+        livePrepared = false;
         if (livePlayer != null) {
             MediaPlayer mp = livePlayer;
             livePlayer = null;
@@ -2048,6 +2076,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         NowPlayingManager.updateCurrentMedia(this);
         startWallpaperRotation();
+        handler.removeCallbacks(minuteTick);
         handler.postDelayed(minuteTick, MINUTE_MS);
         handler.removeCallbacks(nowPlayingPoll);
         handler.postDelayed(nowPlayingPoll, 2000);
@@ -2158,7 +2187,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
             showCardPrompt();
-            if (currentLiveFile != null && livePlayer != null && !livePaused) {
+            if (currentLiveFile != null && livePlayer != null && livePrepared && !livePaused) {
                 try {
                     if (!livePlayer.isPlaying()) livePlayer.start();
                 } catch (Exception ignored) {}
@@ -2178,6 +2207,21 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     @Override
     protected void onDestroy() {
+        handler.removeCallbacksAndMessages(null);
+        if (grid != null && grid.getViewTreeObserver().isAlive()) {
+            grid.getViewTreeObserver().removeOnGlobalLayoutListener(alignButtonsListener);
+        }
+        if (globalFocusListener != null && getWindow() != null && getWindow().getDecorView().getViewTreeObserver().isAlive()) {
+            getWindow().getDecorView().getViewTreeObserver().removeOnGlobalFocusChangeListener(globalFocusListener);
+        }
+        if (qrUploadDialog != null && qrUploadDialog.isShowing()) {
+            qrUploadDialog.dismiss();
+            qrUploadDialog = null;
+        }
+        if (cardPrompt != null && cardPrompt.isShowing()) {
+            cardPrompt.dismiss();
+            cardPrompt = null;
+        }
         super.onDestroy();
         releaseLivePlayer();
         if (sInstance != null && sInstance.get() == this) {
@@ -2316,13 +2360,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         float x = r.exactCenterX() - w / 2f;
         float y = r.exactCenterY() - h / 2f;
 
-        ViewGroup.LayoutParams lp = glass.getLayoutParams();
-        if (lp.width != (int) w || lp.height != (int) h) {
-            lp.width = (int) w;
-            lp.height = (int) h;
-            glass.setLayoutParams(lp);
-            // The rim is drawn inset by pad, right on the zoomed tile, so its corners use the tile's radius as is.
-            glass.setRadius(AppAdapter.cornerRadius(card.getWidth(), density) * AppAdapter.FOCUS_SCALE);
+        if (glass != null && glass.getVisibility() != View.GONE) {
+            ViewGroup.LayoutParams lp = glass.getLayoutParams();
+            if (lp.width != (int) w || lp.height != (int) h) {
+                lp.width = (int) w;
+                lp.height = (int) h;
+                glass.setLayoutParams(lp);
+                // The rim is drawn inset by pad, right on the zoomed tile, so its corners use the tile's radius as is.
+                glass.setRadius(AppAdapter.cornerRadius(card.getWidth(), density) * AppAdapter.FOCUS_SCALE);
+            }
         }
         glassTargetX = x;
         glassTargetY = y;
@@ -3352,7 +3398,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 // The place's name and lines come in the same frame as the picture they describe,
                 // whenever focus lands in the dock, where the shelf shows.
                 boolean whole = adapter.getItemCount() > 0 && grid.getChildCount() > 0 && parked
-                        && (wallBitmap != null || !expectsWallpaper) && (heroShown || lastFocused >= COLUMNS);
+                        && (wallBitmap != null || currentLiveFile != null || !expectsWallpaper) && (heroShown || lastFocused >= COLUMNS);
                 if (!whole && android.os.SystemClock.uptimeMillis() - start < FIRST_FRAME_WAIT_MS) {
                     return false;   // skip this frame; the next traversal asks again
                 }
@@ -3369,7 +3415,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** Tells the glass the glow's colour and strength, so what shows through matches around it. */
     private void syncGlassGlow() {
-        Backdrop.setGlow(ambientShape(), glowFrom, ambientColor, glowMix, ambient.getAlpha());
+        float alpha = (ambient != null) ? ambient.getAlpha() : 0f;
+        Backdrop.setGlow(alpha > 0f ? ambientShape() : null, glowFrom, ambientColor, glowMix, alpha);
     }
 
     /** Runs the glass through the same colour blend as the room's TransitionDrawable. */
@@ -7115,6 +7162,19 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         return sb.toString();
     }
 
+    private static byte[] readStreamCapped(java.io.InputStream is, int maxBytes) throws java.io.IOException {
+        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream(16384);
+        byte[] buf = new byte[8192];
+        int total = 0;
+        int n;
+        while ((n = is.read(buf)) != -1) {
+            total += n;
+            if (total > maxBytes) return null;
+            baos.write(buf, 0, n);
+        }
+        return baos.toByteArray();
+    }
+
     private void loadUriBitmapAsync(Uri uri, ImageView targetView, float radiusPx, String packageName, int fallbackPadding, String trackKey, Bitmap fallbackBmp) {
         if (uri == null || targetView == null) return;
         final String uriStr = uri.toString();
@@ -7143,10 +7203,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         new Thread(() -> {
             Bitmap bmp = null;
+            java.net.HttpURLConnection conn = null;
             try {
                 String scheme = uri.getScheme();
+                byte[] rawBytes = null;
                 if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
-                    java.net.HttpURLConnection conn = (java.net.HttpURLConnection) new java.net.URL(uriStr).openConnection();
+                    conn = (java.net.HttpURLConnection) new java.net.URL(uriStr).openConnection();
                     conn.setConnectTimeout(6000);
                     conn.setReadTimeout(6000);
                     conn.setInstanceFollowRedirects(true);
@@ -7155,16 +7217,30 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     int code = conn.getResponseCode();
                     if (code == 200 || code == 206) {
                         try (java.io.InputStream is = conn.getInputStream()) {
-                            bmp = android.graphics.BitmapFactory.decodeStream(is);
+                            rawBytes = readStreamCapped(is, 4 * 1024 * 1024);
                         }
                     }
                 } else {
                     try (java.io.InputStream is = getContentResolver().openInputStream(uri)) {
-                        bmp = android.graphics.BitmapFactory.decodeStream(is);
+                        if (is != null) rawBytes = readStreamCapped(is, 4 * 1024 * 1024);
                     }
+                }
+                if (rawBytes != null && rawBytes.length > 0) {
+                    BitmapFactory.Options opts = new BitmapFactory.Options();
+                    opts.inJustDecodeBounds = true;
+                    BitmapFactory.decodeByteArray(rawBytes, 0, rawBytes.length, opts);
+                    int sample = 1;
+                    while (opts.outWidth / (sample * 2) >= 512 || opts.outHeight / (sample * 2) >= 512) {
+                        sample *= 2;
+                    }
+                    opts.inJustDecodeBounds = false;
+                    opts.inSampleSize = sample;
+                    bmp = BitmapFactory.decodeByteArray(rawBytes, 0, rawBytes.length, opts);
                 }
             } catch (Throwable t) {
                 Log.w("TvHome.Main", "Error loading URI bitmap: " + t.getMessage());
+            } finally {
+                if (conn != null) conn.disconnect();
             }
 
             if (bmp != null) {
@@ -8616,25 +8692,33 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 qrUrlText.setText("✅ Wallpaper Aktif: " + file.getName());
                 qrUrlText.setTextColor(0xFF4ADE80);
             }
-            if (qrImageView != null) {
-                try {
-                    Bitmap thumb = null;
-                    if (isVideo) {
-                        android.media.MediaMetadataRetriever mmr = new android.media.MediaMetadataRetriever();
-                        try {
-                            mmr.setDataSource(file.getAbsolutePath());
-                            thumb = mmr.getFrameAtTime(0);
-                        } finally {
-                            try { mmr.release(); } catch (Exception ignored) {}
+            if (qrImageView != null && file != null) {
+                final ImageView previewTarget = qrImageView;
+                wallDecoder.execute(() -> {
+                    try {
+                        Bitmap thumb = null;
+                        if (isVideo) {
+                            android.media.MediaMetadataRetriever mmr = new android.media.MediaMetadataRetriever();
+                            try {
+                                mmr.setDataSource(file.getAbsolutePath());
+                                thumb = mmr.getFrameAtTime(0);
+                            } finally {
+                                try { mmr.release(); } catch (Exception ignored) {}
+                            }
+                        } else {
+                            thumb = decodeWallpaper(file);
                         }
-                    } else {
-                        thumb = decodeWallpaper(file);
-                    }
-                    if (thumb != null) {
-                        qrImageView.setImageBitmap(thumb);
-                        qrImageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                    }
-                } catch (Exception ignored) {}
+                        if (thumb != null) {
+                            final Bitmap finalThumb = thumb;
+                            handler.post(() -> {
+                                if (!isDestroyed() && qrUploadDialog != null && qrUploadDialog.isShowing()) {
+                                    previewTarget.setImageBitmap(finalThumb);
+                                    previewTarget.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                                }
+                            });
+                        }
+                    } catch (Exception ignored) {}
+                });
             }
 
             handler.postDelayed(() -> {

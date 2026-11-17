@@ -46,6 +46,11 @@ final class WeatherAirQuality {
     private static final String KEY_AQI_IS_JAS = "aqi_is_jas";
     private static final String KEY_LAST_UPDATE = "last_update";
     private static final long REFRESH_INTERVAL_MS = 30L * 60 * 1000; // 30 minutes
+    private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
+    private static volatile boolean isSyncing = false;
+    private static final Object FULL_CACHE_LOCK = new Object();
+    private static String sCachedFullKey = null;
+    private static FullWeather sCachedFullWeather = null;
 
     static class HourlyItem {
         final String time;
@@ -162,19 +167,28 @@ final class WeatherAirQuality {
     }
 
     private static void syncInternal(Context context, Runnable onUpdated, boolean force) {
+        final Context appCtx = context.getApplicationContext();
+        SharedPreferences preCheck = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        long lastCheck = preCheck.getLong(KEY_LAST_UPDATE, 0);
+        long nowCheck = System.currentTimeMillis();
+        if (!force && nowCheck - lastCheck < REFRESH_INTERVAL_MS && preCheck.contains(KEY_WEATHER_JSON)) {
+            return; // Cache is fresh: skip spawning a background thread
+        }
+        if (isSyncing && !force) return;
+        isSyncing = true;
         new Thread(() -> {
             try {
-                SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+                SharedPreferences prefs = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
                 long last = prefs.getLong(KEY_LAST_UPDATE, 0);
                 long now = System.currentTimeMillis();
                 if (!force && now - last < REFRESH_INTERVAL_MS && prefs.contains(KEY_WEATHER_JSON)) {
                     return; // Cache is still fresh
                 }
 
-                double lat = AppLocationManager.getLatitude(context);
-                double lon = AppLocationManager.getLongitude(context);
-                String stationId = AppLocationManager.getStationId(context);
-                String defaultPlace = AppLocationManager.getStationPlace(context);
+                double lat = AppLocationManager.getLatitude(appCtx);
+                double lon = AppLocationManager.getLongitude(appCtx);
+                String stationId = AppLocationManager.getStationId(appCtx);
+                String defaultPlace = AppLocationManager.getStationPlace(appCtx);
 
                 // 1. Fetch Complete Weather Forecast (Open-Meteo)
                 String weatherUrl = String.format(Locale.ROOT,
@@ -252,10 +266,12 @@ final class WeatherAirQuality {
                 Log.i(TAG, "Full weather & AQI synced successfully (JAS=" + isJas + ", IPU=" + aqi + ")");
 
                 if (onUpdated != null) {
-                    new Handler(Looper.getMainLooper()).post(onUpdated);
+                    MAIN_HANDLER.post(onUpdated);
                 }
             } catch (Exception e) {
                 Log.w(TAG, "Weather/AQI sync error: " + e.getMessage());
+            } finally {
+                isSyncing = false;
             }
         }, "weather-aqi-sync").start();
     }
@@ -308,10 +324,24 @@ final class WeatherAirQuality {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String wStr = prefs.getString(KEY_WEATHER_JSON, null);
         String aStr = prefs.getString(KEY_AQI_JSON, null);
+        int prefTemp = prefs.getInt(KEY_TEMP, 29);
+        int prefCode = prefs.getInt(KEY_CODE, 2);
+        int prefAqi = prefs.getInt(KEY_AQI, 50);
+        String stationIdNow = AppLocationManager.getStationId(context);
+        boolean isNeuNow = ThemeManager.isNeumorphism(context);
+        Calendar keyCal = Calendar.getInstance();
+        String cacheKey = (wStr != null ? wStr.hashCode() : 0) + "|" + (aStr != null ? aStr.hashCode() : 0)
+                + "|" + prefTemp + "|" + prefCode + "|" + prefAqi + "|" + stationIdNow + "|" + isNeuNow
+                + "|" + keyCal.get(Calendar.DAY_OF_YEAR) + "|" + keyCal.get(Calendar.HOUR_OF_DAY);
+        synchronized (FULL_CACHE_LOCK) {
+            if (cacheKey.equals(sCachedFullKey) && sCachedFullWeather != null) {
+                return sCachedFullWeather;
+            }
+        }
 
-        int temp = prefs.getInt(KEY_TEMP, 29);
+        int temp = prefTemp;
         int apparentTemp = temp + 3;
-        int code = prefs.getInt(KEY_CODE, 2);
+        int code = prefCode;
         int highTemp = temp + 3;
         int lowTemp = temp - 4;
         int humidity = 78;
@@ -357,10 +387,12 @@ final class WeatherAirQuality {
 
                     // Parse 7 days
                     if (days != null) {
+                        SimpleDateFormat inFmt = new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT);
+                        SimpleDateFormat outFmt = new SimpleDateFormat("EEE", Locale.getDefault());
                         int len = Math.min(7, days.length());
                         for (int i = 0; i < len; i++) {
                             String dayStr = days.optString(i, "");
-                            String dayLabel = i == 0 ? "Today" : formatDayName(dayStr);
+                            String dayLabel = i == 0 ? "Today" : formatDayName(dayStr, inFmt, outFmt);
                             int c = dailyCodes != null ? dailyCodes.optInt(i, 2) : 2;
                             int mx = maxTemps != null ? (int) Math.round(maxTemps.optDouble(i, 31.0)) : 31;
                             int mn = minTemps != null ? (int) Math.round(minTemps.optDouble(i, 24.0)) : 24;
@@ -436,10 +468,15 @@ final class WeatherAirQuality {
         SimpleDateFormat sdf = new SimpleDateFormat("h:mm a", Locale.getDefault());
         String updated = sdf.format(new Date());
 
-        return new FullWeather(locationName, stationId, stationPlace, isJas, temp, apparentTemp,
+        FullWeather result = new FullWeather(locationName, stationId, stationPlace, isJas, temp, apparentTemp,
                 code, getWeatherCondition(code, isMalay), getWeatherIcon(code),
                 highTemp, lowTemp, humidity, windSpeed, uvIndex, rainChanceToday,
                 sunrise, sunset, aqi, aqiStatus, aqiColor, aqiParam, pm25, pm10, updated, hourly, daily);
+        synchronized (FULL_CACHE_LOCK) {
+            sCachedFullKey = cacheKey;
+            sCachedFullWeather = result;
+        }
+        return result;
     }
 
     private static String translateAqiStatus(String status) {
@@ -468,12 +505,10 @@ final class WeatherAirQuality {
         return "6:54 AM";
     }
 
-    private static String formatDayName(String ymd) {
+    private static String formatDayName(String ymd, SimpleDateFormat inFmt, SimpleDateFormat outFmt) {
         try {
-            SimpleDateFormat inFmt = new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT);
             Date d = inFmt.parse(ymd);
             if (d != null) {
-                SimpleDateFormat outFmt = new SimpleDateFormat("EEE", Locale.getDefault());
                 return outFmt.format(d);
             }
         } catch (Exception ignored) {
@@ -569,6 +604,7 @@ final class WeatherAirQuality {
             private final android.graphics.Paint fillPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
             private final android.graphics.Paint strokePaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
             private final android.graphics.Path cloudPath = new android.graphics.Path();
+            private final android.graphics.RectF cloudBounds = new android.graphics.RectF();
 
             {
                 fillPaint.setStyle(android.graphics.Paint.Style.FILL);
@@ -655,9 +691,8 @@ final class WeatherAirQuality {
                 // Soft multi-puff layered cloud silhouette matching WeatherSkyView
                 float baseH = ch * 0.44f;
                 float rBase = baseH * 0.50f;
-                cloudPath.addRoundRect(
-                        new android.graphics.RectF(left + cw * 0.04f, bottom - baseH, left + cw * 0.96f, bottom),
-                        rBase, rBase, android.graphics.Path.Direction.CW);
+                cloudBounds.set(left + cw * 0.04f, bottom - baseH, left + cw * 0.96f, bottom);
+                cloudPath.addRoundRect(cloudBounds, rBase, rBase, android.graphics.Path.Direction.CW);
                 cloudPath.addCircle(left + cw * 0.22f, bottom - ch * 0.34f, ch * 0.26f, android.graphics.Path.Direction.CW);
                 cloudPath.addCircle(left + cw * 0.43f, top + ch * 0.38f, ch * 0.36f, android.graphics.Path.Direction.CW);
                 cloudPath.addCircle(left + cw * 0.65f, top + ch * 0.46f, ch * 0.30f, android.graphics.Path.Direction.CW);
@@ -733,12 +768,12 @@ final class WeatherAirQuality {
             conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
             conn.setRequestProperty("Accept", "application/json, text/plain, */*");
             if (conn.getResponseCode() == 200) {
-                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) sb.append(line);
-                reader.close();
-                return new JSONObject(sb.toString());
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) sb.append(line);
+                    return new JSONObject(sb.toString());
+                }
             }
         } catch (Exception e) {
             Log.w(TAG, "fetchJson failed for " + urlStr + ": " + e.getMessage());
