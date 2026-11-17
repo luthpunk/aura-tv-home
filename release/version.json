@@ -1,5 +1,5 @@
 {
-  "versionCode": 68,
+  "versionCode": 69,
   "versionName": "3.8.0-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
   "changelog": "\u2022 Penambahan Widget Jadwal Sholat & Pengingat Adzan\n\u2022 Penambahan Upload Live Wallpaper Video (.mp4) via QR HP\n\u2022 Penyempurnaan Tema Neumorphism & Dark Glow\n\u2022 Optimasi Performa, RAM & Cold Boot\n\u2022 Perbaikan auto-start saat TV dinyalakan dari kondisi mati total (shutdown)\n\u2022 Dukungan pemilihan Default Launcher saat sideload APK\n\u2022 Perbaikan bug minor & peningkatan responsivitas navigasi remot",
