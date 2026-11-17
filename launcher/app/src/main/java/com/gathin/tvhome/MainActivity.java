@@ -6722,7 +6722,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         tag.setTypeface(getResources().getFont(R.font.outfit), Typeface.NORMAL);
         tag.setFontVariationSettings("'wght' 500");
         int color = isNeu ? ThemeManager.neu(on ? 0xFF0284C7 : 0xFF5A626E)
-                : (on ? (isDark ? 0xFF00F0FF : 0xFFE6FFFFFF) : 0x73FFFFFF);
+                : (on ? (isDark ? 0xFF00F0FF : 0xE6FFFFFF) : 0x73FFFFFF);
         int focusedColor = isNeu ? ThemeManager.neu(0xFF1F2429) : (isDark ? 0xFF00F0FF : 0xFFFFFFFF);
         tag.setTextColor(new ColorStateList(new int[][]{{android.R.attr.state_focused}, {}}, new int[]{focusedColor, color}));
     }
