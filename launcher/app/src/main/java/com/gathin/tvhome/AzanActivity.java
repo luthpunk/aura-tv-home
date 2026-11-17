@@ -16,106 +16,29 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
-import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.io.File;
+import java.text.DateFormat;
+import java.util.Date;
 
 /**
- * The azan, as a fixed-width top-center floating glass card over whatever was on screen.
- * Displays the dynamic prayer & location header, audio-synced rotating Arabic phrase +
- * Indonesian translation, and a compact dismiss hint separated by clean hairline dividers.
+ * The azan, as a floating glass card at the top-center of the screen over whatever was on (the app
+ * or Home stays in view behind it, blurred through the card where the TV can blur). Video and music
+ * pause because the azan takes the sound (audio focus). When it ends, or on Back, it closes and
+ * the app underneath is where it was.
  */
 public class AzanActivity extends Activity {
-
-    private static final class AdzanPhrase {
-        final String arabic;
-        final String meaning;
-        final float untilProgress;
-
-        AdzanPhrase(String arabic, String meaning, float untilProgress) {
-            this.arabic = arabic;
-            this.meaning = meaning;
-            this.untilProgress = untilProgress;
-        }
-    }
-
-    private static final AdzanPhrase[] STANDARD_PHRASES = {
-            new AdzanPhrase("ٱللَّهُ أَكْبَرُ", "Allah Maha Besar", 0.16f),
-            new AdzanPhrase("أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا ٱللَّهُ", "Tiada Tuhan selain Allah", 0.34f),
-            new AdzanPhrase("أَشْهَدُ أَنَّ مُحَمَّدًا رَسُولُ ٱللَّهِ", "Muhammad utusan Allah", 0.52f),
-            new AdzanPhrase("حَيَّ عَلَى ٱلصَّلَاةِ", "Mari mendirikan sholat", 0.68f),
-            new AdzanPhrase("حَيَّ عَلَى ٱلْفَلَاحِ", "Mari menuju kemenangan", 0.84f),
-            new AdzanPhrase("ٱللَّهُ أَكْبَرُ", "Allah Maha Besar", 0.94f),
-            new AdzanPhrase("لَا إِلَٰهَ إِلَّا ٱللَّهُ", "Tiada Tuhan selain Allah", 1.00f),
-    };
-
-    private static final AdzanPhrase[] SUBUH_PHRASES = {
-            new AdzanPhrase("ٱللَّهُ أَكْبَرُ", "Allah Maha Besar", 0.15f),
-            new AdzanPhrase("أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا ٱللَّهُ", "Tiada Tuhan selain Allah", 0.31f),
-            new AdzanPhrase("أَشْهَدُ أَنَّ مُحَمَّدًا رَسُولُ ٱللَّهِ", "Muhammad utusan Allah", 0.48f),
-            new AdzanPhrase("حَيَّ عَلَى ٱلصَّلَاةِ", "Mari mendirikan sholat", 0.63f),
-            new AdzanPhrase("حَيَّ عَلَى ٱلْفَلَاحِ", "Mari menuju kemenangan", 0.76f),
-            new AdzanPhrase("ٱلصَّلَاةُ خَيْرٌ مِنَ ٱلنَّوْمِ", "Sholat lebih baik daripada tidur", 0.89f),
-            new AdzanPhrase("ٱللَّهُ أَكْبَرُ", "Allah Maha Besar", 0.95f),
-            new AdzanPhrase("لَا إِلَٰهَ إِلَّا ٱللَّهُ", "Tiada Tuhan selain Allah", 1.00f),
-    };
-
     private final Handler handler = new Handler(Looper.getMainLooper());
     private MediaPlayer player;
     private AudioManager audio;
     private AudioFocusRequest focus;
     private float density;
-    private TextView takbir;
-    private TextView takbirMeaning;
     private TextView hint;
-    private AdzanPhrase[] activePhrases;
-    private int currentPhraseIndex = 0;
-    private int audioStartOffsetMs = 0;
     /** True once the card has been on screen: until then a stop is the screensaver going, not the owner. */
     private boolean shown;
-
-    private final Runnable audioPhraseSyncRunnable = new Runnable() {
-        @Override
-        public void run() {
-            if (isFinishing() || isDestroyed() || player == null) return;
-            try {
-                if (player.isPlaying()) {
-                    int duration = player.getDuration();
-                    int effectiveDuration = duration - audioStartOffsetMs;
-                    if (effectiveDuration > 2000) {
-                        int pos = Math.max(0, player.getCurrentPosition() - audioStartOffsetMs);
-                        float progress = Math.min(1f, Math.max(0f, pos / (float) effectiveDuration));
-                        int targetIdx = activePhrases.length - 1;
-                        for (int i = 0; i < activePhrases.length; i++) {
-                            if (progress <= activePhrases[i].untilProgress) {
-                                targetIdx = i;
-                                break;
-                            }
-                        }
-                        if (targetIdx != currentPhraseIndex) {
-                            showPhrase(targetIdx);
-                        }
-                    }
-                }
-            } catch (IllegalStateException ignored) {
-                return;
-            }
-            handler.postDelayed(this, 250L);
-        }
-    };
-
-    private final Runnable fallbackCycleRunnable = new Runnable() {
-        @Override
-        public void run() {
-            if (isFinishing() || isDestroyed() || activePhrases == null || activePhrases.length == 0) return;
-            int nextIdx = (currentPhraseIndex + 1) % activePhrases.length;
-            showPhrase(nextIdx);
-            handler.postDelayed(this, 3500L);
-        }
-    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -125,8 +48,6 @@ public class AzanActivity extends Activity {
         setTurnScreenOn(true);
         density = getResources().getDisplayMetrics().density;
         int prayer = getIntent().getIntExtra("prayer", 4);
-        activePhrases = (prayer == 0) ? SUBUH_PHRASES : STANDARD_PHRASES;
-
         Typeface outfit = getResources().getFont(R.font.outfit);
         Typeface amiri = getResources().getFont(R.font.amiri_quran);
 
@@ -136,13 +57,13 @@ public class AzanActivity extends Activity {
         boolean isNeuDark = ThemeManager.isNeumorphismDark(this);
         boolean isDarkGlow = ThemeManager.isDarkGlow(this);
 
-        // Top-center floating glass card over whatever app is open.
+        // Top-center floating card matching active theme over whatever app is open.
         Window w = getWindow();
         w.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         w.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
         w.setLayout(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT);
         WindowManager.LayoutParams lp = w.getAttributes();
-        lp.y = dp(20);
+        lp.y = dp(24);
         w.setAttributes(lp);
         boolean blur = false;
         if (!isNeu && !isDarkGlow && Build.VERSION.SDK_INT >= 31) {
@@ -155,9 +76,10 @@ public class AzanActivity extends Activity {
 
         int accentColor = (isNeu && !isNeuDark) ? 0xFFD97706 : 0xFFFFA726;
         int primaryTextColor = isNeu ? ThemeManager.neu(0xFF2B3036) : 0xFFFFFFFF;
-        int meaningTextColor = isNeu ? ThemeManager.neu(0xFF4A525D) : 0xD9FFFFFF;
+        int labelTextColor = isNeu ? ThemeManager.neu(0xFF4A525D) : 0xB3FFFFFF;
+        int timeTextColor = isNeu ? ThemeManager.neu(0xFF5A626E) : 0xCCFFFFFF;
         int hintTextColor = isNeu ? ThemeManager.neu(0xFF5A626E) : 0x99FFFFFF;
-        int dividerColor = isNeu ? ThemeManager.neu(0x1F000000) : (isDarkGlow ? 0x3800F0FF : 0x2BFFFFFF);
+        int dividerColor = isNeu ? ThemeManager.neu(0x1F000000) : (isDarkGlow ? 0x3800F0FF : 0x33FFFFFF);
 
         FrameLayout wrapper = new FrameLayout(this);
         wrapper.setClipChildren(false);
@@ -165,20 +87,17 @@ public class AzanActivity extends Activity {
         int outerPad = dp(isNeu ? 18 : 8);
         wrapper.setPadding(outerPad, outerPad, outerPad, outerPad);
 
-        int screenWidth = getResources().getDisplayMetrics().widthPixels;
-        int fixedCardWidth = Math.min(dp(460), screenWidth - outerPad * 2 - dp(32));
-
         LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setGravity(Gravity.CENTER_HORIZONTAL);
-        card.setPadding(dp(26), dp(14), dp(26), dp(12));
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(30), dp(22), dp(34), dp(22));
         if (isNeu) {
-            card.setBackground(new NeumorphicDrawable(dp(22), density, NeumorphicDrawable.MODE_EXTRUDED, true));
+            card.setBackground(new NeumorphicDrawable(dp(26), density, NeumorphicDrawable.MODE_EXTRUDED, true));
             card.setElevation(0f);
         } else if (isDarkGlow) {
             GradientDrawable dgBg = new GradientDrawable();
             dgBg.setColor(0xF008090D);
-            dgBg.setCornerRadius(dp(22));
+            dgBg.setCornerRadius(dp(26));
             dgBg.setStroke(Math.max(1, dp(1.5f)), 0xFF00F0FF);
             card.setBackground(dgBg);
             card.setClipToOutline(true);
@@ -187,124 +106,73 @@ public class AzanActivity extends Activity {
             GradientDrawable glass = new GradientDrawable(
                     GradientDrawable.Orientation.TOP_BOTTOM,
                     blur ? new int[]{0xB3161E2E, 0xB30F1622} : new int[]{0xE6222938, 0xE6161C27});
-            glass.setCornerRadius(dp(22));
+            glass.setCornerRadius(dp(26));
             glass.setStroke(Math.max(1, dp(1.5f)), 0x59FFFFFF);
             card.setBackground(glass);
             card.setClipToOutline(true);
             card.setElevation(dp(16));
         }
 
-        // 1. Dynamic Prayer + Location Header
-        String prayerName = PrayerTimes.NAMES[Math.max(0, Math.min(prayer, PrayerTimes.NAMES.length - 1))];
+        TextView takbir = text("ٱللَّهُ أَكْبَرُ", amiri, 40, accentColor, 400);
+        card.addView(takbir);
+        View line = new View(this);
+        line.setBackgroundColor(dividerColor);
+        LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(Math.max(1, dp(1)), dp(70));
+        llp.leftMargin = dp(26);
+        llp.rightMargin = dp(26);
+        card.addView(line, llp);
+
+        LinearLayout words = new LinearLayout(this);
+        words.setOrientation(LinearLayout.VERTICAL);
         String town = AppLocationManager.getLocationName(this);
         if (town == null || town.isEmpty()) {
             town = Location.prefs(this).getString("now_town", "");
         }
-        String headerStr = town.isEmpty()
-                ? "Saatnya Adzan " + prayerName
-                : "Saatnya Adzan " + prayerName + " di wilayah " + town.trim();
-        TextView headerText = text(headerStr, outfit, 14.5f, primaryTextColor, 600);
-        headerText.setIncludeFontPadding(false);
-        headerText.setMaxLines(2);
-        card.addView(headerText, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-
-        // 2. Top Divider
-        card.addView(makeDivider(dividerColor, dp(10), dp(8)));
-
-        // 3. Rotating Arabic Phrase + Tight Indonesian Meaning
-        takbir = text(activePhrases[0].arabic, amiri, 26f, accentColor, 400);
-        takbir.setIncludeFontPadding(false);
-        takbir.setLineSpacing(0f, 0.92f);
-        takbir.setMaxLines(2);
-        card.addView(takbir, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-
-        takbirMeaning = text(activePhrases[0].meaning, outfit, 12f, meaningTextColor, 400);
-        takbirMeaning.setIncludeFontPadding(false);
-        takbirMeaning.setMaxLines(1);
-        LinearLayout.LayoutParams meaningLp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        meaningLp.topMargin = dp(4);
-        card.addView(takbirMeaning, meaningLp);
-
-        // 4. Bottom Divider
-        card.addView(makeDivider(dividerColor, dp(10), dp(8)));
-
-        // 5. Compact Dismiss Hint
-        hint = text("Tekan Back / OK untuk menutup", outfit, 10.5f, hintTextColor, 400);
-        hint.setIncludeFontPadding(false);
-        hint.setSingleLine(true);
-        card.addView(hint, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-
+        TextView label = text(town.isEmpty() ? "ADZAN" : "ADZAN  ·  " + town.toUpperCase(java.util.Locale.ROOT), outfit, 12, labelTextColor, 600);
+        label.setLetterSpacing(0.22f);
+        label.setGravity(Gravity.START);
+        words.addView(label);
+        String when = DateFormat.getTimeInstance(DateFormat.SHORT).format(new Date());
+        LinearLayout nameRow = new LinearLayout(this);
+        nameRow.setOrientation(LinearLayout.HORIZONTAL);
+        nameRow.setGravity(Gravity.BOTTOM);
+        nameRow.setPadding(0, dp(2), 0, dp(2));
+        TextView name = text(PrayerTimes.NAMES[Math.max(0, Math.min(prayer, PrayerTimes.NAMES.length - 1))], outfit, 28, primaryTextColor, 500);
+        name.setSingleLine(true);
+        nameRow.addView(name);
+        TextView time = text(when, outfit, 20, timeTextColor, 300);
+        time.setSingleLine(true);
+        time.setPadding(dp(14), 0, 0, dp(3));
+        nameRow.addView(time);
+        words.addView(nameRow);
+        hint = text("Tekan Back / OK untuk tutup", outfit, 12, hintTextColor, 400);
+        hint.setGravity(Gravity.START);
+        words.addView(hint);
+        card.addView(words);
         card.setFocusable(true);
         card.setClickable(true);
         card.setOnClickListener(v -> finish());
         wrapper.addView(card, new FrameLayout.LayoutParams(
-                fixedCardWidth, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL));
+                FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL));
         setContentView(wrapper);
-
-        card.setAlpha(0f);
-        card.setTranslationY(-dp(20));
-        card.animate()
-                .alpha(1f)
-                .translationY(0f)
-                .setDuration(320L)
-                .setInterpolator(new DecelerateInterpolator())
-                .start();
 
         String soundChoice = Azan.getSoundChoice(this);
         if (Azan.SOUND_SILENT.equals(soundChoice)) {
-            hint.setText("Mode Senyap • Tekan Back / OK untuk menutup");
-            handler.postDelayed(fallbackCycleRunnable, 3500L);
-            handler.postDelayed(this::finish, 18_000);
+            hint.setText("Mode Senyap • Tekan Back untuk tutup");
+            handler.postDelayed(this::finish, 15_000);
         } else if (Azan.SOUND_CHIME.equals(soundChoice)) {
-            hint.setText("Nada Singkat • Tekan Back / OK untuk menutup");
-            handler.postDelayed(fallbackCycleRunnable, 3500L);
+            hint.setText("Nada Pengingat Singkat • Tekan Back untuk tutup");
             playChime();
         } else {
             File file = Azan.recording(this, soundChoice);
             if (file == null) {
                 hint.setText("Mengunduh audio " + Azan.soundLabel(soundChoice) + "...");
                 Azan.fetch(this, soundChoice);
-                handler.postDelayed(fallbackCycleRunnable, 3500L);
                 playChime();
                 handler.postDelayed(this::finish, 8000);
                 return;
             }
             play(file, soundChoice);
-        }
-    }
-
-    private View makeDivider(int color, int topMarginPx, int bottomMarginPx) {
-        View line = new View(this);
-        line.setBackgroundColor(color);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, Math.max(1, dp(1)));
-        lp.topMargin = topMarginPx;
-        lp.bottomMargin = bottomMarginPx;
-        line.setLayoutParams(lp);
-        return line;
-    }
-
-    private void showPhrase(int index) {
-        if (activePhrases == null || index < 0 || index >= activePhrases.length) return;
-        currentPhraseIndex = index;
-        final AdzanPhrase next = activePhrases[index];
-        if (takbir != null) {
-            takbir.animate().alpha(0f).setDuration(160L).withEndAction(() -> {
-                if (isFinishing() || isDestroyed()) return;
-                takbir.setText(next.arabic);
-                takbir.animate().alpha(1f).setDuration(240L).start();
-            }).start();
-        }
-        if (takbirMeaning != null) {
-            takbirMeaning.animate().alpha(0f).setDuration(160L).withEndAction(() -> {
-                if (isFinishing() || isDestroyed()) return;
-                takbirMeaning.setText(next.meaning);
-                takbirMeaning.animate().alpha(1f).setDuration(240L).start();
-            }).start();
         }
     }
 
@@ -354,14 +222,10 @@ public class AzanActivity extends Activity {
                 return true;
             });
             player.prepare();
-            audioStartOffsetMs = (Azan.SOUND_KLCC.equals(soundChoice) && file.getName().contains("klcc"))
-                    ? Azan.KLCC_START_MS
-                    : 0;
-            if (audioStartOffsetMs > 0) {
-                player.seekTo(audioStartOffsetMs);
+            if (Azan.SOUND_KLCC.equals(soundChoice) && file.getName().contains("klcc")) {
+                player.seekTo(Azan.KLCC_START_MS);
             }
             player.start();
-            handler.postDelayed(audioPhraseSyncRunnable, 250L);
         } catch (Exception e) {
             finish();
         }
