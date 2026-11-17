@@ -10,6 +10,7 @@ import android.graphics.PorterDuffColorFilter;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 
 import java.lang.ref.WeakReference;
@@ -184,16 +185,25 @@ final class Backdrop {
 
     /** Memory is short: let go of what can be remade. The copy on the glass stays. */
     static void trim() {
-        if (blurFade != null) {
-            blurFade.cancel();
-            blurFade = null;
-        }
-        tinted.clear();
         synchronized (SPARE_LOCK) {
             spare = null;
             pixels = null;
             scratch = null;
         }
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            Handler main = tintMain != null ? tintMain : new Handler(Looper.getMainLooper());
+            main.post(Backdrop::trimUi);
+        } else {
+            trimUi();
+        }
+    }
+
+    private static void trimUi() {
+        if (blurFade != null) {
+            blurFade.cancel();
+            blurFade = null;
+        }
+        tinted.clear();
     }
 
     private static void keepSpare(Bitmap done) {
