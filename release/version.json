@@ -1,7 +1,7 @@
 {
-  "versionCode": 66,
-  "versionName": "3.7.5-id",
+  "versionCode": 67,
+  "versionName": "3.8.0-id",
   "apkUrl": "https://github.com/luthpunk/aura-tv-home/releases/latest/download/aura-tv-home.apk",
-  "changelog": "• Optimasi launcher (RecyclerView & caching pada App Drawer, perbaikan focus trap agar sorotan tidak tembus ke latar belakang, serta peningkatan kelancaran UI)\n• Perbaikan tombol Matikan TV dan Mulai Ulang TV yang tidak berfungsi di TV non-root\n• Perbaikan Live Wallpaper yang terkadang tidak bergerak saat perpindahan wallpaper\n• Penyesuaian ukuran font agar lebih proporsional\n• Penambahan widget Jadwal Sepak Bola (Beta)\n• Penghapusan menu Screensaver dengan tetap mempertahankan fungsinya\n• Penambahan menu Dock untuk mengatur jumlah kolom per baris (5 / 6 / 7 aplikasi)",
-  "releaseDate": "2026-11-15"
+  "changelog": "• Penambahan Widget Jadwal Sholat & Pengingat Adzan\n• Penambahan Upload Live Wallpaper Video (.mp4) via QR HP\n• Penyempurnaan Tema Neumorphism & Dark Glow\n• Optimasi Performa, RAM & Cold Boot\n• Perbaikan auto-start saat TV dinyalakan dari kondisi mati total (shutdown)\n• Dukungan pemilihan Default Launcher saat sideload APK\n• Perbaikan bug minor & peningkatan responsivitas navigasi remot",
+  "releaseDate": "2026-11-17"
 }
