@@ -753,7 +753,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     return true;
                 }
                 if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-                    if (focusFirstTopBarButton()) {
+                    if (focusTopWifiButton()) {
                         return true;
                     }
                 }
@@ -946,7 +946,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     return !isLeft;
                 }
                 if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-                    if (isLeft && weatherPillMinimalView != null && weatherPillMinimalView.getVisibility() == View.VISIBLE
+                    if (!isLeft) {
+                        if (focusTopWifiButton()) {
+                            return true;
+                        }
+                        return false;
+                    }
+                    if (weatherPillMinimalView != null && weatherPillMinimalView.getVisibility() == View.VISIBLE
                             && weatherPillMinimalView.getAlpha() > 0.5f) {
                         weatherPillMinimalView.requestFocus();
                         return true;
@@ -4309,6 +4315,19 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return true;
         }
         return false;
+    }
+
+    private boolean focusTopWifiButton() {
+        if (btnWifi != null && btnWifi.getVisibility() == View.VISIBLE && btnWifi.isFocusable()) {
+            btnWifi.requestFocus();
+            return true;
+        }
+        View next = btnWifi != null ? adjacentVisibleTopBarButton(btnWifi, 1) : null;
+        if (next != null) {
+            next.requestFocus();
+            return true;
+        }
+        return focusFirstTopBarButton();
     }
 
     private View activeTopLeftCard() {
