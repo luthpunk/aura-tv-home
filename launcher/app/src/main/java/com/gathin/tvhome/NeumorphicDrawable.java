@@ -33,8 +33,8 @@ public final class NeumorphicDrawable extends Drawable {
     public static final int MODE_EXTRUDED = 0;
     public static final int MODE_RECESSED = 1;
 
-    /** Matte warm stone-putty surface (anti-glare Soft UI Light for TV screens). */
-    public static final int COLOR_SURFACE = 0xFFDBD7CE;
+    /** Matte neutral silver-grey surface (anti-glare Soft UI Light based on Neumorphism-fixed.jpg). */
+    public static final int COLOR_SURFACE = 0xFFC8C8C8;
     public static final int COLOR_TEXT_PRIMARY = 0xFF2B3036;
     public static final int COLOR_TEXT_SECONDARY = 0xFF5A626E;
 
@@ -81,9 +81,9 @@ public final class NeumorphicDrawable extends Drawable {
             RECESSED_RIM_GRAD, TILE_UNFOCUSED_RIM_GRAD, TILE_FOCUS_RIM_GRAD;
 
     // Shadow palette (RGB only, alpha applied per feather pass) + per-pass alpha multipliers
-    private static int sLightRgb = 0xF2EFE9, sDarkRgb = 0x1A1610, sInnerDarkRgb = 0x18140E;
-    private static float sOuterLightK = 0.78f, sOuterDarkK = 1.05f, sInnerDarkK = 1.05f, sInnerLightK = 0.80f;
-    private static int sFocusCushion = 0x42F2EFE9;
+    private static int sLightRgb = 0xDCDCDC, sDarkRgb = 0x141414, sInnerDarkRgb = 0x121212;
+    private static float sOuterLightK = 0.65f, sOuterDarkK = 1.05f, sInnerDarkK = 1.05f, sInnerLightK = 0.65f;
+    private static int sFocusCushion = 0x38DCDCDC;
     private static boolean sDark = false;
 
     private static LinearGradient unit(int[] colors) {
@@ -93,16 +93,16 @@ public final class NeumorphicDrawable extends Drawable {
     private static void buildPalette(boolean dark) {
         sDark = dark;
         if (!dark) {
-            // Neumorphism Light: matte warm stone-putty (toned down for comfortable TV viewing without glare)
-            EXTRUDED_FILL_GRAD = unit(new int[]{0xFFE5E1D9, 0xFFDBD7CE, 0xFFD0CCC2});
-            EXTRUDED_RIM_GRAD = unit(new int[]{0xD8F2EFE9, 0x58ECE8E0, 0x381A1610});
-            RECESSED_FILL_GRAD = unit(new int[]{0xFFC4BFB4, 0xFFCFCCC2, 0xFFD8D4CB});
-            RECESSED_RIM_GRAD = unit(new int[]{0x541A1610, 0x181A1610, 0xCCF2EFE9});
-            TILE_UNFOCUSED_RIM_GRAD = unit(new int[]{0xB8F2EFE9, 0x28ECE8E0, 0x2E1A1610});
-            TILE_FOCUS_RIM_GRAD = unit(new int[]{0xE6F4F1EB, 0x99ECE8E0, 0x4A1A1610});
-            sLightRgb = 0xF2EFE9; sDarkRgb = 0x1A1610; sInnerDarkRgb = 0x18140E;
-            sOuterLightK = 0.78f; sOuterDarkK = 1.05f; sInnerDarkK = 1.05f; sInnerLightK = 0.80f;
-            sFocusCushion = 0x42F2EFE9;
+            // Neumorphism Light: pure neutral matte grey (#C8C8C8, zero white glare, based on Neumorphism-fixed.jpg)
+            EXTRUDED_FILL_GRAD = unit(new int[]{0xFFCECECE, 0xFFC8C8C8, 0xFFC2C2C2});
+            EXTRUDED_RIM_GRAD = unit(new int[]{0x99DCDCDC, 0x33D4D4D4, 0x42141414});
+            RECESSED_FILL_GRAD = unit(new int[]{0xFFB4B4B4, 0xFFBEBEBE, 0xFFC6C6C6});
+            RECESSED_RIM_GRAD = unit(new int[]{0x52141414, 0x18141414, 0x99DCDCDC});
+            TILE_UNFOCUSED_RIM_GRAD = unit(new int[]{0x88DCDCDC, 0x20D4D4D4, 0x34141414});
+            TILE_FOCUS_RIM_GRAD = unit(new int[]{0xCCE2E2E2, 0x77D8D8D8, 0x50141414});
+            sLightRgb = 0xDCDCDC; sDarkRgb = 0x141414; sInnerDarkRgb = 0x121212;
+            sOuterLightK = 0.65f; sOuterDarkK = 1.05f; sInnerDarkK = 1.05f; sInnerLightK = 0.65f;
+            sFocusCushion = 0x38DCDCDC;
         } else {
             // Neumorphism Dark: charcoal-navy canvas (reference 1794194557112.jpg)
             // base #171A22, raised highlight #242939, deep shadow #07080C
@@ -242,17 +242,17 @@ public final class NeumorphicDrawable extends Drawable {
         if (activeMode == MODE_RECESSED) {
             instanceFillGrad = unit(sDark
                     ? new int[]{0xFF0E0F15, 0xFF12141A, 0xFF171920}
-                    : new int[]{0xFFC4BFB4, 0xFFCFCCC2, 0xFFD8D4CB});
+                    : new int[]{0xFFB4B4B4, 0xFFBEBEBE, 0xFFC6C6C6});
             instanceRimGrad = unit(sDark
                     ? new int[]{0xB305060A, 0x4005060A, 0x8C2F3546}
-                    : new int[]{0x541A1610, 0x181A1610, 0xCCF2EFE9});
+                    : new int[]{0x52141414, 0x18141414, 0x99DCDCDC});
         } else {
             instanceFillGrad = unit(sDark
                     ? new int[]{0xFF1E212B, 0xFF191C24, 0xFF15171E}
-                    : new int[]{0xFFE5E1D9, 0xFFDBD7CE, 0xFFD0CCC2});
+                    : new int[]{0xFFCECECE, 0xFFC8C8C8, 0xFFC2C2C2});
             instanceRimGrad = unit(sDark
                     ? new int[]{0xB3343A4D, 0x40282D3B, 0x8C05060A}
-                    : new int[]{0xD8F2EFE9, 0x58ECE8E0, 0x381A1610});
+                    : new int[]{0x99DCDCDC, 0x33D4D4D4, 0x42141414});
         }
     }
 

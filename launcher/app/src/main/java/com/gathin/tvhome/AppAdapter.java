@@ -396,8 +396,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             // Dark Glow: Deep OLED black for sideloaded non-TV apps
             return generateSolidBanner(ctx, icon, pkg, 0xFF0A0A0E);
         } else if (ThemeManager.isNeumorphism(ctx)) {
-            // Neumorphism Light: Matte warm stone-putty clay for sideloaded non-TV apps
-            return generateSolidBanner(ctx, icon, pkg, ThemeManager.neu(0xFFDBD7CE));
+            // Neumorphism Light: Matte neutral grey clay for sideloaded non-TV apps
+            return generateSolidBanner(ctx, icon, pkg, ThemeManager.neu(0xFFC8C8C8));
         } else {
             // Frosted Glass: Dominant solid color
             return generateSolidBanner(ctx, icon, pkg);
@@ -846,8 +846,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             c.drawLine(cx - arm, cy, cx + arm, cy, plusPaint);
             c.drawLine(cx, cy - arm, cx, cy + arm, plusPaint);
         } else if (isNeu) {
-            // Neumorphism Light: Matte warm stone-putty canvas with 3D extruded Soft UI squircle & deep charcoal '+'
-            c.drawColor(ThemeManager.neu(0xFFDBD7CE));
+            // Neumorphism Light: Matte neutral grey canvas with 3D extruded Soft UI squircle & deep charcoal '+'
+            c.drawColor(ThemeManager.neu(0xFFC8C8C8));
 
             NeumorphicDrawable.drawExtruded(c, rect, radius, 1.5f, 1.0f, true);
 
@@ -961,14 +961,14 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 }
             }
         } else if (isNeu) {
-            // Neumorphism Light: Matte warm stone-putty canvas with 3x3 extruded dark charcoal squircles
-            c.drawColor(ThemeManager.neu(0xFFDBD7CE));
+            // Neumorphism Light: Matte neutral grey canvas with 3x3 extruded dark charcoal squircles
+            c.drawColor(ThemeManager.neu(0xFFC8C8C8));
 
             Paint cellLightShadow = new Paint(Paint.ANTI_ALIAS_FLAG);
-            cellLightShadow.setColor(ThemeManager.neu(0xB3F2EFE9));
+            cellLightShadow.setColor(ThemeManager.neu(0x99DCDCDC));
 
             Paint cellDarkShadow = new Paint(Paint.ANTI_ALIAS_FLAG);
-            cellDarkShadow.setColor(ThemeManager.isNeuDarkCached() ? 0xA0000000 : 0x361A1610);
+            cellDarkShadow.setColor(ThemeManager.isNeuDarkCached() ? 0xA0000000 : 0x38141414);
 
             Paint cellFill = new Paint(Paint.ANTI_ALIAS_FLAG);
             cellFill.setColor(ThemeManager.neu(0xFF383E47));

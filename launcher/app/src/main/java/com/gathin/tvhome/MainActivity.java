@@ -1298,7 +1298,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         updateLiveDimOverlay();
         if (!wallpaperFullscreen && ThemeManager.isNeumorphism(this)) {
             boolean isNeuDark = ThemeManager.isNeumorphismDark(this);
-            int solidCanvas = isNeuDark ? 0xFF171A22 : 0xFFDBD7CE;
+            int solidCanvas = isNeuDark ? 0xFF171A22 : 0xFFC8C8C8;
             if (root != null) root.setBackgroundColor(solidCanvas);
             if (wallView != null) {
                 wallView.clearColorFilter();
@@ -1349,7 +1349,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         } else if (ThemeManager.isNeumorphismDark(this)) {
             return 0xFF171A22; // Charcoal-navy Soft UI canvas
         } else if (ThemeManager.isNeumorphism(this)) {
-            return 0xFFDBD7CE; // Matte warm stone-putty Soft UI canvas
+            return 0xFFC8C8C8; // Matte neutral grey Soft UI canvas
         } else {
             return 0xFF999999; // Frosted glass 60% brightness (40% dim)
         }
@@ -9317,7 +9317,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         boolean isNeu = ThemeManager.isNeumorphism(this);
 
         FrameLayout overlay = createTrappedOverlay(
-                isDark ? 0xDD000000 : (isNeu ? ThemeManager.neu(0x99DBD7CE) : 0x78050912),
+                isDark ? 0xDD000000 : (isNeu ? ThemeManager.neu(0x99C8C8C8) : 0x78050912),
                 () -> closeAppDrawer(true));
 
         int maxW = Math.min(Math.round(860 * density), root.getWidth() - Math.round(72 * density));
@@ -9729,7 +9729,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         boolean isNeu = ThemeManager.isNeumorphism(this);
 
         FrameLayout overlay = createTrappedOverlay(
-                isDark ? 0xCC000000 : (isNeu ? ThemeManager.neu(0x88F0F2F5) : 0x4D050912),
+                isDark ? 0xCC000000 : (isNeu ? ThemeManager.neu(0x88C8C8C8) : 0x4D050912),
                 () -> closeAddAppSheet(true));
 
         int sheetW = Math.max(Math.round(320 * density),
