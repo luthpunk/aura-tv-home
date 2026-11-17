@@ -444,14 +444,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         TvToast.setCurrentActivity(this);
         SoundEffects.init(this);
         setContentView(R.layout.activity_main);
-        // Defer permission check & preferred-home cache reset until after the Home screen is rendered
-        // so cold boot never stalls behind an early system dialog before setContentView draws.
+        // Defer the permission check until after the Home screen is rendered so cold boot never
+        // stalls behind an early system dialog before setContentView draws.
         handler.postDelayed(() -> {
             if (isFinishing() || isDestroyed()) return;
-            HomeSettingsActivity.syncLauncherAliasState(this);
-            if (!HomeSettingsActivity.isDefaultHomeApp(this)) {
-                HomeSettingsActivity.resetPreferredHomeCache(this);
-            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 if (checkSelfPermission("android.permission.ACCESS_FINE_LOCATION") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     try {

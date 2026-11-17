@@ -47,30 +47,6 @@ public class HomeKeyService extends AccessibilityService {
         instance = this;
         settingsScancodes = getResources().getIntArray(R.array.settings_key_scancodes);
         Log.i(TAG, "HomeKeyService connected");
-
-        // If the TV just booted from a full shutdown (within first 2 minutes) and MainActivity is
-        // not yet showing, launch it from the AccessibilityService context (exempt from BAL).
-        if (android.os.SystemClock.elapsedRealtime() < 120_000L) {
-            homeHandler.postDelayed(() -> {
-                if (MainActivity.isForeground()) return;
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-                    android.os.UserManager um = getSystemService(android.os.UserManager.class);
-                    if (um != null && !um.isUserUnlocked()) return;
-                }
-                Intent home = new Intent(this, MainActivity.class)
-                        .setAction(Intent.ACTION_MAIN)
-                        .addCategory(Intent.CATEGORY_HOME)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                                | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
-                                | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-                try {
-                    startActivity(home);
-                    Log.i(TAG, "Cold-boot auto-started MainActivity from HomeKeyService");
-                } catch (Exception e) {
-                    Log.w(TAG, "Failed to auto-start MainActivity from HomeKeyService: " + e);
-                }
-            }, 800L);
-        }
     }
 
     @Override

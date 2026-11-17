@@ -5,13 +5,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
-import android.os.Build;
-import android.os.UserManager;
 import android.util.Log;
 
 /**
  * Ensures Aura TV Home launches cleanly onto the screen after a full TV shutdown / cold boot
- * instead of leaving the TV on Android's black FallbackHome surface until the remote Home key is pressed.
+ * instead of leaving the TV on a blank screen until the remote Home key is pressed.
  */
 public class BootReceiver extends BroadcastReceiver {
     private static final String TAG = "TvHome.Boot";
@@ -21,22 +19,16 @@ public class BootReceiver extends BroadcastReceiver {
         if (intent == null || intent.getAction() == null) return;
         String action = intent.getAction();
         if (!Intent.ACTION_BOOT_COMPLETED.equals(action)
-                && !Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action)
                 && !"android.intent.action.QUICKBOOT_POWERON".equals(action)
                 && !"com.htc.intent.action.QUICKBOOT_POWERON".equals(action)) {
             return;
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            UserManager um = context.getSystemService(UserManager.class);
-            if (um != null && !um.isUserUnlocked()) {
-                Log.i(TAG, "Device still locked on " + action + "; waiting for BOOT_COMPLETED");
-                return;
-            }
+        if (MainActivity.isForeground()) {
+            return;
         }
 
-        // Only auto-launch on boot if Aura TV Home is the default launcher (or the only valid home app)
-        if (!isDefaultOrCandidateHome(context)) {
+        if (!isDefaultHome(context) && !HomeKeyService.isAccessibilityActive()) {
             return;
         }
 
@@ -54,20 +46,15 @@ public class BootReceiver extends BroadcastReceiver {
         }
     }
 
-    private static boolean isDefaultOrCandidateHome(Context context) {
+    private static boolean isDefaultHome(Context context) {
         try {
             PackageManager pm = context.getPackageManager();
             Intent homeIntent = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
             ResolveInfo ri = pm.resolveActivity(homeIntent, PackageManager.MATCH_DEFAULT_ONLY);
-            if (ri == null || ri.activityInfo == null) return true;
-            String pkg = ri.activityInfo.packageName;
-            // True if Aura TV Home is the default launcher, or if Android's resolver ("android") is current
-            return context.getPackageName().equals(pkg)
-                    || "android".equals(pkg)
-                    || pkg.contains("resolver")
-                    || pkg.contains("fallback");
+            return ri != null && ri.activityInfo != null
+                    && context.getPackageName().equals(ri.activityInfo.packageName);
         } catch (Exception e) {
-            return true;
+            return false;
         }
     }
 }

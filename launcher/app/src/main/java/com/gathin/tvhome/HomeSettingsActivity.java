@@ -3,7 +3,6 @@ package com.gathin.tvhome;
 import android.app.Activity;
 import android.app.role.RoleManager;
 import android.content.ActivityNotFoundException;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -12,7 +11,11 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 
-/** Lets the user change HOME through the system UI, with Accessibility fallback for locked OEM TVs. */
+/**
+ * Lets the user change HOME through the system UI, with an Accessibility fallback for locked OEM TVs.
+ * Never enables/disables this app's own components at runtime: doing so restarted the Home activity
+ * on several TV firmwares (looked like a boot loop) and interfered with OTA installs.
+ */
 public class HomeSettingsActivity extends Activity {
 
     private static final int REQ_ROLE_HOME = 901;
@@ -22,8 +25,8 @@ public class HomeSettingsActivity extends Activity {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 RoleManager rm = ctx.getSystemService(RoleManager.class);
-                if (rm != null && rm.isRoleAvailable(RoleManager.ROLE_HOME)) {
-                    if (rm.isRoleHeld(RoleManager.ROLE_HOME)) return true;
+                if (rm != null && rm.isRoleAvailable(RoleManager.ROLE_HOME) && rm.isRoleHeld(RoleManager.ROLE_HOME)) {
+                    return true;
                 }
             }
             PackageManager pm = ctx.getPackageManager();
@@ -36,60 +39,9 @@ public class HomeSettingsActivity extends Activity {
         }
     }
 
-    /**
-     * Keeps {@code .LauncherEntryAlias} enabled while Aura TV Home is not yet the default launcher
-     * (so the APK installer's "Open / Buka" button works and users can open it from a stock launcher),
-     * and automatically disables the alias once Aura TV Home becomes the default launcher so it hides
-     * cleanly from system app lists.
-     */
-    public static void syncLauncherAliasState(Context ctx) {
-        try {
-            PackageManager pm = ctx.getPackageManager();
-            ComponentName alias = new ComponentName(ctx.getPackageName(),
-                    ctx.getPackageName() + ".LauncherEntryAlias");
-            boolean isDefault = isDefaultHomeApp(ctx);
-            int desiredState = isDefault
-                    ? PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-                    : PackageManager.COMPONENT_ENABLED_STATE_ENABLED;
-            int currentState = pm.getComponentEnabledSetting(alias);
-            boolean currentlyDisabled = (currentState == PackageManager.COMPONENT_ENABLED_STATE_DISABLED);
-            if (isDefault && !currentlyDisabled) {
-                pm.setComponentEnabledSetting(alias, desiredState, PackageManager.DONT_KILL_APP);
-            } else if (!isDefault && currentlyDisabled) {
-                pm.setComponentEnabledSetting(alias, desiredState, PackageManager.DONT_KILL_APP);
-            }
-        } catch (Exception ignored) {
-        }
-    }
-
-    /**
-     * Briefly toggles {@link HomeChooserTriggerActivity} (DONT_KILL_APP) so Android's PackageManager
-     * invalidates any previous launcher's "Always" lock, allowing the remote's HOME button to show
-     * the system "Select Home app" chooser dialog.
-     */
-    public static void resetPreferredHomeCache(Context ctx) {
-        try {
-            PackageManager pm = ctx.getPackageManager();
-            ComponentName trigger = new ComponentName(ctx, HomeChooserTriggerActivity.class);
-            pm.setComponentEnabledSetting(trigger,
-                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                    PackageManager.DONT_KILL_APP);
-            Intent home = new Intent(Intent.ACTION_MAIN)
-                    .addCategory(Intent.CATEGORY_HOME)
-                    .addCategory(Intent.CATEGORY_DEFAULT);
-            pm.resolveActivity(home, PackageManager.MATCH_DEFAULT_ONLY);
-            pm.setComponentEnabledSetting(trigger,
-                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                    PackageManager.DONT_KILL_APP);
-        } catch (Exception ignored) {
-        }
-    }
-
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
-        resetPreferredHomeCache(this);
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             try {
                 RoleManager rm = getSystemService(RoleManager.class);
@@ -100,7 +52,6 @@ public class HomeSettingsActivity extends Activity {
             } catch (Exception ignored) {
             }
         }
-
         openSystemHomePickerOrAccessibility();
     }
 
@@ -109,12 +60,11 @@ public class HomeSettingsActivity extends Activity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQ_ROLE_HOME) {
             if (resultCode == RESULT_OK || isDefaultHomeApp(this)) {
-                syncLauncherAliasState(this);
                 TvToast.show(this, "Aura TV Home berhasil dijadikan Launcher Utama", false);
                 finish();
                 return;
             }
-            // Locked OEM TV firmware (Google TV / Xiaomi / TCL) rejected ROLE_HOME dialog:
+            // Locked OEM firmware (Google TV / Xiaomi / TCL) rejected the ROLE_HOME dialog.
             openSystemHomePickerOrAccessibility();
         } else {
             finish();
@@ -133,9 +83,8 @@ public class HomeSettingsActivity extends Activity {
         } catch (ActivityNotFoundException | SecurityException ignored) {
         }
 
-        // Fallback for TVs that lock/remove Home Settings (Google TV, Xiaomi, TCL):
-        // Guide the user to enable Aura TV Home in Accessibility (HomeKeyService) so the remote's
-        // Home button is intercepted without needing ADB.
+        // TVs that lock/remove Home Settings: guide the user to Accessibility (HomeKeyService)
+        // so the remote's Home button is intercepted without ADB.
         if (!HomeKeyService.isAccessibilityActive()) {
             try {
                 Intent acc = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);

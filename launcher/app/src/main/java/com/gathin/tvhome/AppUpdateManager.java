@@ -3,6 +3,7 @@ package com.gathin.tvhome;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
+import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -14,25 +15,27 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.util.Log;
-import android.widget.Toast;
 
 import androidx.core.content.FileProvider;
 
 import org.json.JSONObject;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Manages OTA in-app update checks, changelog display, and seamless APK downloading
- * for Glass TV Home directly on Android TV.
+ * Manages OTA in-app update checks, changelog display, and verified APK downloading
+ * for Aura TV Home directly on Android TV.
  */
 public final class AppUpdateManager {
     private static final String TAG = "AppUpdateManager";
@@ -45,6 +48,7 @@ public final class AppUpdateManager {
 
     private static final ExecutorService executor = Executors.newSingleThreadExecutor();
     private static final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private static final AtomicBoolean isDownloading = new AtomicBoolean(false);
 
     private AppUpdateManager() {
     }
@@ -91,7 +95,7 @@ public final class AppUpdateManager {
      * Checks for updates. If manualCheck is true, shows feedback toasts even when up-to-date.
      */
     public static void checkForUpdates(Activity activity, boolean manualCheck) {
-        if (activity == null || activity.isFinishing()) return;
+        if (activity == null || activity.isFinishing() || isDownloading.get()) return;
 
         if (manualCheck) {
             TvToast.show(activity, "🔄 Memeriksa pembaruan terbaru...");
@@ -139,7 +143,7 @@ public final class AppUpdateManager {
                 sp.edit().putLong(KEY_LAST_CHECK, System.currentTimeMillis()).apply();
 
                 mainHandler.post(() -> {
-                    if (activity.isFinishing()) return;
+                    if (activity.isFinishing() || activity.isDestroyed()) return;
 
                     if (remoteVersionCode > currentVersionCode) {
                         showUpdateDialog(activity, remoteVersionName, currentVersionName, changelog, apkUrl);
@@ -162,9 +166,10 @@ public final class AppUpdateManager {
     }
 
     private static void showUpdateDialog(Activity activity, String newVersionName, String currentVersionName, String changelog, String apkUrl) {
+        if (isDownloading.get()) return;
         AlertDialog.Builder builder = new AlertDialog.Builder(activity, R.style.Theme_TvHome_GlassDialog);
         builder.setTitle("🚀 Pembaruan Baru Tersedia (v" + newVersionName + ")");
-        
+
         String message = "Versi Saat Ini: v" + currentVersionName + "\n"
                 + "Versi Terbaru: v" + newVersionName + "\n\n"
                 + "📋 Catatan Pembaruan:\n" + changelog + "\n\n"
@@ -180,6 +185,38 @@ public final class AppUpdateManager {
         AlertDialog dialog = builder.create();
         dialog.show();
         MainActivity.styleGlassDialog(activity, dialog);
+    }
+
+    private static HttpURLConnection openFollowingRedirects(String targetUrl) throws IOException {
+        String currentUrl = targetUrl;
+        for (int hop = 0; hop < 6; hop++) {
+            HttpURLConnection conn = (HttpURLConnection) new URL(currentUrl).openConnection();
+            conn.setInstanceFollowRedirects(false);
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("User-Agent", "AuraTVHome-OTA");
+            conn.setRequestProperty("Accept", "application/vnd.android.package-archive, application/octet-stream, */*");
+            conn.setConnectTimeout(12000);
+            conn.setReadTimeout(20000);
+            conn.setUseCaches(false);
+            conn.connect();
+
+            int code = conn.getResponseCode();
+            if (code == HttpURLConnection.HTTP_MOVED_PERM
+                    || code == HttpURLConnection.HTTP_MOVED_TEMP
+                    || code == HttpURLConnection.HTTP_SEE_OTHER
+                    || code == 307
+                    || code == 308) {
+                String location = conn.getHeaderField("Location");
+                conn.disconnect();
+                if (location == null || location.isEmpty()) {
+                    throw new IOException("Redirect Location kosong (HTTP " + code + ")");
+                }
+                currentUrl = new URL(new URL(currentUrl), location).toString();
+                continue;
+            }
+            return conn;
+        }
+        throw new IOException("Terlalu banyak pengalihan URL unduhan");
     }
 
     @SuppressWarnings("deprecation")
@@ -207,6 +244,11 @@ public final class AppUpdateManager {
             }
         }
 
+        if (!isDownloading.compareAndSet(false, true)) {
+            TvToast.show(activity, "⏳ Unduhan pembaruan sedang berjalan...");
+            return;
+        }
+
         ProgressDialog progressDialog = new ProgressDialog(activity, R.style.Theme_TvHome_GlassDialog);
         progressDialog.setTitle("📥 Mengunduh Pembaruan (v" + versionName + ")");
         progressDialog.setMessage("Sedang mengunduh file pemasangan...");
@@ -219,26 +261,28 @@ public final class AppUpdateManager {
         MainActivity.styleGlassDialog(activity, progressDialog);
 
         executor.execute(() -> {
-            File cacheDir = activity.getExternalCacheDir() != null ? activity.getExternalCacheDir() : activity.getCacheDir();
+            // Use internal cacheDir (never external Android/data, which Scoped Storage blocks for PackageInstaller)
+            File cacheDir = activity.getCacheDir();
+            File tmpFile = new File(cacheDir, "glass-tv-update.apk.tmp");
             File apkFile = new File(cacheDir, "glass-tv-update.apk");
+            if (tmpFile.exists()) tmpFile.delete();
 
             InputStream is = null;
             FileOutputStream fos = null;
             HttpURLConnection conn = null;
 
             try {
-                URL url = new URL(apkUrl);
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("GET");
-                conn.setConnectTimeout(10000);
-                conn.setReadTimeout(15000);
-                conn.connect();
+                conn = openFollowingRedirects(apkUrl);
+                int code = conn.getResponseCode();
+                if (code != HttpURLConnection.HTTP_OK) {
+                    throw new IOException("Server mengembalikan HTTP " + code);
+                }
 
                 int fileLength = conn.getContentLength();
-                is = conn.getInputStream();
-                fos = new FileOutputStream(apkFile);
+                is = new BufferedInputStream(conn.getInputStream(), 16384);
+                fos = new FileOutputStream(tmpFile);
 
-                byte[] buffer = new byte[8192];
+                byte[] buffer = new byte[16384];
                 long total = 0;
                 int lastProgress = -1;
                 int count;
@@ -259,8 +303,33 @@ public final class AppUpdateManager {
                     }
                 }
                 fos.flush();
+                fos.getFD().sync();
+                fos.close();
+                fos = null;
+
+                if (fileLength > 0 && total != fileLength) {
+                    throw new IOException("Unduhan tidak lengkap (" + total + " / " + fileLength + " byte)");
+                }
+                if (total < 100_000L) {
+                    throw new IOException("Ukuran file APK tidak valid (" + total + " byte)");
+                }
+
+                if (apkFile.exists()) apkFile.delete();
+                if (!tmpFile.renameTo(apkFile)) {
+                    throw new IOException("Gagal menyiapkan file APK pembaruan");
+                }
+                apkFile.setReadable(true, false);
+
+                // Validate that Android's PackageManager can parse the downloaded APK before opening installer
+                PackageInfo archiveInfo = activity.getPackageManager()
+                        .getPackageArchiveInfo(apkFile.getAbsolutePath(), 0);
+                if (archiveInfo == null || !activity.getPackageName().equals(archiveInfo.packageName)) {
+                    apkFile.delete();
+                    throw new IOException("File APK rusak saat diunduh, silakan coba lagi");
+                }
 
                 mainHandler.post(() -> {
+                    isDownloading.set(false);
                     if (!activity.isFinishing() && !activity.isDestroyed()) {
                         if (progressDialog.isShowing()) {
                             progressDialog.dismiss();
@@ -270,6 +339,8 @@ public final class AppUpdateManager {
                 });
 
             } catch (Exception e) {
+                isDownloading.set(false);
+                if (tmpFile.exists()) tmpFile.delete();
                 Log.e(TAG, "Download error: " + e.getMessage());
                 mainHandler.post(() -> {
                     if (!activity.isFinishing() && !activity.isDestroyed() && progressDialog.isShowing()) {
@@ -295,6 +366,7 @@ public final class AppUpdateManager {
             Uri apkUri = FileProvider.getUriForFile(activity, activity.getPackageName() + ".fileprovider", apkFile);
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+            intent.setClipData(ClipData.newRawUri("", apkUri));
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             activity.startActivity(intent);
