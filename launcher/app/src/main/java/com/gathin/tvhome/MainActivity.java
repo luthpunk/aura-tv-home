@@ -489,7 +489,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if ("Custom".equalsIgnoreCase(activeCat)) {
             placesMode = false;
             File customDir = new File(getFilesDir(), "custom_wallpapers");
-            File[] files = customDir.listFiles((dir, name) -> name.endsWith(".jpg") || name.endsWith(".png") || name.endsWith(".jpeg"));
+            File[] files = listCustomWallpapers(customDir);
             boolean singleMode = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE).getBoolean("custom_single_mode", false);
             String singleFile = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE).getString("custom_single_file", null);
             if (singleMode && singleFile != null) {
@@ -5298,7 +5298,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             rows.addView(urlView);
 
             File customDir = new File(getFilesDir(), "custom_wallpapers");
-            File[] files = customDir.listFiles((dir, name) -> name.endsWith(".jpg") || name.endsWith(".png") || name.endsWith(".jpeg"));
+            File[] files = listCustomWallpapers(customDir);
             if (files != null && files.length > 0) {
                 addInputRow(rows, null, R.drawable.ic_trash, "Hapus Foto (" + files.length + " Foto)", -1, () -> {
                     SoundEffects.playSelect();
@@ -7934,7 +7934,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void showWallpaperDialog() {
         File customDir = new File(getFilesDir(), "custom_wallpapers");
-        File[] customFiles = customDir.listFiles((dir, name) -> name.endsWith(".jpg") || name.endsWith(".png") || name.endsWith(".jpeg"));
+        File[] customFiles = listCustomWallpapers(customDir);
         int customCount = (customFiles != null) ? customFiles.length : 0;
 
         String rawKey = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE).getString("active_category", "Indonesia");
@@ -8231,7 +8231,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if ("Custom".equalsIgnoreCase(category)) {
             placesMode = false;
             File customDir = new File(getFilesDir(), "custom_wallpapers");
-            File[] files = customDir.listFiles((dir, name) -> name.endsWith(".jpg") || name.endsWith(".png") || name.endsWith(".jpeg"));
+            File[] files = listCustomWallpapers(customDir);
             if (files != null && files.length > 0) {
                 Arrays.sort(files, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
                 wallpapers = new ArrayList<>(Arrays.asList(files));
@@ -8578,10 +8578,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         };
     }
 
+    private File[] listCustomWallpapers(File customDir) {
+        if (customDir == null || !customDir.exists()) return null;
+        return customDir.listFiles((dir, name) -> WallpaperUploadServer.isSupportedMedia(name));
+    }
+
     private void onCustomWallpaperUploaded(File file) {
         runOnUiThread(() -> {
             SoundEffects.playSelect();
-            showToast("✅ Wallpaper berhasil diunggah dari HP!", true);
+            boolean isVideo = file != null && file.getName().toLowerCase(Locale.ROOT).endsWith(".mp4");
+            showToast(isVideo ? "✅ Live Wallpaper MP4 berhasil diunggah dari HP!" : "✅ Wallpaper berhasil diunggah dari HP!", true);
 
             getSharedPreferences("wallpaper_prefs", MODE_PRIVATE).edit()
                     .putString("active_category", "Custom")
@@ -8591,7 +8597,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
             placesMode = false;
             File customDir = new File(getFilesDir(), "custom_wallpapers");
-            File[] files = customDir.listFiles((dir, name) -> name.endsWith(".jpg") || name.endsWith(".png") || name.endsWith(".jpeg"));
+            File[] files = listCustomWallpapers(customDir);
             if (files != null && files.length > 0) {
                 Arrays.sort(files, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
                 wallpapers = new ArrayList<>(Arrays.asList(files));
@@ -8612,7 +8618,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
             if (qrImageView != null) {
                 try {
-                    Bitmap thumb = decodeWallpaper(file);
+                    Bitmap thumb = null;
+                    if (isVideo) {
+                        android.media.MediaMetadataRetriever mmr = new android.media.MediaMetadataRetriever();
+                        try {
+                            mmr.setDataSource(file.getAbsolutePath());
+                            thumb = mmr.getFrameAtTime(0);
+                        } finally {
+                            try { mmr.release(); } catch (Exception ignored) {}
+                        }
+                    } else {
+                        thumb = decodeWallpaper(file);
+                    }
                     if (thumb != null) {
                         qrImageView.setImageBitmap(thumb);
                         qrImageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
@@ -8657,7 +8674,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             placesMode = false;
 
             File customDir = new File(getFilesDir(), "custom_wallpapers");
-            File[] files = customDir.listFiles((dir, name) -> name.endsWith(".jpg") || name.endsWith(".png") || name.endsWith(".jpeg"));
+            File[] files = listCustomWallpapers(customDir);
             if (files != null && files.length > 0) {
                 Arrays.sort(files, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
                 wallpapers = new ArrayList<>(Arrays.asList(files));
@@ -8681,7 +8698,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
 
             File customDir = new File(getFilesDir(), "custom_wallpapers");
-            File[] files = customDir.listFiles((dir, name) -> name.endsWith(".jpg") || name.endsWith(".png") || name.endsWith(".jpeg"));
+            File[] files = listCustomWallpapers(customDir);
             String activeCat = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE).getString("active_category", "Natural");
 
             if ("Custom".equalsIgnoreCase(activeCat)) {
@@ -8821,7 +8838,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 null,
                 () -> {
                     File customDir = new File(getFilesDir(), "custom_wallpapers");
-                    File[] allFiles = customDir.listFiles((dir, name) -> name.endsWith(".jpg") || name.endsWith(".png") || name.endsWith(".jpeg"));
+                    File[] allFiles = listCustomWallpapers(customDir);
                     if (allFiles != null) {
                         for (File f : allFiles) {
                             if (!f.getName().equals(file.getName())) {

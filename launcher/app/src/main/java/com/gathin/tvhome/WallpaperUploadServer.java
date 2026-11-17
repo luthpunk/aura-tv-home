@@ -3,6 +3,7 @@ package com.gathin.tvhome;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.media.MediaMetadataRetriever;
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -188,20 +189,33 @@ public class WallpaperUploadServer {
                 out.flush();
             } else if (requestLine.startsWith("POST /upload")) {
                 long contentLength = 0;
+                String reqContentType = "";
                 for (String line : lines) {
-                    if (line.toLowerCase(Locale.ROOT).startsWith("content-length:")) {
+                    String lower = line.toLowerCase(Locale.ROOT);
+                    if (lower.startsWith("content-length:")) {
                         try {
                             contentLength = Long.parseLong(line.substring(15).trim());
                         } catch (Exception ignored) {}
-                        break;
+                    } else if (lower.startsWith("content-type:")) {
+                        reqContentType = line.substring(13).trim().toLowerCase(Locale.ROOT);
                     }
                 }
 
-                if (contentLength > 0 && contentLength < 60 * 1024 * 1024) { // Max 60 MB
+                if (contentLength > 0 && contentLength < 120L * 1024L * 1024L) { // Max 120 MB
                     File customDir = new File(context.getFilesDir(), "custom_wallpapers");
                     if (!customDir.exists()) customDir.mkdirs();
 
-                    File targetFile = new File(customDir, "custom_" + System.currentTimeMillis() + ".jpg");
+                    String reqName = getQueryParam(requestLine, "name").toLowerCase(Locale.ROOT);
+                    String ext = ".jpg";
+                    if (reqName.endsWith(".mp4") || reqContentType.contains("video/mp4")) {
+                        ext = ".mp4";
+                    } else if (reqName.endsWith(".png") || reqContentType.contains("image/png")) {
+                        ext = ".png";
+                    } else if (reqName.endsWith(".webp") || reqContentType.contains("image/webp")) {
+                        ext = ".webp";
+                    }
+
+                    File targetFile = new File(customDir, "custom_" + System.currentTimeMillis() + ext);
                     FileOutputStream fos = new FileOutputStream(targetFile);
 
                     byte[] buffer = new byte[8192];
@@ -279,17 +293,35 @@ public class WallpaperUploadServer {
                 return;
             }
 
-            BitmapFactory.Options opts = new BitmapFactory.Options();
-            opts.inJustDecodeBounds = true;
-            BitmapFactory.decodeFile(target.getAbsolutePath(), opts);
+            Bitmap bmp = null;
+            if (target.getName().toLowerCase(Locale.ROOT).endsWith(".mp4")) {
+                MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+                try {
+                    mmr.setDataSource(target.getAbsolutePath());
+                    Bitmap frame = mmr.getFrameAtTime(0);
+                    if (frame != null) {
+                        int tw = Math.min(320, frame.getWidth());
+                        int th = Math.max(1, Math.round(frame.getHeight() * (tw / (float) Math.max(1, frame.getWidth()))));
+                        bmp = Bitmap.createScaledBitmap(frame, tw, th, true);
+                        if (bmp != frame) frame.recycle();
+                    }
+                } catch (Exception ignored) {
+                } finally {
+                    try { mmr.release(); } catch (Exception ignored) {}
+                }
+            } else {
+                BitmapFactory.Options opts = new BitmapFactory.Options();
+                opts.inJustDecodeBounds = true;
+                BitmapFactory.decodeFile(target.getAbsolutePath(), opts);
 
-            int sample = 1;
-            while (opts.outWidth / (sample * 2) >= 200 && opts.outHeight / (sample * 2) >= 150) sample *= 2;
-            opts.inJustDecodeBounds = false;
-            opts.inSampleSize = sample;
-            opts.inPreferredConfig = Bitmap.Config.RGB_565;
+                int sample = 1;
+                while (opts.outWidth / (sample * 2) >= 200 && opts.outHeight / (sample * 2) >= 150) sample *= 2;
+                opts.inJustDecodeBounds = false;
+                opts.inSampleSize = sample;
+                opts.inPreferredConfig = Bitmap.Config.RGB_565;
 
-            Bitmap bmp = BitmapFactory.decodeFile(target.getAbsolutePath(), opts);
+                bmp = BitmapFactory.decodeFile(target.getAbsolutePath(), opts);
+            }
             if (bmp == null) {
                 String err = "HTTP/1.1 500 Error\r\nConnection: close\r\n\r\n";
                 out.write(err.getBytes("UTF-8"));
@@ -316,10 +348,17 @@ public class WallpaperUploadServer {
         }
     }
 
+    static boolean isSupportedMedia(String name) {
+        if (name == null) return false;
+        String lower = name.toLowerCase(Locale.ROOT);
+        return lower.endsWith(".jpg") || lower.endsWith(".png") || lower.endsWith(".jpeg")
+                || lower.endsWith(".webp") || lower.endsWith(".mp4");
+    }
+
     private void serveApiList(OutputStream out) {
         try {
             File customDir = new File(context.getFilesDir(), "custom_wallpapers");
-            File[] files = customDir.listFiles((dir, name) -> name.endsWith(".jpg") || name.endsWith(".png") || name.endsWith(".jpeg"));
+            File[] files = customDir.listFiles((dir, name) -> isSupportedMedia(name));
             JSONArray arr = new JSONArray();
             String activeSingle = context.getSharedPreferences("wallpaper_prefs", Context.MODE_PRIVATE)
                     .getString("custom_single_file", "");
@@ -718,20 +757,21 @@ public class WallpaperUploadServer {
                 "  <div class=\"card\">\n" +
                 "    <div class=\"badge\">Aura TV Home • Edisi Indonesia</div>\n" +
                 "    <h1>Unggah Wallpaper</h1>\n" +
-                "    <p class=\"subtitle\">Pilih foto apa saja dari galeri HP untuk langsung ditampilkan pada layar TV Anda.</p>\n" +
+                "    <p class=\"subtitle\">Pilih foto atau video MP4 (live wallpaper) dari galeri HP untuk langsung ditampilkan pada layar TV Anda.</p>\n" +
                 "\n" +
                 "    <div class=\"dropzone\" id=\"dropzone\" onclick=\"document.getElementById('file-input').click()\">\n" +
                 "      <div class=\"dropzone-icon\">🖼️</div>\n" +
-                "      <div class=\"dropzone-text\">Pilih Foto dari Galeri</div>\n" +
-                "      <div class=\"dropzone-hint\">Mendukung JPG, PNG, WEBP (Resolusi 1080p / 4K)</div>\n" +
+                "      <div class=\"dropzone-text\">Pilih Foto / Video MP4</div>\n" +
+                "      <div class=\"dropzone-hint\">Mendukung JPG, PNG, WEBP &amp; MP4 Live (Maks. 120 MB)</div>\n" +
                 "    </div>\n" +
                 "\n" +
                 "    <div id=\"preview-container\">\n" +
-                "      <img id=\"preview\" alt=\"Preview\">\n" +
-                "      <button class=\"change-btn\" onclick=\"document.getElementById('file-input').click()\">Ganti Foto</button>\n" +
+                "      <img id=\"preview\" alt=\"Preview\" style=\"display:none\">\n" +
+                "      <video id=\"preview-video\" autoplay loop muted playsinline style=\"display:none; width:100%; height:220px; object-fit:cover;\"></video>\n" +
+                "      <button class=\"change-btn\" onclick=\"document.getElementById('file-input').click()\">Ganti File</button>\n" +
                 "    </div>\n" +
                 "\n" +
-                "    <input type=\"file\" id=\"file-input\" accept=\"image/*\">\n" +
+                "    <input type=\"file\" id=\"file-input\" accept=\"image/*,video/mp4\">\n" +
                 "\n" +
                 "    <button class=\"btn-submit\" id=\"btn-submit\" disabled onclick=\"uploadImage()\">\n" +
                 "      <span>Kirim ke Layar TV</span>\n" +
@@ -766,28 +806,38 @@ public class WallpaperUploadServer {
                 "    const dropzone = document.getElementById('dropzone');\n" +
                 "    const previewContainer = document.getElementById('preview-container');\n" +
                 "    const preview = document.getElementById('preview');\n" +
+                "    const previewVideo = document.getElementById('preview-video');\n" +
                 "    const btnSubmit = document.getElementById('btn-submit');\n" +
                 "    const progWrap = document.getElementById('prog-wrap');\n" +
                 "    const progBar = document.getElementById('prog-bar');\n" +
                 "    const statusMsg = document.getElementById('status-msg');\n" +
                 "\n" +
                 "    let selectedFile = null;\n" +
+                "    let objectUrl = null;\n" +
                 "\n" +
                 "    fileInput.addEventListener('change', (e) => {\n" +
                 "      const file = e.target.files[0];\n" +
                 "      if (!file) return;\n" +
                 "      selectedFile = file;\n" +
-                "\n" +
-                "      const reader = new FileReader();\n" +
-                "      reader.onload = (evt) => {\n" +
-                "        preview.src = evt.target.result;\n" +
-                "        dropzone.style.display = 'none';\n" +
-                "        previewContainer.style.display = 'block';\n" +
-                "        btnSubmit.disabled = false;\n" +
-                "        btnSubmit.innerHTML = '<span>✨ Pasang Sebagai Wallpaper TV</span>';\n" +
-                "        statusMsg.style.display = 'none';\n" +
-                "      };\n" +
-                "      reader.readAsDataURL(file);\n" +
+                "      if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }\n" +
+                "      const isVideo = (file.type && file.type.startsWith('video/')) || file.name.toLowerCase().endsWith('.mp4');\n" +
+                "      objectUrl = URL.createObjectURL(file);\n" +
+                "      if (isVideo) {\n" +
+                "        preview.style.display = 'none';\n" +
+                "        previewVideo.src = objectUrl;\n" +
+                "        previewVideo.style.display = 'block';\n" +
+                "      } else {\n" +
+                "        previewVideo.pause();\n" +
+                "        previewVideo.removeAttribute('src');\n" +
+                "        previewVideo.style.display = 'none';\n" +
+                "        preview.src = objectUrl;\n" +
+                "        preview.style.display = 'block';\n" +
+                "      }\n" +
+                "      dropzone.style.display = 'none';\n" +
+                "      previewContainer.style.display = 'block';\n" +
+                "      btnSubmit.disabled = false;\n" +
+                "      btnSubmit.innerHTML = isVideo ? '<span>🎬 Pasang Sebagai Live Wallpaper</span>' : '<span>✨ Pasang Sebagai Wallpaper TV</span>';\n" +
+                "      statusMsg.style.display = 'none';\n" +
                 "    });\n" +
                 "\n" +
                 "    function uploadImage() {\n" +

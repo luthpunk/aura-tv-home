@@ -56,24 +56,24 @@ public class AzanActivity extends Activity {
     }
 
     private static final PhraseEntry[] STANDARD_PHRASES = {
-            new PhraseEntry("ٱللَّهُ أَكْبَرُ ٱللَّهُ أَكْبَرُ", "Allah Maha Besar, Allah Maha Besar", 0.00f, 29f),
-            new PhraseEntry("أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا ٱللَّهُ", "Aku bersaksi tiada Tuhan selain Allah", 0.16f, 24f),
-            new PhraseEntry("أَشْهَدُ أَنَّ مُحَمَّدًا رَسُولُ ٱللَّهِ", "Aku bersaksi Nabi Muhammad utusan Allah", 0.33f, 23f),
-            new PhraseEntry("حَيَّ عَلَى ٱلصَّلَاةِ", "Mari mendirikan sholat", 0.50f, 29f),
-            new PhraseEntry("حَيَّ عَلَى ٱلْفَلَاحِ", "Mari menuju kemenangan", 0.67f, 29f),
-            new PhraseEntry("ٱللَّهُ أَكْبَرُ ٱللَّهُ أَكْبَرُ", "Allah Maha Besar, Allah Maha Besar", 0.82f, 29f),
-            new PhraseEntry("لَا إِلَٰهَ إِلَّا ٱللَّهُ", "Tiada Tuhan selain Allah", 0.91f, 30f)
+            new PhraseEntry("ٱللَّهُ أَكْبَرُ ٱللَّهُ أَكْبَرُ", "Allah Maha Besar, Allah Maha Besar", 0.00f, 27f),
+            new PhraseEntry("أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا ٱللَّهُ", "Aku bersaksi tiada Tuhan selain Allah", 0.16f, 22.5f),
+            new PhraseEntry("أَشْهَدُ أَنَّ مُحَمَّدًا رَسُولُ ٱللَّهِ", "Aku bersaksi Nabi Muhammad utusan Allah", 0.33f, 21f),
+            new PhraseEntry("حَيَّ عَلَى ٱلصَّلَاةِ", "Mari mendirikan sholat", 0.50f, 27f),
+            new PhraseEntry("حَيَّ عَلَى ٱلْفَلَاحِ", "Mari menuju kemenangan", 0.67f, 27f),
+            new PhraseEntry("ٱللَّهُ أَكْبَرُ ٱللَّهُ أَكْبَرُ", "Allah Maha Besar, Allah Maha Besar", 0.82f, 27f),
+            new PhraseEntry("لَا إِلَٰهَ إِلَّا ٱللَّهُ", "Tiada Tuhan selain Allah", 0.91f, 28f)
     };
 
     private static final PhraseEntry[] SUBUH_PHRASES = {
-            new PhraseEntry("ٱللَّهُ أَكْبَرُ ٱللَّهُ أَكْبَرُ", "Allah Maha Besar, Allah Maha Besar", 0.00f, 29f),
-            new PhraseEntry("أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا ٱللَّهُ", "Aku bersaksi tiada Tuhan selain Allah", 0.14f, 24f),
-            new PhraseEntry("أَشْهَدُ أَنَّ مُحَمَّدًا رَسُولُ ٱللَّهِ", "Aku bersaksi Nabi Muhammad utusan Allah", 0.29f, 23f),
-            new PhraseEntry("حَيَّ عَلَى ٱلصَّلَاةِ", "Mari mendirikan sholat", 0.44f, 29f),
-            new PhraseEntry("حَيَّ عَلَى ٱلْفَلَاحِ", "Mari menuju kemenangan", 0.59f, 29f),
-            new PhraseEntry("ٱلصَّلَاةُ خَيْرٌ مِنَ ٱلنَّوْمِ", "Sholat lebih baik daripada tidur", 0.72f, 25f),
-            new PhraseEntry("ٱللَّهُ أَكْبَرُ ٱللَّهُ أَكْبَرُ", "Allah Maha Besar, Allah Maha Besar", 0.85f, 29f),
-            new PhraseEntry("لَا إِلَٰهَ إِلَّا ٱللَّهُ", "Tiada Tuhan selain Allah", 0.93f, 30f)
+            new PhraseEntry("ٱللَّهُ أَكْبَرُ ٱللَّهُ أَكْبَرُ", "Allah Maha Besar, Allah Maha Besar", 0.00f, 27f),
+            new PhraseEntry("أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا ٱللَّهُ", "Aku bersaksi tiada Tuhan selain Allah", 0.14f, 22.5f),
+            new PhraseEntry("أَشْهَدُ أَنَّ مُحَمَّدًا رَسُولُ ٱللَّهِ", "Aku bersaksi Nabi Muhammad utusan Allah", 0.29f, 21f),
+            new PhraseEntry("حَيَّ عَلَى ٱلصَّلَاةِ", "Mari mendirikan sholat", 0.44f, 27f),
+            new PhraseEntry("حَيَّ عَلَى ٱلْفَلَاحِ", "Mari menuju kemenangan", 0.59f, 27f),
+            new PhraseEntry("ٱلصَّلَاةُ خَيْرٌ مِنَ ٱلنَّوْمِ", "Sholat lebih baik daripada tidur", 0.72f, 23.5f),
+            new PhraseEntry("ٱللَّهُ أَكْبَرُ ٱللَّهُ أَكْبَرُ", "Allah Maha Besar, Allah Maha Besar", 0.85f, 27f),
+            new PhraseEntry("لَا إِلَٰهَ إِلَّا ٱللَّهُ", "Tiada Tuhan selain Allah", 0.93f, 28f)
     };
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -291,26 +291,32 @@ public class AzanActivity extends Activity {
         phraseContainer.setClipChildren(false);
         phraseContainer.setClipToPadding(false);
 
+        FrameLayout arabicSlot = new FrameLayout(this);
+        arabicSlot.setClipChildren(false);
+        arabicSlot.setClipToPadding(false);
+
         takbir = text(activePhrases[0].arabic, amiri, activePhrases[0].textSizeSp, goldColor, 400);
-        takbir.setSingleLine(false);
-        takbir.setMaxLines(2);
+        takbir.setSingleLine(true);
         takbir.setPadding(0, dp(2), 0, dp(2));
         if (!isNeu) takbir.setShadowLayer(4 * density, 0, 1 * density, 0x70000000);
-        phraseContainer.addView(takbir, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        arabicSlot.addView(takbir, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
+        phraseContainer.addView(arabicSlot, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(62)));
 
         translationView = text(activePhrases[0].meaning, outfit, 13.5f, meaningTextColor, 400);
         translationView.setSingleLine(true);
         translationView.setEllipsize(TextUtils.TruncateAt.END);
+        translationView.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams trLp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(22));
         trLp.topMargin = dp(2);
         phraseContainer.addView(translationView, trLp);
 
         applyPhrase(activePhrases[0]);
 
         LinearLayout.LayoutParams pcLp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(86));
         pcLp.topMargin = dp(10);
         card.addView(phraseContainer, pcLp);
 
