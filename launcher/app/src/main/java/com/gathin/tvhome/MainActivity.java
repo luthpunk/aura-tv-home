@@ -448,6 +448,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // so cold boot never stalls behind an early system dialog before setContentView draws.
         handler.postDelayed(() -> {
             if (isFinishing() || isDestroyed()) return;
+            HomeSettingsActivity.syncLauncherAliasState(this);
             if (!HomeSettingsActivity.isDefaultHomeApp(this)) {
                 HomeSettingsActivity.resetPreferredHomeCache(this);
             }
@@ -5587,8 +5588,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             open(systemIntent(Settings.ACTION_SETTINGS));
         });
 
-        // If Aura TV Home is not yet the default launcher, offer a 1-click option to set it
-        if (!HomeSettingsActivity.isDefaultHomeApp(this)) {
+        // If Aura TV Home is not yet the default launcher (and Accessibility Home interceptor isn't active), offer a 1-click option
+        if (!HomeSettingsActivity.isDefaultHomeApp(this) && !HomeKeyService.isAccessibilityActive()) {
             addInputRow(rows, null, R.drawable.ic_home_settings, "Jadikan Launcher Utama", -1, () -> {
                 SoundEffects.playSelect();
                 closeMenuAndFocusApp();

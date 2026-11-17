@@ -12,7 +12,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 
-/** Lets the user change HOME through the system UI, without shell or privileged permissions. */
+/** Lets the user change HOME through the system UI, with Accessibility fallback for locked OEM TVs. */
 public class HomeSettingsActivity extends Activity {
 
     private static final int REQ_ROLE_HOME = 901;
@@ -33,6 +33,32 @@ public class HomeSettingsActivity extends Activity {
                     && ctx.getPackageName().equals(ri.activityInfo.packageName);
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    /**
+     * Keeps {@code .LauncherEntryAlias} enabled while Aura TV Home is not yet the default launcher
+     * (so the APK installer's "Open / Buka" button works and users can open it from a stock launcher),
+     * and automatically disables the alias once Aura TV Home becomes the default launcher so it hides
+     * cleanly from system app lists.
+     */
+    public static void syncLauncherAliasState(Context ctx) {
+        try {
+            PackageManager pm = ctx.getPackageManager();
+            ComponentName alias = new ComponentName(ctx.getPackageName(),
+                    ctx.getPackageName() + ".LauncherEntryAlias");
+            boolean isDefault = isDefaultHomeApp(ctx);
+            int desiredState = isDefault
+                    ? PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+                    : PackageManager.COMPONENT_ENABLED_STATE_ENABLED;
+            int currentState = pm.getComponentEnabledSetting(alias);
+            boolean currentlyDisabled = (currentState == PackageManager.COMPONENT_ENABLED_STATE_DISABLED);
+            if (isDefault && !currentlyDisabled) {
+                pm.setComponentEnabledSetting(alias, desiredState, PackageManager.DONT_KILL_APP);
+            } else if (!isDefault && currentlyDisabled) {
+                pm.setComponentEnabledSetting(alias, desiredState, PackageManager.DONT_KILL_APP);
+            }
+        } catch (Exception ignored) {
         }
     }
 
@@ -75,7 +101,7 @@ public class HomeSettingsActivity extends Activity {
             }
         }
 
-        openSystemHomePickerAndFinish();
+        openSystemHomePickerOrAccessibility();
     }
 
     @Override
@@ -83,16 +109,19 @@ public class HomeSettingsActivity extends Activity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQ_ROLE_HOME) {
             if (resultCode == RESULT_OK || isDefaultHomeApp(this)) {
+                syncLauncherAliasState(this);
+                TvToast.show(this, "Aura TV Home berhasil dijadikan Launcher Utama", false);
                 finish();
                 return;
             }
-            openSystemHomePickerAndFinish();
+            // Locked OEM TV firmware (Google TV / Xiaomi / TCL) rejected ROLE_HOME dialog:
+            openSystemHomePickerOrAccessibility();
         } else {
             finish();
         }
     }
 
-    private void openSystemHomePickerAndFinish() {
+    private void openSystemHomePickerOrAccessibility() {
         try {
             Intent settings = new Intent(Settings.ACTION_HOME_SETTINGS);
             if (getPackageManager().resolveActivity(settings, 0) != null) {
@@ -103,6 +132,22 @@ public class HomeSettingsActivity extends Activity {
             }
         } catch (ActivityNotFoundException | SecurityException ignored) {
         }
+
+        // Fallback for TVs that lock/remove Home Settings (Google TV, Xiaomi, TCL):
+        // Guide the user to enable Aura TV Home in Accessibility (HomeKeyService) so the remote's
+        // Home button is intercepted without needing ADB.
+        if (!HomeKeyService.isAccessibilityActive()) {
+            try {
+                Intent acc = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+                acc.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(acc);
+                TvToast.show(this, "Aktifkan 'Aura TV Home' di Aksesibilitas agar tombol Home remote selalu masuk ke beranda ini", true);
+                finish();
+                return;
+            } catch (Exception ignored) {
+            }
+        }
+
         try {
             Intent homeChooser = new Intent(Intent.ACTION_MAIN)
                     .addCategory(Intent.CATEGORY_HOME)
