@@ -2,7 +2,12 @@ package com.gathin.tvhome;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.graphics.Canvas;
+import android.graphics.ColorFilter;
+import android.graphics.Paint;
+import android.graphics.PixelFormat;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
@@ -12,10 +17,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.text.SpannableStringBuilder;
-import android.text.Spanned;
 import android.text.TextUtils;
-import android.text.style.ForegroundColorSpan;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -23,6 +25,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -40,33 +43,37 @@ import java.util.Locale;
 public class AzanActivity extends Activity {
     private static final class PhraseEntry {
         final String arabic;
+        final String meaning;
         final float progressThreshold;
+        final float textSizeSp;
 
-        PhraseEntry(String arabic, float progressThreshold) {
+        PhraseEntry(String arabic, String meaning, float progressThreshold, float textSizeSp) {
             this.arabic = arabic;
+            this.meaning = meaning;
             this.progressThreshold = progressThreshold;
+            this.textSizeSp = textSizeSp;
         }
     }
 
     private static final PhraseEntry[] STANDARD_PHRASES = {
-            new PhraseEntry("ٱللَّهُ أَكْبَرُ", 0.00f),
-            new PhraseEntry("أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا ٱللَّهُ", 0.16f),
-            new PhraseEntry("أَشْهَدُ أَنَّ مُحَمَّدًا رَسُولُ ٱللَّهِ", 0.33f),
-            new PhraseEntry("حَيَّ عَلَى ٱلصَّلَاةِ", 0.50f),
-            new PhraseEntry("حَيَّ عَلَى ٱلْفَلَاحِ", 0.67f),
-            new PhraseEntry("ٱللَّهُ أَكْبَرُ", 0.82f),
-            new PhraseEntry("لَا إِلَٰهَ إِلَّا ٱللَّهُ", 0.91f)
+            new PhraseEntry("ٱللَّهُ أَكْبَرُ ٱللَّهُ أَكْبَرُ", "Allah Maha Besar, Allah Maha Besar", 0.00f, 29f),
+            new PhraseEntry("أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا ٱللَّهُ", "Aku bersaksi tiada Tuhan selain Allah", 0.16f, 24f),
+            new PhraseEntry("أَشْهَدُ أَنَّ مُحَمَّدًا رَسُولُ ٱللَّهِ", "Aku bersaksi Nabi Muhammad utusan Allah", 0.33f, 23f),
+            new PhraseEntry("حَيَّ عَلَى ٱلصَّلَاةِ", "Mari mendirikan sholat", 0.50f, 29f),
+            new PhraseEntry("حَيَّ عَلَى ٱلْفَلَاحِ", "Mari menuju kemenangan", 0.67f, 29f),
+            new PhraseEntry("ٱللَّهُ أَكْبَرُ ٱللَّهُ أَكْبَرُ", "Allah Maha Besar, Allah Maha Besar", 0.82f, 29f),
+            new PhraseEntry("لَا إِلَٰهَ إِلَّا ٱللَّهُ", "Tiada Tuhan selain Allah", 0.91f, 30f)
     };
 
     private static final PhraseEntry[] SUBUH_PHRASES = {
-            new PhraseEntry("ٱللَّهُ أَكْبَرُ", 0.00f),
-            new PhraseEntry("أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا ٱللَّهُ", 0.14f),
-            new PhraseEntry("أَشْهَدُ أَنَّ مُحَمَّدًا رَسُولُ ٱللَّهِ", 0.29f),
-            new PhraseEntry("حَيَّ عَلَى ٱلصَّلَاةِ", 0.44f),
-            new PhraseEntry("حَيَّ عَلَى ٱلْفَلَاحِ", 0.59f),
-            new PhraseEntry("ٱلصَّلَاةُ خَيْرٌ مِنَ ٱلنَّوْمِ", 0.72f),
-            new PhraseEntry("ٱللَّهُ أَكْبَرُ", 0.85f),
-            new PhraseEntry("لَا إِلَٰهَ إِلَّا ٱللَّهُ", 0.93f)
+            new PhraseEntry("ٱللَّهُ أَكْبَرُ ٱللَّهُ أَكْبَرُ", "Allah Maha Besar, Allah Maha Besar", 0.00f, 29f),
+            new PhraseEntry("أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا ٱللَّهُ", "Aku bersaksi tiada Tuhan selain Allah", 0.14f, 24f),
+            new PhraseEntry("أَشْهَدُ أَنَّ مُحَمَّدًا رَسُولُ ٱللَّهِ", "Aku bersaksi Nabi Muhammad utusan Allah", 0.29f, 23f),
+            new PhraseEntry("حَيَّ عَلَى ٱلصَّلَاةِ", "Mari mendirikan sholat", 0.44f, 29f),
+            new PhraseEntry("حَيَّ عَلَى ٱلْفَلَاحِ", "Mari menuju kemenangan", 0.59f, 29f),
+            new PhraseEntry("ٱلصَّلَاةُ خَيْرٌ مِنَ ٱلنَّوْمِ", "Sholat lebih baik daripada tidur", 0.72f, 25f),
+            new PhraseEntry("ٱللَّهُ أَكْبَرُ ٱللَّهُ أَكْبَرُ", "Allah Maha Besar, Allah Maha Besar", 0.85f, 29f),
+            new PhraseEntry("لَا إِلَٰهَ إِلَّا ٱللَّهُ", "Tiada Tuhan selain Allah", 0.93f, 30f)
     };
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -74,12 +81,14 @@ public class AzanActivity extends Activity {
     private AudioManager audio;
     private AudioFocusRequest focus;
     private float density;
+    private LinearLayout phraseContainer;
     private TextView takbir;
-    private TextView headerTitleView;
+    private TextView translationView;
+    private TextView headlinePrayerView;
+    private TextView headlineLocationView;
     private TextView timeView;
     private TextView hint;
     private String locationName = "";
-    private int headerSecondaryColor;
     private PhraseEntry[] activePhrases = STANDARD_PHRASES;
     private int currentPhraseIdx = 0;
     private int audioStartOffsetMs = 0;
@@ -158,13 +167,15 @@ public class AzanActivity extends Activity {
             }
         }
 
-        int accentColor = (isNeu && !isNeuDark) ? 0xFFD97706 : 0xFFFFA726;
+        int goldColor = (isNeu && !isNeuDark) ? 0xFFD97706 : 0xFFF5B935;
+        int headlineAccentColor = isDarkGlow ? 0xFF00F0FF : goldColor;
         int primaryTextColor = isNeu ? ThemeManager.neu(0xFF2B3036) : 0xFFFFFFFF;
-        headerSecondaryColor = isNeu ? ThemeManager.neu(0xFF5A626E) : 0xB3FFFFFF;
-        int timeBadgeTextColor = isNeu ? ThemeManager.neu(0xFF2B3036) : (isDarkGlow ? 0xFF00F0FF : 0xFFFFC168);
-        int timeBadgeBgColor = isNeu ? ThemeManager.neu(0x14000000) : (isDarkGlow ? 0x1A00F0FF : 0x1AFFFFFF);
-        int hintTextColor = isNeu ? ThemeManager.neu(0xFF5A626E) : 0x8CFFFFFF;
-        int dividerColor = isNeu ? ThemeManager.neu(0x1A000000) : (isDarkGlow ? 0x2E00F0FF : 0x22FFFFFF);
+        int topLabelColor = isNeu ? ThemeManager.neu(0xFF5A626E) : (isDarkGlow ? 0xB300F0FF : 0xB8FFFFFF);
+        int meaningTextColor = isNeu ? ThemeManager.neu(0xFF4A525D) : 0xD9FFFFFF;
+        int hintTextColor = isNeu ? ThemeManager.neu(0xFF6B7280) : 0x8CFFFFFF;
+        int timeBadgeBgColor = isNeu ? ThemeManager.neu(0x16000000) : (isDarkGlow ? 0x2200F0FF : 0x52000000);
+        int timeBadgeTextColor = isNeu ? ThemeManager.neu(0xFF2B3036) : 0xFFFFFFFF;
+        int clockIconColor = isDarkGlow ? 0xFF00F0FF : goldColor;
 
         FrameLayout wrapper = new FrameLayout(this);
         wrapper.setClipChildren(false);
@@ -173,21 +184,23 @@ public class AzanActivity extends Activity {
         wrapper.setPadding(outerPad, outerPad, outerPad, outerPad);
 
         int screenW = getResources().getDisplayMetrics().widthPixels;
-        int fixedCardWidth = Math.min(dp(540), screenW - outerPad * 2 - dp(24));
-        // Explicitly set window width so Android windowIsFloating never squishes the card.
+        int fixedCardWidth = Math.min(dp(440), screenW - outerPad * 2 - dp(32));
+        // Lock window width to compact card size so it fits snugly with no excess empty space.
         w.setLayout(fixedCardWidth + outerPad * 2, WindowManager.LayoutParams.WRAP_CONTENT);
 
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setGravity(Gravity.CENTER_HORIZONTAL);
-        card.setPadding(dp(24), dp(14), dp(24), dp(12));
+        card.setClipChildren(false);
+        card.setClipToPadding(false);
+        card.setPadding(dp(22), dp(14), dp(22), dp(14));
         if (isNeu) {
-            card.setBackground(new NeumorphicDrawable(dp(22), density, NeumorphicDrawable.MODE_EXTRUDED, true));
+            card.setBackground(new NeumorphicDrawable(dp(24), density, NeumorphicDrawable.MODE_EXTRUDED, true));
             card.setElevation(0f);
         } else if (isDarkGlow) {
             GradientDrawable dgBg = new GradientDrawable();
             dgBg.setColor(0xF008090D);
-            dgBg.setCornerRadius(dp(22));
+            dgBg.setCornerRadius(dp(24));
             dgBg.setStroke(Math.max(1, dp(1.5f)), 0xFF00F0FF);
             card.setBackground(dgBg);
             card.setClipToOutline(true);
@@ -195,9 +208,9 @@ public class AzanActivity extends Activity {
         } else {
             GradientDrawable glass = new GradientDrawable(
                     GradientDrawable.Orientation.TOP_BOTTOM,
-                    blur ? new int[]{0xB8161E2E, 0xB80E1522} : new int[]{0xEB202736, 0xEB141A26});
-            glass.setCornerRadius(dp(22));
-            glass.setStroke(Math.max(1, dp(1.2f)), 0x47FFFFFF);
+                    blur ? new int[]{0xB81E2430, 0xB8131822} : new int[]{0xEB222834, 0xEB151A24});
+            glass.setCornerRadius(dp(24));
+            glass.setStroke(Math.max(1, dp(1.2f)), 0x52FFFFFF);
             card.setBackground(glass);
             card.setClipToOutline(true);
             card.setElevation(dp(16));
@@ -209,77 +222,107 @@ public class AzanActivity extends Activity {
         }
         locationName = town == null ? "" : town.trim();
 
-        // 1. Top bar: "Saatnya Adzan <Sholat>  •  <Wilayah>" on the left + "HH.mm" pill on the right
-        LinearLayout topBar = new LinearLayout(this);
-        topBar.setOrientation(LinearLayout.HORIZONTAL);
-        topBar.setGravity(Gravity.CENTER_VERTICAL);
+        // 1. Top row: centered "PENGINGAT ADZAN" + top-right "[clock HH.mm]" pill
+        FrameLayout topHeader = new FrameLayout(this);
 
-        headerTitleView = new TextView(this);
-        headerTitleView.setText(buildHeaderText(prayer));
-        headerTitleView.setTypeface(outfit);
-        headerTitleView.setTextSize(14.5f);
-        headerTitleView.setTextColor(primaryTextColor);
-        headerTitleView.setFontVariationSettings("'wght' 500");
-        headerTitleView.setSingleLine(true);
-        headerTitleView.setEllipsize(TextUtils.TruncateAt.END);
-        headerTitleView.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
-        LinearLayout.LayoutParams hTitleLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        hTitleLp.setMarginEnd(dp(14));
-        topBar.addView(headerTitleView, hTitleLp);
+        TextView badgeLabel = text("PENGINGAT ADZAN", outfit, 11.5f, topLabelColor, 600);
+        badgeLabel.setLetterSpacing(0.14f);
+        badgeLabel.setSingleLine(true);
+        topHeader.addView(badgeLabel, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
+
+        LinearLayout timePill = new LinearLayout(this);
+        timePill.setOrientation(LinearLayout.HORIZONTAL);
+        timePill.setGravity(Gravity.CENTER_VERTICAL);
+        timePill.setPadding(dp(9), dp(3), dp(10), dp(3));
+        GradientDrawable pillBg = new GradientDrawable();
+        pillBg.setColor(timeBadgeBgColor);
+        pillBg.setCornerRadius(dp(100));
+        if (isDarkGlow) {
+            pillBg.setStroke(Math.max(1, dp(0.8f)), 0x6600F0FF);
+        }
+        timePill.setBackground(pillBg);
+
+        ImageView clockIcon = new ImageView(this);
+        clockIcon.setImageDrawable(createClockDrawable(clockIconColor));
+        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(13), dp(13));
+        iconLp.setMarginEnd(dp(5));
+        timePill.addView(clockIcon, iconLp);
 
         String when = new SimpleDateFormat("HH.mm", Locale.getDefault()).format(new Date());
-        timeView = text(when, outfit, 13.5f, timeBadgeTextColor, 500);
+        timeView = text(when, outfit, 12.5f, timeBadgeTextColor, 600);
         timeView.setSingleLine(true);
-        timeView.setPadding(dp(10), dp(3), dp(10), dp(3));
-        GradientDrawable timePill = new GradientDrawable();
-        timePill.setColor(timeBadgeBgColor);
-        timePill.setCornerRadius(dp(8));
-        timeView.setBackground(timePill);
-        topBar.addView(timeView);
-        card.addView(topBar, new LinearLayout.LayoutParams(
+        timePill.addView(timeView);
+
+        topHeader.addView(timePill, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.END | Gravity.CENTER_VERTICAL));
+
+        card.addView(topHeader, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
-        // Subtle divider above Arabic phrase
-        View topDivider = new View(this);
-        topDivider.setBackgroundColor(dividerColor);
-        LinearLayout.LayoutParams topDivLp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Math.max(1, dp(1)));
-        topDivLp.topMargin = dp(8);
-        topDivLp.bottomMargin = dp(6);
-        card.addView(topDivider, topDivLp);
+        // 2. Two-line Announcement: "Saatnya Adzan <Sholat>" + "di <Wilayah> dan sekitarnya"
+        String prayerName = PrayerTimes.NAMES[Math.max(0, Math.min(prayer, PrayerTimes.NAMES.length - 1))];
+        headlinePrayerView = text("Saatnya Adzan " + prayerName, outfit, 21f, headlineAccentColor, 600);
+        headlinePrayerView.setSingleLine(true);
+        headlinePrayerView.setEllipsize(TextUtils.TruncateAt.END);
+        if (!isNeu) headlinePrayerView.setShadowLayer(4 * density, 0, 1 * density, 0x80000000);
+        LinearLayout.LayoutParams hpLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        hpLp.topMargin = dp(8);
+        card.addView(headlinePrayerView, hpLp);
 
-        // 2. Dynamic Arabic phrase slot (full banner width, steady height so popup never jumps)
+        headlineLocationView = text(formatLocationLine(locationName), outfit, 18.5f, primaryTextColor, 600);
+        headlineLocationView.setSingleLine(true);
+        headlineLocationView.setEllipsize(TextUtils.TruncateAt.END);
+        if (!isNeu) headlineLocationView.setShadowLayer(4 * density, 0, 1 * density, 0x80000000);
+        if (locationName.isEmpty()) headlineLocationView.setVisibility(View.GONE);
+        LinearLayout.LayoutParams hlLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        hlLp.topMargin = dp(1);
+        card.addView(headlineLocationView, hlLp);
+
+        // 3. Dynamic Arabic + Indonesian Translation Container (unclipped, WRAP_CONTENT height)
         activePhrases = (prayer == 0) ? SUBUH_PHRASES : STANDARD_PHRASES;
         currentPhraseIdx = 0;
 
-        FrameLayout phraseBox = new FrameLayout(this);
-        phraseBox.setMinimumHeight(dp(60));
-        takbir = text(activePhrases[0].arabic, amiri, 36, accentColor, 400);
+        phraseContainer = new LinearLayout(this);
+        phraseContainer.setOrientation(LinearLayout.VERTICAL);
+        phraseContainer.setGravity(Gravity.CENTER_HORIZONTAL);
+        phraseContainer.setClipChildren(false);
+        phraseContainer.setClipToPadding(false);
+
+        takbir = text(activePhrases[0].arabic, amiri, activePhrases[0].textSizeSp, goldColor, 400);
         takbir.setSingleLine(false);
         takbir.setMaxLines(2);
-        takbir.setIncludeFontPadding(false);
-        takbir.setLineSpacing(0f, 1.05f);
-        takbir.setGravity(Gravity.CENTER);
-        applyPhraseText(activePhrases[0].arabic);
-        phraseBox.addView(takbir, new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
-        card.addView(phraseBox, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dp(60)));
+        takbir.setPadding(0, dp(2), 0, dp(2));
+        if (!isNeu) takbir.setShadowLayer(4 * density, 0, 1 * density, 0x70000000);
+        phraseContainer.addView(takbir, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
-        // Subtle divider above footer hint
-        View bottomDivider = new View(this);
-        bottomDivider.setBackgroundColor(dividerColor);
-        LinearLayout.LayoutParams botDivLp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Math.max(1, dp(1)));
-        botDivLp.topMargin = dp(6);
-        botDivLp.bottomMargin = dp(7);
-        card.addView(bottomDivider, botDivLp);
+        translationView = text(activePhrases[0].meaning, outfit, 13.5f, meaningTextColor, 400);
+        translationView.setSingleLine(true);
+        translationView.setEllipsize(TextUtils.TruncateAt.END);
+        LinearLayout.LayoutParams trLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        trLp.topMargin = dp(2);
+        phraseContainer.addView(translationView, trLp);
 
-        // 3. Compact footer hint
+        applyPhrase(activePhrases[0]);
+
+        LinearLayout.LayoutParams pcLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        pcLp.topMargin = dp(10);
+        card.addView(phraseContainer, pcLp);
+
+        // 4. Compact footer hint
         hint = text("Tekan Back / OK untuk menutup", outfit, 11.5f, hintTextColor, 400);
         hint.setSingleLine(true);
         hint.setEllipsize(TextUtils.TruncateAt.END);
         hint.setGravity(Gravity.CENTER);
-        card.addView(hint, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        LinearLayout.LayoutParams hintLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        hintLp.topMargin = dp(10);
+        card.addView(hint, hintLp);
 
         card.setFocusable(true);
         card.setClickable(true);
@@ -311,15 +354,46 @@ public class AzanActivity extends Activity {
         }
     }
 
-    private CharSequence buildHeaderText(int prayer) {
-        String prayerName = PrayerTimes.NAMES[Math.max(0, Math.min(prayer, PrayerTimes.NAMES.length - 1))];
-        SpannableStringBuilder sb = new SpannableStringBuilder("Saatnya Adzan " + prayerName);
-        if (!locationName.isEmpty()) {
-            int start = sb.length();
-            sb.append("  •  ").append(locationName);
-            sb.setSpan(new ForegroundColorSpan(headerSecondaryColor), start, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        }
-        return sb;
+    private String formatLocationLine(String town) {
+        if (town == null || town.isEmpty()) return "";
+        return "di " + town + " dan sekitarnya";
+    }
+
+    private Drawable createClockDrawable(final int color) {
+        return new Drawable() {
+            private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+            @Override
+            public void draw(Canvas canvas) {
+                float w = getBounds().width();
+                float h = getBounds().height();
+                float cx = w * 0.5f;
+                float cy = h * 0.5f;
+                float r = Math.min(w, h) * 0.42f;
+                p.setColor(color);
+                p.setStyle(Paint.Style.STROKE);
+                p.setStrokeCap(Paint.Cap.ROUND);
+                p.setStrokeWidth(Math.max(1.5f, w * 0.11f));
+                canvas.drawCircle(cx, cy, r, p);
+                canvas.drawLine(cx, cy - r * 0.52f, cx, cy, p);
+                canvas.drawLine(cx, cy, cx + r * 0.42f, cy + r * 0.25f, p);
+            }
+
+            @Override
+            public void setAlpha(int alpha) {
+                p.setAlpha(alpha);
+            }
+
+            @Override
+            public void setColorFilter(ColorFilter colorFilter) {
+                p.setColorFilter(colorFilter);
+            }
+
+            @Override
+            public int getOpacity() {
+                return PixelFormat.TRANSLUCENT;
+            }
+        };
     }
 
     @Override
@@ -329,36 +403,41 @@ public class AzanActivity extends Activity {
         int prayer = intent.getIntExtra("prayer", 4);
         activePhrases = (prayer == 0) ? SUBUH_PHRASES : STANDARD_PHRASES;
         currentPhraseIdx = 0;
-        if (headerTitleView != null) {
-            headerTitleView.setText(buildHeaderText(prayer));
+        String prayerName = PrayerTimes.NAMES[Math.max(0, Math.min(prayer, PrayerTimes.NAMES.length - 1))];
+        if (headlinePrayerView != null) {
+            headlinePrayerView.setText("Saatnya Adzan " + prayerName);
         }
         if (timeView != null) {
             timeView.setText(new SimpleDateFormat("HH.mm", Locale.getDefault()).format(new Date()));
         }
-        applyPhraseText(activePhrases[0].arabic);
+        applyPhrase(activePhrases[0]);
     }
 
     private void showPhrase(int index) {
         if (index < 0 || index >= activePhrases.length) return;
         currentPhraseIdx = index;
-        final String arabic = activePhrases[index].arabic;
-        if (takbir == null) return;
-        takbir.animate().cancel();
-        takbir.animate()
+        final PhraseEntry entry = activePhrases[index];
+        if (phraseContainer == null) return;
+        phraseContainer.animate().cancel();
+        phraseContainer.animate()
                 .alpha(0f)
                 .setDuration(220)
                 .withEndAction(() -> {
-                    if (isFinishing() || isDestroyed() || takbir == null) return;
-                    applyPhraseText(arabic);
-                    takbir.animate().alpha(1f).setDuration(260).start();
+                    if (isFinishing() || isDestroyed() || phraseContainer == null) return;
+                    applyPhrase(entry);
+                    phraseContainer.animate().alpha(1f).setDuration(260).start();
                 })
                 .start();
     }
 
-    private void applyPhraseText(String arabic) {
-        if (takbir == null) return;
-        takbir.setText(arabic);
-        takbir.setTextSize(TypedValue.COMPLEX_UNIT_SP, arabic.length() > 18 ? 27f : 36f);
+    private void applyPhrase(PhraseEntry entry) {
+        if (takbir != null) {
+            takbir.setText(entry.arabic);
+            takbir.setTextSize(TypedValue.COMPLEX_UNIT_SP, entry.textSizeSp);
+        }
+        if (translationView != null) {
+            translationView.setText(entry.meaning);
+        }
     }
 
     private void playChime() {
