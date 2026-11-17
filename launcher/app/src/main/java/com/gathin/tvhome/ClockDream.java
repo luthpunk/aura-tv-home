@@ -142,8 +142,8 @@ public class ClockDream extends DreamService {
         TextView hint = root.findViewById(R.id.nightstandHint);
 
         if (isNeu) {
-            // Neumorphism Light (#EDEAE4) or Neumorphism Dark (#171A22)
-            root.setBackgroundColor(isNeuDark ? 0xFF171A22 : 0xFFEDEAE4);
+            // Neumorphism Light (#DBD7CE) or Neumorphism Dark (#171A22)
+            root.setBackgroundColor(isNeuDark ? 0xFF171A22 : 0xFFDBD7CE);
 
             if (clockCard != null) {
                 clockCard.setBackground(new NeumorphicDrawable(34 * density, density, NeumorphicDrawable.MODE_EXTRUDED, true));

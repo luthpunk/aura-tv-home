@@ -1293,52 +1293,63 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         setWallpaper(bmp, fade, null);
     }
 
-    /** Theme-dependent wallpaper filter. Neumorphism keeps a faint tinted static/live wallpaper. */
+    /** Theme-dependent wallpaper filter. Neumorphism uses a pure solid canvas with static & live wallpaper Views GONE. */
     private void applyWallpaperColorFilter() {
         updateLiveDimOverlay();
         if (!wallpaperFullscreen && ThemeManager.isNeumorphism(this)) {
             boolean isNeuDark = ThemeManager.isNeumorphismDark(this);
-            int solidCanvas = isNeuDark ? 0xFF171A22 : 0xFFEDEAE4;
+            int solidCanvas = isNeuDark ? 0xFF171A22 : 0xFFDBD7CE;
             if (root != null) root.setBackgroundColor(solidCanvas);
             if (wallView != null) {
                 wallView.clearColorFilter();
-                wallView.setAlpha(isNeuDark ? 0.22f : 0.20f);
-                if (currentLiveFile == null) {
-                    if (wallView.getVisibility() != View.VISIBLE) {
-                        wallView.setVisibility(View.VISIBLE);
-                    }
-                } else if (liveFrames > 0 && wallView.getVisibility() != View.GONE) {
+                if (wallView.getVisibility() != View.GONE) {
                     wallView.setVisibility(View.GONE);
                 }
             }
+            for (TextureView old : staleLiveViews) {
+                if (old.getParent() == root) root.removeView(old);
+            }
+            staleLiveViews.clear();
+            if (liveWallView != null && liveWallView.getVisibility() != View.GONE) {
+                liveWallView.setVisibility(View.GONE);
+            }
+            pauseLiveWallpaper();
             return;
+        }
+        if (currentLiveFile != null) {
+            if (liveWallView != null && liveWallView.getVisibility() != View.VISIBLE) {
+                liveWallView.setVisibility(View.VISIBLE);
+                resumeLiveWallpaper();
+            }
+            if (wallView != null && liveFrames > 0 && wallView.getVisibility() != View.GONE) {
+                wallView.setVisibility(View.GONE);
+            }
+        } else if (wallView != null && wallView.getVisibility() != View.VISIBLE) {
+            wallView.setVisibility(View.VISIBLE);
         }
         if (wallView == null) return;
         wallView.setAlpha(1.0f);
-        if (currentLiveFile == null && wallView.getVisibility() != View.VISIBLE) {
-            wallView.setVisibility(View.VISIBLE);
-        }
         if (wallpaperFullscreen) {
             wallView.clearColorFilter();
             return;
         }
         if (ThemeManager.isDarkGlow(this)) {
-            wallView.setColorFilter(0xFF222222, android.graphics.PorterDuff.Mode.MULTIPLY);
+            wallView.setColorFilter(0xFF262626, android.graphics.PorterDuff.Mode.MULTIPLY);
         } else {
             wallView.setColorFilter(0xFF999999, android.graphics.PorterDuff.Mode.MULTIPLY);
         }
-        if (wallBitmap != null && !wallBitmap.hasAlpha() && root != null) {
+        if (wallBitmap != null && !wallBitmap.hasAlpha() && root != null && currentLiveFile == null) {
             root.setBackground(null);
         }
     }
 
     private int getWallpaperDimColor() {
         if (ThemeManager.isDarkGlow(this)) {
-            return 0xFF222222; // Ultra-dark OLED dimming (~13% brightness, moody cyber dark contrast)
+            return 0xFF262626; // Ultra-dark OLED dimming (~15% brightness, 85% dim)
         } else if (ThemeManager.isNeumorphismDark(this)) {
             return 0xFF171A22; // Charcoal-navy Soft UI canvas
         } else if (ThemeManager.isNeumorphism(this)) {
-            return 0xFFEDEAE4; // Warm porcelain light wash
+            return 0xFFDBD7CE; // Matte warm stone-putty Soft UI canvas
         } else {
             return 0xFF999999; // Frosted glass 60% brightness (40% dim)
         }
@@ -1559,23 +1570,31 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (liveDimOverlay == null) liveDimOverlay = new View(this);
         if (liveDimOverlay.getParent() == root) root.removeView(liveDimOverlay);
         root.addView(liveDimOverlay, root.indexOfChild(tv) + 1, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        updateLiveDimOverlay();
 
-        handler.postDelayed(liveWatchdog, LIVE_WATCHDOG_MS + 2000);
+        if (!wallpaperFullscreen && ThemeManager.isNeumorphism(this)) {
+            tv.setVisibility(View.GONE);
+            livePaused = true;
+            updateLiveDimOverlay();
+        } else {
+            updateLiveDimOverlay();
+            handler.postDelayed(liveWatchdog, LIVE_WATCHDOG_MS + 2000);
+        }
 
-        File thumb = new File(file.getParentFile(), file.getName().replace(".mp4", ".jpg"));
-        if (thumb.exists()) {
-            wallDecoder.execute(() -> {
-                Bitmap bmp = decodeWallpaper(thumb);
-                if (bmp != null) {
-                    DisplayMetrics dm = getResources().getDisplayMetrics();
-                    Bitmap blur = Backdrop.blur(bmp, dm.widthPixels, dm.heightPixels, getWallpaperDimColor());
-                    handler.post(() -> {
-                        if (isDestroyed() || g != liveGen) return;
-                        if (blur != null) Backdrop.present(blur, 400);
-                    });
-                }
-            });
+        if (!ThemeManager.isNeumorphism(this) && !ThemeManager.isDarkGlow(this)) {
+            File thumb = new File(file.getParentFile(), file.getName().replace(".mp4", ".jpg"));
+            if (thumb.exists()) {
+                wallDecoder.execute(() -> {
+                    Bitmap bmp = decodeWallpaper(thumb);
+                    if (bmp != null) {
+                        DisplayMetrics dm = getResources().getDisplayMetrics();
+                        Bitmap blur = Backdrop.blur(bmp, dm.widthPixels, dm.heightPixels, getWallpaperDimColor());
+                        handler.post(() -> {
+                            if (isDestroyed() || g != liveGen) return;
+                            if (blur != null) Backdrop.present(blur, 400);
+                        });
+                    }
+                });
+            }
         }
     }
 
@@ -1590,6 +1609,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         staleLiveViews.clear();
         if (wallView != null) wallView.setVisibility(View.GONE);
         if (livePlayer != null) adjustVideoAspect(tv, livePlayer.getVideoWidth(), livePlayer.getVideoHeight());
+        if (ThemeManager.isNeumorphism(this) || ThemeManager.isDarkGlow(this)) return;
         // The dock and Candy Box glass follow the video: take a small frame from the view itself
         // (no second decoder, which this TV does not have) and blur it for the backdrop.
         final int g = liveGen;
@@ -1641,7 +1661,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** Home came back to the front (or the theme changed): make sure the video is moving. */
     private void resumeLiveWallpaper() {
         if (currentLiveFile == null) return;
+        if (!wallpaperFullscreen && ThemeManager.isNeumorphism(this)) {
+            pauseLiveWallpaper();
+            return;
+        }
         livePaused = false;
+        if (liveWallView != null && liveWallView.getVisibility() != View.VISIBLE) {
+            liveWallView.setVisibility(View.VISIBLE);
+        }
         updateLiveDimOverlay();
         if (livePlayer != null && liveWallView != null && liveWallView.isAvailable()) {
             if (livePrepared) {
@@ -1761,20 +1788,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void updateLiveDimOverlay() {
         if (liveDimOverlay == null) return;
-        if (wallpaperFullscreen || currentLiveFile == null) {
+        if (wallpaperFullscreen || currentLiveFile == null || ThemeManager.isNeumorphism(this)) {
             liveDimOverlay.setVisibility(View.GONE);
             return;
         }
         liveDimOverlay.setVisibility(View.VISIBLE);
         if (ThemeManager.isDarkGlow(this)) {
-            // Dark Glow: ~87% deep OLED black (~13% video brightness, matching static MULTIPLY 0xFF222222)
-            liveDimOverlay.setBackgroundColor(0xDE030508);
-        } else if (ThemeManager.isNeumorphismDark(this)) {
-            // Neumorphism Dark: ~78% charcoal wash (~22% video visible, matching static alpha 0.22f)
-            liveDimOverlay.setBackgroundColor(0xC7171A22);
-        } else if (ThemeManager.isNeumorphism(this)) {
-            // Neumorphism Light: ~81% porcelain wash (~19% video visible, matching static alpha 0.20f)
-            liveDimOverlay.setBackgroundColor(0xD0EDEAE4);
+            // Dark Glow: 85% deep OLED black (15% video brightness, matching static MULTIPLY 0xFF262626)
+            liveDimOverlay.setBackgroundColor(0xD9030508);
         } else {
             // Frosted Glass: 40% dark dim (60% video brightness, matching static MULTIPLY 0xFF999999)
             liveDimOverlay.setBackgroundColor(0x66000000);
@@ -2219,14 +2240,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             ambient.animate().alpha(0f).setDuration(duration).start();
         }
 
-        updateLiveDimOverlay();
-        if (wallView != null) {
-            if (fullscreen) {
-                wallView.clearColorFilter();
-            } else {
-                applyWallpaperColorFilter();
-            }
-        }
+        applyWallpaperColorFilter();
     }
 
     // ---- glass highlight -------------------------------------------------------------------------
@@ -9303,7 +9317,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         boolean isNeu = ThemeManager.isNeumorphism(this);
 
         FrameLayout overlay = createTrappedOverlay(
-                isDark ? 0xDD000000 : (isNeu ? ThemeManager.neu(0x99EDEAE4) : 0x78050912),
+                isDark ? 0xDD000000 : (isNeu ? ThemeManager.neu(0x99DBD7CE) : 0x78050912),
                 () -> closeAppDrawer(true));
 
         int maxW = Math.min(Math.round(860 * density), root.getWidth() - Math.round(72 * density));

@@ -39,7 +39,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
     private static final Matrix TRAY_RIM_MATRIX = new Matrix();
     private static final LinearGradient TRAY_RIM_LIGHT_GRAD = new LinearGradient(
             0f, 0f, 1f, 1f,
-            new int[]{0xFFFFFFFF, 0x70FFFFFF, 0x321A1610},
+            new int[]{0xD8F2EFE9, 0x58ECE8E0, 0x381A1610},
             new float[]{0f, 0.48f, 1f}, Shader.TileMode.CLAMP);
     private static final LinearGradient TRAY_RIM_DARK_GRAD = new LinearGradient(
             0f, 0f, 1f, 1f,
@@ -80,8 +80,8 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         darkTrayShadow.setColor(0x80000000);
         darkTrayShadow.setMaskFilter(new android.graphics.BlurMaskFilter(16f * density, android.graphics.BlurMaskFilter.Blur.NORMAL));
 
-        // Neumorphism Light: Soft extruded warm porcelain clay tray
-        neuTrayFill.setColor(0xFFEDEAE4);
+        // Neumorphism Light: Soft extruded warm stone-putty clay tray
+        neuTrayFill.setColor(0xFFDBD7CE);
         neuTrayRim.setStyle(Paint.Style.STROKE);
         neuTrayRim.setStrokeWidth(1.6f * density);
         neuTrayShadow.setColor(0x28000000);
