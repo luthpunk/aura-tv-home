@@ -85,12 +85,10 @@ public class WeatherActivity extends Activity {
     private int selectedDayIndex = 0;
     private int activeChip = 0; // 0 = Suhu, 1 = Curah Hujan, 2 = Angin
 
-    private WeatherSkyView sky;
     private HourlyChartView chart;
     private TextView tvIcon, tvLocation, tvTemp, tvCondition, tvMaxMin;
     private TextView tvFeels, tvRain, tvPressure;
     private LinearLayout dayRow;
-    private View headerBlock;
     private TextView chipTemp, chipPrecip, chipWind;
 
     private WeatherState current;
@@ -102,7 +100,6 @@ public class WeatherActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_weather);
 
-        sky = findViewById(R.id.skyView);
         chart = findViewById(R.id.hourlyChart);
         tvIcon = findViewById(R.id.tvIcon);
         tvLocation = findViewById(R.id.tvLocation);
@@ -113,32 +110,12 @@ public class WeatherActivity extends Activity {
         tvRain = findViewById(R.id.tvRain);
         tvPressure = findViewById(R.id.tvPressure);
         dayRow = findViewById(R.id.dayRow);
-        headerBlock = findViewById(R.id.headerBlock);
 
         chipTemp = findViewById(R.id.chipTemp);
         chipPrecip = findViewById(R.id.chipPrecip);
         chipWind = findViewById(R.id.chipWind);
 
         updateLocationLabel();
-
-        if (headerBlock != null) {
-            headerBlock.setFocusable(true);
-            headerBlock.setFocusableInTouchMode(true);
-            headerBlock.setOnFocusChangeListener((v, hasFocus) -> {
-                float scale = hasFocus ? 1.04f : 1.0f;
-                v.animate().scaleX(scale).scaleY(scale).setDuration(160L)
-                        .setInterpolator(new DecelerateInterpolator()).start();
-            });
-            headerBlock.setOnClickListener(v -> {
-                SoundEffects.playSelect();
-                CitySearchDialog.show(this, () -> {
-                    updateLocationLabel();
-                    PrayerTimes.sync(this, null);
-                    WeatherAirQuality.sync(this, this::fetchLiveWeather);
-                    fetchLiveWeather();
-                });
-            });
-        }
 
         setupChips();
         buildDayCards();
@@ -148,7 +125,6 @@ public class WeatherActivity extends Activity {
                 29, 32, 20, 1010, 32, 25, days.get(0).hourlyTemps);
         loadFromCacheIfPresent();
 
-        sky.setCondition(current.condition, false);
         applyState(current, current.temp - 4);
         playEntrance();
 
@@ -163,7 +139,7 @@ public class WeatherActivity extends Activity {
         String loc = AppLocationManager.getLocationName(this);
         if (loc == null || loc.trim().isEmpty()) loc = "Tuban";
         if (tvLocation != null) {
-            tvLocation.setText("📍 " + loc.trim() + " ▾");
+            tvLocation.setText(loc.trim());
         }
     }
 
@@ -309,10 +285,6 @@ public class WeatherActivity extends Activity {
         for (int i = 0; i < dayRow.getChildCount(); i++) {
             View card = dayRow.getChildAt(i);
             updateCardAppearance(card, i == selectedDayIndex, card.hasFocus());
-        }
-
-        if (sky.getCurrentCondition() != day.condition) {
-            sky.setCondition(day.condition, true, 2000L);
         }
 
         int targetTemp = (day.high + day.low) / 2;
@@ -511,7 +483,6 @@ public class WeatherActivity extends Activity {
                     selectedDayIndex = 0;
                     buildDayCards();
                     current = todayState;
-                    sky.setCondition(current.condition, true, 2000L);
                     applyState(current, shownTemp);
                 });
             } catch (Exception ignored) {

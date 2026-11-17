@@ -8,13 +8,7 @@
     android:clipToPadding="false"
     android:focusable="false"
     android:clickable="false"
-    android:background="#0B1020">
-
-    <!-- Animated sky background -->
-    <com.gathin.tvhome.WeatherSkyView
-        android:id="@+id/skyView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+    android:background="#0A1428">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -42,17 +36,8 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:focusable="true"
-                android:clickable="true"
-                android:nextFocusDown="@+id/chipTemp">
-
-                <TextView
-                    android:id="@+id/tvIcon"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="⛈️"
-                    android:textSize="64sp"
-                    android:layout_marginEnd="24dp" />
+                android:focusable="false"
+                android:clickable="false">
 
                 <LinearLayout
                     android:layout_width="wrap_content"
@@ -64,9 +49,11 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/outfit"
-                        android:text="📍 Tuban ▾"
+                        android:fontVariationSettings="'wght' 700"
+                        android:text="Tuban"
                         android:textColor="#FFFFFF"
-                        android:textSize="18sp"
+                        android:textSize="24sp"
+                        android:textStyle="bold"
                         android:shadowColor="#99000000"
                         android:shadowDx="0"
                         android:shadowDy="1"
@@ -112,6 +99,14 @@
                         android:shadowDy="1"
                         android:shadowRadius="3" />
                 </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvIcon"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="⛈️"
+                    android:textSize="64sp"
+                    android:layout_marginStart="24dp" />
             </LinearLayout>
 
             <View
@@ -218,7 +213,7 @@
                     android:includeFontPadding="false"
                     android:focusable="true"
                     android:clickable="true"
-                    android:nextFocusUp="@+id/headerBlock"
+                    android:nextFocusUp="@+id/chipTemp"
                     android:nextFocusDown="@+id/dayRow"
                     android:nextFocusRight="@+id/chipPrecip"
                     android:background="@drawable/chip_selected" />
@@ -238,7 +233,7 @@
                     android:includeFontPadding="false"
                     android:focusable="true"
                     android:clickable="true"
-                    android:nextFocusUp="@+id/headerBlock"
+                    android:nextFocusUp="@+id/chipPrecip"
                     android:nextFocusDown="@+id/dayRow"
                     android:nextFocusLeft="@+id/chipTemp"
                     android:nextFocusRight="@+id/chipWind"
@@ -259,7 +254,7 @@
                     android:includeFontPadding="false"
                     android:focusable="true"
                     android:clickable="true"
-                    android:nextFocusUp="@+id/headerBlock"
+                    android:nextFocusUp="@+id/chipWind"
                     android:nextFocusDown="@+id/dayRow"
                     android:nextFocusLeft="@+id/chipPrecip"
                     android:background="@drawable/chip" />
