@@ -1,6 +1,7 @@
 package com.gathin.tvhome;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.media.AudioAttributes;
@@ -11,6 +12,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -21,8 +23,9 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.io.File;
-import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
 
 /**
  * The azan, as a floating glass card at the top-center of the screen over whatever was on (the app
@@ -31,14 +34,90 @@ import java.util.Date;
  * the app underneath is where it was.
  */
 public class AzanActivity extends Activity {
+    private static final class PhraseEntry {
+        final String arabic;
+        final float progressThreshold;
+
+        PhraseEntry(String arabic, float progressThreshold) {
+            this.arabic = arabic;
+            this.progressThreshold = progressThreshold;
+        }
+    }
+
+    private static final PhraseEntry[] STANDARD_PHRASES = {
+            new PhraseEntry("ٱللَّهُ أَكْبَرُ", 0.00f),
+            new PhraseEntry("أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا ٱللَّهُ", 0.16f),
+            new PhraseEntry("أَشْهَدُ أَنَّ مُحَمَّدًا رَسُولُ ٱللَّهِ", 0.33f),
+            new PhraseEntry("حَيَّ عَلَى ٱلصَّلَاةِ", 0.50f),
+            new PhraseEntry("حَيَّ عَلَى ٱلْفَلَاحِ", 0.67f),
+            new PhraseEntry("ٱللَّهُ أَكْبَرُ", 0.82f),
+            new PhraseEntry("لَا إِلَٰهَ إِلَّا ٱللَّهُ", 0.91f)
+    };
+
+    private static final PhraseEntry[] SUBUH_PHRASES = {
+            new PhraseEntry("ٱللَّهُ أَكْبَرُ", 0.00f),
+            new PhraseEntry("أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا ٱللَّهُ", 0.14f),
+            new PhraseEntry("أَشْهَدُ أَنَّ مُحَمَّدًا رَسُولُ ٱللَّهِ", 0.29f),
+            new PhraseEntry("حَيَّ عَلَى ٱلصَّلَاةِ", 0.44f),
+            new PhraseEntry("حَيَّ عَلَى ٱلْفَلَاحِ", 0.59f),
+            new PhraseEntry("ٱلصَّلَاةُ خَيْرٌ مِنَ ٱلنَّوْمِ", 0.72f),
+            new PhraseEntry("ٱللَّهُ أَكْبَرُ", 0.85f),
+            new PhraseEntry("لَا إِلَٰهَ إِلَّا ٱللَّهُ", 0.93f)
+    };
+
     private final Handler handler = new Handler(Looper.getMainLooper());
     private MediaPlayer player;
     private AudioManager audio;
     private AudioFocusRequest focus;
     private float density;
+    private TextView takbir;
+    private TextView prayerNameView;
+    private TextView timeView;
     private TextView hint;
+    private PhraseEntry[] activePhrases = STANDARD_PHRASES;
+    private int currentPhraseIdx = 0;
+    private int audioStartOffsetMs = 0;
     /** True once the card has been on screen: until then a stop is the screensaver going, not the owner. */
     private boolean shown;
+
+    private final Runnable audioPhraseSyncRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (isFinishing() || isDestroyed() || player == null) return;
+            try {
+                if (player.isPlaying()) {
+                    int dur = player.getDuration();
+                    int pos = player.getCurrentPosition();
+                    if (dur > audioStartOffsetMs + 500) {
+                        int effectiveDur = dur - audioStartOffsetMs;
+                        int effectivePos = Math.max(0, pos - audioStartOffsetMs);
+                        float ratio = Math.min(1f, effectivePos / (float) effectiveDur);
+                        int targetIdx = 0;
+                        for (int i = 0; i < activePhrases.length; i++) {
+                            if (ratio >= activePhrases[i].progressThreshold) {
+                                targetIdx = i;
+                            }
+                        }
+                        if (targetIdx != currentPhraseIdx) {
+                            showPhrase(targetIdx);
+                        }
+                    }
+                }
+            } catch (IllegalStateException ignored) {
+            }
+            handler.postDelayed(this, 250);
+        }
+    };
+
+    private final Runnable fallbackCycleRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (isFinishing() || isDestroyed()) return;
+            int nextIdx = (currentPhraseIdx + 1) % activePhrases.length;
+            showPhrase(nextIdx);
+            handler.postDelayed(this, 2800);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -113,8 +192,16 @@ public class AzanActivity extends Activity {
             card.setElevation(dp(16));
         }
 
-        TextView takbir = text("ٱللَّهُ أَكْبَرُ", amiri, 40, accentColor, 400);
-        card.addView(takbir);
+        activePhrases = (prayer == 0) ? SUBUH_PHRASES : STANDARD_PHRASES;
+        currentPhraseIdx = 0;
+
+        takbir = text(activePhrases[0].arabic, amiri, 38, accentColor, 400);
+        takbir.setSingleLine(false);
+        takbir.setMaxLines(2);
+        takbir.setIncludeFontPadding(false);
+        takbir.setLineSpacing(0f, 1.05f);
+        card.addView(takbir, new LinearLayout.LayoutParams(dp(270), LinearLayout.LayoutParams.WRAP_CONTENT));
+
         View line = new View(this);
         line.setBackgroundColor(dividerColor);
         LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(Math.max(1, dp(1)), dp(70));
@@ -128,22 +215,22 @@ public class AzanActivity extends Activity {
         if (town == null || town.isEmpty()) {
             town = Location.prefs(this).getString("now_town", "");
         }
-        TextView label = text(town.isEmpty() ? "ADZAN" : "ADZAN  ·  " + town.toUpperCase(java.util.Locale.ROOT), outfit, 12, labelTextColor, 600);
+        TextView label = text(town.isEmpty() ? "ADZAN" : "ADZAN  ·  " + town.toUpperCase(Locale.ROOT), outfit, 12, labelTextColor, 600);
         label.setLetterSpacing(0.22f);
         label.setGravity(Gravity.START);
         words.addView(label);
-        String when = DateFormat.getTimeInstance(DateFormat.SHORT).format(new Date());
+        String when = new SimpleDateFormat("HH.mm", Locale.getDefault()).format(new Date());
         LinearLayout nameRow = new LinearLayout(this);
         nameRow.setOrientation(LinearLayout.HORIZONTAL);
         nameRow.setGravity(Gravity.BOTTOM);
         nameRow.setPadding(0, dp(2), 0, dp(2));
-        TextView name = text(PrayerTimes.NAMES[Math.max(0, Math.min(prayer, PrayerTimes.NAMES.length - 1))], outfit, 28, primaryTextColor, 500);
-        name.setSingleLine(true);
-        nameRow.addView(name);
-        TextView time = text(when, outfit, 20, timeTextColor, 300);
-        time.setSingleLine(true);
-        time.setPadding(dp(14), 0, 0, dp(3));
-        nameRow.addView(time);
+        prayerNameView = text(PrayerTimes.NAMES[Math.max(0, Math.min(prayer, PrayerTimes.NAMES.length - 1))], outfit, 28, primaryTextColor, 500);
+        prayerNameView.setSingleLine(true);
+        nameRow.addView(prayerNameView);
+        timeView = text(when, outfit, 20, timeTextColor, 300);
+        timeView.setSingleLine(true);
+        timeView.setPadding(dp(14), 0, 0, dp(3));
+        nameRow.addView(timeView);
         words.addView(nameRow);
         hint = text("Tekan Back / OK untuk tutup", outfit, 12, hintTextColor, 400);
         hint.setGravity(Gravity.START);
@@ -159,21 +246,63 @@ public class AzanActivity extends Activity {
         String soundChoice = Azan.getSoundChoice(this);
         if (Azan.SOUND_SILENT.equals(soundChoice)) {
             hint.setText("Mode Senyap • Tekan Back untuk tutup");
+            handler.postDelayed(fallbackCycleRunnable, 2800);
             handler.postDelayed(this::finish, 15_000);
         } else if (Azan.SOUND_CHIME.equals(soundChoice)) {
             hint.setText("Nada Pengingat Singkat • Tekan Back untuk tutup");
+            handler.postDelayed(fallbackCycleRunnable, 2800);
             playChime();
         } else {
             File file = Azan.recording(this, soundChoice);
             if (file == null) {
                 hint.setText("Mengunduh audio " + Azan.soundLabel(soundChoice) + "...");
                 Azan.fetch(this, soundChoice);
+                handler.postDelayed(fallbackCycleRunnable, 2800);
                 playChime();
                 handler.postDelayed(this::finish, 8000);
                 return;
             }
             play(file, soundChoice);
         }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        int prayer = intent.getIntExtra("prayer", 4);
+        activePhrases = (prayer == 0) ? SUBUH_PHRASES : STANDARD_PHRASES;
+        currentPhraseIdx = 0;
+        if (prayerNameView != null) {
+            prayerNameView.setText(PrayerTimes.NAMES[Math.max(0, Math.min(prayer, PrayerTimes.NAMES.length - 1))]);
+        }
+        if (timeView != null) {
+            timeView.setText(new SimpleDateFormat("HH.mm", Locale.getDefault()).format(new Date()));
+        }
+        applyPhraseText(activePhrases[0].arabic);
+    }
+
+    private void showPhrase(int index) {
+        if (index < 0 || index >= activePhrases.length) return;
+        currentPhraseIdx = index;
+        final String arabic = activePhrases[index].arabic;
+        if (takbir == null) return;
+        takbir.animate().cancel();
+        takbir.animate()
+                .alpha(0f)
+                .setDuration(220)
+                .withEndAction(() -> {
+                    if (isFinishing() || isDestroyed() || takbir == null) return;
+                    applyPhraseText(arabic);
+                    takbir.animate().alpha(1f).setDuration(260).start();
+                })
+                .start();
+    }
+
+    private void applyPhraseText(String arabic) {
+        if (takbir == null) return;
+        takbir.setText(arabic);
+        takbir.setTextSize(TypedValue.COMPLEX_UNIT_SP, arabic.length() > 18 ? 25f : 38f);
     }
 
     private void playChime() {
@@ -222,10 +351,13 @@ public class AzanActivity extends Activity {
                 return true;
             });
             player.prepare();
+            audioStartOffsetMs = 0;
             if (Azan.SOUND_KLCC.equals(soundChoice) && file.getName().contains("klcc")) {
-                player.seekTo(Azan.KLCC_START_MS);
+                audioStartOffsetMs = Azan.KLCC_START_MS;
+                player.seekTo(audioStartOffsetMs);
             }
             player.start();
+            handler.post(audioPhraseSyncRunnable);
         } catch (Exception e) {
             finish();
         }

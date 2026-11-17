@@ -40,7 +40,7 @@ final class Azan {
     private static final String SOURCE_KLCC = "https://archive.org/download/AzanZhurMasjidKlcc/CallToPrayer.mp3";
 
     /** An alarm delivered this late (the TV was asleep) is let go rather than played out of time. */
-    static final long LATE_MS = 2 * 60 * 1000L;
+    static final long LATE_MS = 5 * 60 * 1000L;
     /** Where the azan itself begins in the KLCC recording (before it: birds and the park). */
     static final int KLCC_START_MS = 12_000;
 
@@ -76,11 +76,11 @@ final class Azan {
     }
 
     static String soundLabel(String choice) {
-        if (SOUND_MADINAH.equals(choice)) return "🕌 Adzan Masjid Nabawi Madinah";
-        if (SOUND_KLCC.equals(choice)) return "🕌 Adzan Masjid As-Syakirin KLCC";
-        if (SOUND_CHIME.equals(choice)) return "🔔 Nada Lonceng Lembut (Singkat)";
-        if (SOUND_SILENT.equals(choice)) return "🔕 Mode Senyap (Visual Saja)";
-        return "🕋 Adzan Masjidil Haram Makkah";
+        if (SOUND_MADINAH.equals(choice)) return "Adzan Masjid Nabawi Madinah";
+        if (SOUND_KLCC.equals(choice)) return "Adzan Masjid As-Syakirin KLCC";
+        if (SOUND_CHIME.equals(choice)) return "Nada Lonceng Lembut (Singkat)";
+        if (SOUND_SILENT.equals(choice)) return "Mode Senyap (Visual Saja)";
+        return "Adzan Masjidil Haram Makkah";
     }
 
     /** Sets the alarm for the next prayer that is on, today or tomorrow; clears it when none is. */
