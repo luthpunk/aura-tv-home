@@ -1,4 +1,7 @@
-• Penambahan widget Jadwal Sholat & Adzan (opsi posisi kanan/kiri, ikon lebih bersih, sorotan waktu aktif kuning seragam, serta pengingat & popup adzan berbahasa Indonesia yang lebih ringkas)
-• Tampilan Cuaca Lengkap baru bergaya animated glass (langit siang/malam/badai, grafik per jam, prakiraan 5 hari) dan penyempurnaan awan widget beranda
-• Penyeragaman lapisan wallpaper statis dan live wallpaper di semua tema (Frosted Glass, Neumorphism samar, dan Dark Glow)
-• Optimasi performa animasi tema Neumorphism serta perbaikan arah fokus D-Pad antar widget dan fallback input Live TV
+• Penambahan Widget Jadwal Sholat & Pengingat Adzan
+• Penambahan Upload Live Wallpaper Video (.mp4) via QR HP
+• Penyempurnaan Tema Neumorphism & Dark Glow
+• Optimasi Performa, RAM & Cold Boot
+• Perbaikan auto-start saat TV dinyalakan dari kondisi mati total (shutdown)
+• Dukungan pemilihan Default Launcher saat sideload APK
+• Perbaikan bug minor & peningkatan responsivitas navigasi remot
