@@ -327,11 +327,15 @@ final class WeatherAirQuality {
         int prefTemp = prefs.getInt(KEY_TEMP, 29);
         int prefCode = prefs.getInt(KEY_CODE, 2);
         int prefAqi = prefs.getInt(KEY_AQI, 50);
+        long lastUpdate = prefs.getLong(KEY_LAST_UPDATE, 0);
         String stationIdNow = AppLocationManager.getStationId(context);
+        String locNameNow = AppLocationManager.getLocationName(context);
         boolean isNeuNow = ThemeManager.isNeumorphism(context);
+        boolean isNeuDarkNow = ThemeManager.isNeumorphismDark(context);
         Calendar keyCal = Calendar.getInstance();
         String cacheKey = (wStr != null ? wStr.hashCode() : 0) + "|" + (aStr != null ? aStr.hashCode() : 0)
-                + "|" + prefTemp + "|" + prefCode + "|" + prefAqi + "|" + stationIdNow + "|" + isNeuNow
+                + "|" + prefTemp + "|" + prefCode + "|" + prefAqi + "|" + lastUpdate
+                + "|" + stationIdNow + "|" + locNameNow + "|" + isNeuNow + "|" + isNeuDarkNow
                 + "|" + keyCal.get(Calendar.DAY_OF_YEAR) + "|" + keyCal.get(Calendar.HOUR_OF_DAY);
         synchronized (FULL_CACHE_LOCK) {
             if (cacheKey.equals(sCachedFullKey) && sCachedFullWeather != null) {
