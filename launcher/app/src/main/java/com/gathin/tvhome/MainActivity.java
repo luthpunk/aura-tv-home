@@ -7226,16 +7226,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     }
                 }
                 if (rawBytes != null && rawBytes.length > 0) {
-                    BitmapFactory.Options opts = new BitmapFactory.Options();
+                    android.graphics.BitmapFactory.Options opts = new android.graphics.BitmapFactory.Options();
                     opts.inJustDecodeBounds = true;
-                    BitmapFactory.decodeByteArray(rawBytes, 0, rawBytes.length, opts);
+                    android.graphics.BitmapFactory.decodeByteArray(rawBytes, 0, rawBytes.length, opts);
                     int sample = 1;
                     while (opts.outWidth / (sample * 2) >= 512 || opts.outHeight / (sample * 2) >= 512) {
                         sample *= 2;
                     }
                     opts.inJustDecodeBounds = false;
                     opts.inSampleSize = sample;
-                    bmp = BitmapFactory.decodeByteArray(rawBytes, 0, rawBytes.length, opts);
+                    bmp = android.graphics.BitmapFactory.decodeByteArray(rawBytes, 0, rawBytes.length, opts);
                 }
             } catch (Throwable t) {
                 Log.w("TvHome.Main", "Error loading URI bitmap: " + t.getMessage());
