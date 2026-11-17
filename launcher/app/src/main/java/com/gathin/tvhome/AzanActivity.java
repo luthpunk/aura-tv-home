@@ -22,14 +22,11 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.io.File;
-import java.text.DateFormat;
-import java.util.Date;
 
 /**
- * The azan, as a floating glass pill card centered at the top of the screen over whatever was on
- * (the app or Home stays in view behind it, blurred through the card where the TV can blur).
- * Video and music pause because the azan takes the sound (audio focus), and the Arabic adzan
- * phrase transitions dynamically in sync with the audio playback progress.
+ * The azan, as a fixed-width top-center floating glass card over whatever was on screen.
+ * Displays the dynamic prayer & location header, audio-synced rotating Arabic phrase +
+ * Indonesian translation, and a compact dismiss hint separated by clean hairline dividers.
  */
 public class AzanActivity extends Activity {
 
@@ -143,8 +140,9 @@ public class AzanActivity extends Activity {
         Window w = getWindow();
         w.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         w.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        w.setLayout(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT);
         WindowManager.LayoutParams lp = w.getAttributes();
-        lp.y = dp(24);
+        lp.y = dp(20);
         w.setAttributes(lp);
         boolean blur = false;
         if (!isNeu && !isDarkGlow && Build.VERSION.SDK_INT >= 31) {
@@ -157,10 +155,9 @@ public class AzanActivity extends Activity {
 
         int accentColor = (isNeu && !isNeuDark) ? 0xFFD97706 : 0xFFFFA726;
         int primaryTextColor = isNeu ? ThemeManager.neu(0xFF2B3036) : 0xFFFFFFFF;
-        int labelTextColor = isNeu ? ThemeManager.neu(0xFF4A525D) : 0xB3FFFFFF;
-        int timeTextColor = isNeu ? ThemeManager.neu(0xFF5A626E) : 0xCCFFFFFF;
+        int meaningTextColor = isNeu ? ThemeManager.neu(0xFF4A525D) : 0xD9FFFFFF;
         int hintTextColor = isNeu ? ThemeManager.neu(0xFF5A626E) : 0x99FFFFFF;
-        int dividerColor = isNeu ? ThemeManager.neu(0x1F000000) : (isDarkGlow ? 0x3800F0FF : 0x33FFFFFF);
+        int dividerColor = isNeu ? ThemeManager.neu(0x1F000000) : (isDarkGlow ? 0x3800F0FF : 0x2BFFFFFF);
 
         FrameLayout wrapper = new FrameLayout(this);
         wrapper.setClipChildren(false);
@@ -168,17 +165,20 @@ public class AzanActivity extends Activity {
         int outerPad = dp(isNeu ? 18 : 8);
         wrapper.setPadding(outerPad, outerPad, outerPad, outerPad);
 
+        int screenWidth = getResources().getDisplayMetrics().widthPixels;
+        int fixedCardWidth = Math.min(dp(460), screenWidth - outerPad * 2 - dp(32));
+
         LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.HORIZONTAL);
-        card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(dp(26), dp(16), dp(28), dp(16));
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setGravity(Gravity.CENTER_HORIZONTAL);
+        card.setPadding(dp(26), dp(14), dp(26), dp(12));
         if (isNeu) {
-            card.setBackground(new NeumorphicDrawable(dp(24), density, NeumorphicDrawable.MODE_EXTRUDED, true));
+            card.setBackground(new NeumorphicDrawable(dp(22), density, NeumorphicDrawable.MODE_EXTRUDED, true));
             card.setElevation(0f);
         } else if (isDarkGlow) {
             GradientDrawable dgBg = new GradientDrawable();
             dgBg.setColor(0xF008090D);
-            dgBg.setCornerRadius(dp(24));
+            dgBg.setCornerRadius(dp(22));
             dgBg.setStroke(Math.max(1, dp(1.5f)), 0xFF00F0FF);
             card.setBackground(dgBg);
             card.setClipToOutline(true);
@@ -187,67 +187,62 @@ public class AzanActivity extends Activity {
             GradientDrawable glass = new GradientDrawable(
                     GradientDrawable.Orientation.TOP_BOTTOM,
                     blur ? new int[]{0xB3161E2E, 0xB30F1622} : new int[]{0xE6222938, 0xE6161C27});
-            glass.setCornerRadius(dp(24));
+            glass.setCornerRadius(dp(22));
             glass.setStroke(Math.max(1, dp(1.5f)), 0x59FFFFFF);
             card.setBackground(glass);
             card.setClipToOutline(true);
             card.setElevation(dp(16));
         }
 
-        LinearLayout arabicBlock = new LinearLayout(this);
-        arabicBlock.setOrientation(LinearLayout.VERTICAL);
-        arabicBlock.setGravity(Gravity.CENTER_HORIZONTAL);
-        arabicBlock.setMinimumWidth(dp(190));
-
-        takbir = text(activePhrases[0].arabic, amiri, 30, accentColor, 400);
-        takbir.setMaxWidth(dp(340));
-        arabicBlock.addView(takbir);
-
-        takbirMeaning = text(activePhrases[0].meaning, outfit, 11.5f, timeTextColor, 400);
-        takbirMeaning.setPadding(0, dp(2), 0, 0);
-        arabicBlock.addView(takbirMeaning);
-
-        card.addView(arabicBlock);
-
-        View line = new View(this);
-        line.setBackgroundColor(dividerColor);
-        LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(Math.max(1, dp(1)), dp(56));
-        llp.leftMargin = dp(22);
-        llp.rightMargin = dp(22);
-        card.addView(line, llp);
-
-        LinearLayout words = new LinearLayout(this);
-        words.setOrientation(LinearLayout.VERTICAL);
+        // 1. Dynamic Prayer + Location Header
+        String prayerName = PrayerTimes.NAMES[Math.max(0, Math.min(prayer, PrayerTimes.NAMES.length - 1))];
         String town = AppLocationManager.getLocationName(this);
         if (town == null || town.isEmpty()) {
             town = Location.prefs(this).getString("now_town", "");
         }
-        TextView label = text(town.isEmpty() ? "ADZAN" : "ADZAN  ·  " + town.toUpperCase(java.util.Locale.ROOT), outfit, 11, labelTextColor, 600);
-        label.setLetterSpacing(0.20f);
-        label.setGravity(Gravity.START);
-        words.addView(label);
-        String when = DateFormat.getTimeInstance(DateFormat.SHORT).format(new Date());
-        LinearLayout nameRow = new LinearLayout(this);
-        nameRow.setOrientation(LinearLayout.HORIZONTAL);
-        nameRow.setGravity(Gravity.BOTTOM);
-        nameRow.setPadding(0, dp(2), 0, dp(2));
-        TextView name = text(PrayerTimes.NAMES[Math.max(0, Math.min(prayer, PrayerTimes.NAMES.length - 1))], outfit, 24, primaryTextColor, 500);
-        name.setSingleLine(true);
-        nameRow.addView(name);
-        TextView time = text(when, outfit, 17, timeTextColor, 300);
-        time.setSingleLine(true);
-        time.setPadding(dp(12), 0, 0, dp(2));
-        nameRow.addView(time);
-        words.addView(nameRow);
-        hint = text("Tekan Back / OK untuk tutup", outfit, 11, hintTextColor, 400);
-        hint.setGravity(Gravity.START);
-        words.addView(hint);
-        card.addView(words);
+        String headerStr = town.isEmpty()
+                ? "Saatnya Adzan " + prayerName
+                : "Saatnya Adzan " + prayerName + " di wilayah " + town.trim();
+        TextView headerText = text(headerStr, outfit, 14.5f, primaryTextColor, 600);
+        headerText.setIncludeFontPadding(false);
+        headerText.setMaxLines(2);
+        card.addView(headerText, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        // 2. Top Divider
+        card.addView(makeDivider(dividerColor, dp(10), dp(8)));
+
+        // 3. Rotating Arabic Phrase + Tight Indonesian Meaning
+        takbir = text(activePhrases[0].arabic, amiri, 26f, accentColor, 400);
+        takbir.setIncludeFontPadding(false);
+        takbir.setLineSpacing(0f, 0.92f);
+        takbir.setMaxLines(2);
+        card.addView(takbir, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        takbirMeaning = text(activePhrases[0].meaning, outfit, 12f, meaningTextColor, 400);
+        takbirMeaning.setIncludeFontPadding(false);
+        takbirMeaning.setMaxLines(1);
+        LinearLayout.LayoutParams meaningLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        meaningLp.topMargin = dp(4);
+        card.addView(takbirMeaning, meaningLp);
+
+        // 4. Bottom Divider
+        card.addView(makeDivider(dividerColor, dp(10), dp(8)));
+
+        // 5. Compact Dismiss Hint
+        hint = text("Tekan Back / OK untuk menutup", outfit, 10.5f, hintTextColor, 400);
+        hint.setIncludeFontPadding(false);
+        hint.setSingleLine(true);
+        card.addView(hint, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
         card.setFocusable(true);
         card.setClickable(true);
         card.setOnClickListener(v -> finish());
         wrapper.addView(card, new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL));
+                fixedCardWidth, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL));
         setContentView(wrapper);
 
         card.setAlpha(0f);
@@ -261,11 +256,11 @@ public class AzanActivity extends Activity {
 
         String soundChoice = Azan.getSoundChoice(this);
         if (Azan.SOUND_SILENT.equals(soundChoice)) {
-            hint.setText("Mode Senyap • Tekan Back untuk tutup");
+            hint.setText("Mode Senyap • Tekan Back / OK untuk menutup");
             handler.postDelayed(fallbackCycleRunnable, 3500L);
             handler.postDelayed(this::finish, 18_000);
         } else if (Azan.SOUND_CHIME.equals(soundChoice)) {
-            hint.setText("Nada Pengingat Singkat • Tekan Back untuk tutup");
+            hint.setText("Nada Singkat • Tekan Back / OK untuk menutup");
             handler.postDelayed(fallbackCycleRunnable, 3500L);
             playChime();
         } else {
@@ -280,6 +275,17 @@ public class AzanActivity extends Activity {
             }
             play(file, soundChoice);
         }
+    }
+
+    private View makeDivider(int color, int topMarginPx, int bottomMarginPx) {
+        View line = new View(this);
+        line.setBackgroundColor(color);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, Math.max(1, dp(1)));
+        lp.topMargin = topMarginPx;
+        lp.bottomMargin = bottomMarginPx;
+        line.setLayoutParams(lp);
+        return line;
     }
 
     private void showPhrase(int index) {
