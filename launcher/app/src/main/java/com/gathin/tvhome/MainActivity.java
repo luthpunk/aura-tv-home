@@ -440,18 +440,28 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (checkSelfPermission("android.permission.ACCESS_FINE_LOCATION") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{
-                        "android.permission.ACCESS_FINE_LOCATION",
-                        "android.permission.ACCESS_COARSE_LOCATION"
-                }, 1001);
-            }
-        }
         sInstance = new java.lang.ref.WeakReference<>(this);
         TvToast.setCurrentActivity(this);
         SoundEffects.init(this);
         setContentView(R.layout.activity_main);
+        // Defer permission check & preferred-home cache reset until after the Home screen is rendered
+        // so cold boot never stalls behind an early system dialog before setContentView draws.
+        handler.postDelayed(() -> {
+            if (isFinishing() || isDestroyed()) return;
+            if (!HomeSettingsActivity.isDefaultHomeApp(this)) {
+                HomeSettingsActivity.resetPreferredHomeCache(this);
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (checkSelfPermission("android.permission.ACCESS_FINE_LOCATION") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    try {
+                        requestPermissions(new String[]{
+                                "android.permission.ACCESS_FINE_LOCATION",
+                                "android.permission.ACCESS_COARSE_LOCATION"
+                        }, 1001);
+                    } catch (Exception ignored) {}
+                }
+            }
+        }, 2500);
         density = getResources().getDisplayMetrics().density;
         // config.xml, overlaid by config.json from a pushed theme (see Config and tools/theme.sh).
         Config cfg = Config.load(this);
@@ -5576,6 +5586,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             closeMenuAndFocusApp();
             open(systemIntent(Settings.ACTION_SETTINGS));
         });
+
+        // If Aura TV Home is not yet the default launcher, offer a 1-click option to set it
+        if (!HomeSettingsActivity.isDefaultHomeApp(this)) {
+            addInputRow(rows, null, R.drawable.ic_home_settings, "Jadikan Launcher Utama", -1, () -> {
+                SoundEffects.playSelect();
+                closeMenuAndFocusApp();
+                try {
+                    startActivity(new Intent(this, HomeSettingsActivity.class));
+                } catch (Exception ignored) {}
+            });
+        }
 
         // Row 2: Restart TV
         addInputRow(rows, null, R.drawable.ic_restart, "Mulai Ulang TV", -1, () -> {
