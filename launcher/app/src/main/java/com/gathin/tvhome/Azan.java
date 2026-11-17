@@ -223,44 +223,6 @@ final class Azan {
         fetch(ctx, getSoundChoice(ctx));
     }
 
-    /** Displays FullScreenIntent notification so system guarantees overlay on all Android versions. */
-    static void showFullScreenNotification(Context ctx, int prayer, Intent azanIntent) {
-        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return;
-        try {
-            android.app.NotificationManager nm = ctx.getSystemService(android.app.NotificationManager.class);
-            if (nm == null) return;
-            String channelId = "azan_alarm_channel";
-            android.app.NotificationChannel channel = new android.app.NotificationChannel(
-                    channelId,
-                    "Waktu Sholat & Adzan TV",
-                    android.app.NotificationManager.IMPORTANCE_HIGH
-            );
-            channel.setDescription("Notifikasi dan popup waktu sholat / adzan melayang");
-            channel.setLockscreenVisibility(android.app.Notification.VISIBILITY_PUBLIC);
-            channel.setBypassDnd(true);
-            nm.createNotificationChannel(channel);
-
-            PendingIntent pi = PendingIntent.getActivity(
-                    ctx,
-                    101,
-                    azanIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-            );
-            String prayerName = (prayer >= 0 && prayer < PrayerTimes.NAMES.length) ? PrayerTimes.NAMES[prayer] : "Sholat";
-            android.app.Notification.Builder builder = new android.app.Notification.Builder(ctx, channelId)
-                    .setSmallIcon(R.drawable.ic_azan)
-                    .setContentTitle("🕌 Masuk Waktu " + prayerName)
-                    .setContentText("Pengingat Waktu Sholat")
-                    .setCategory(android.app.Notification.CATEGORY_ALARM)
-                    .setVisibility(android.app.Notification.VISIBILITY_PUBLIC)
-                    .setFullScreenIntent(pi, true)
-                    .setAutoCancel(true);
-            nm.notify(9999, builder.build());
-        } catch (Exception e) {
-            Log.w(TAG, "Notification error: " + e.getMessage());
-        }
-    }
-
     /**
      * Notes what the azan did (set, played, skipped and why) in azan-log.txt, keeping the last 40
      * lines: logcat is gone after the TV sleeps, and "why was there no azan?" is asked the next day.

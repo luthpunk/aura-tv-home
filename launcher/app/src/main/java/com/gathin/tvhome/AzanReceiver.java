@@ -36,13 +36,15 @@ public class AzanReceiver extends BroadcastReceiver {
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NO_ANIMATION);
 
                 try {
-                    ctx.startActivity(azanIntent);
+                    MainActivity home = MainActivity.getInstance();
+                    if (home != null && !home.isFinishing() && !home.isDestroyed()) {
+                        home.startActivity(azanIntent);
+                    } else {
+                        ctx.startActivity(azanIntent);
+                    }
                 } catch (Exception e) {
                     Azan.note(ctx, "Direct launch error: " + e.getMessage());
                 }
-
-                // Also trigger via high-priority FullScreenIntent notification so system guarantees overlay on all Android versions
-                Azan.showFullScreenNotification(ctx, prayer, azanIntent);
 
                 Azan.note(ctx, name + ": azan popup played (in front: " + InputKeyService.front() + ")");
             } else {
